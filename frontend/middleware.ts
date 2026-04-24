@@ -38,7 +38,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Exclure les fichiers statiques et API du middleware
-    '/((?!_next/static|_next/image|favicon.ico|public|api).*)',
+    '/((?!_next/static|_next/image|api).*)',
   ],
 };

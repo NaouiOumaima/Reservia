@@ -1,137 +1,345 @@
 // app/about/page.tsx
 
+import Link from 'next/link';
+import {
+  UsersIcon,
+  ServicesIcon,
+  LocationIcon,
+  StarIcon,
+  CalendarIcon,
+  TargetIcon,
+  ShieldIcon,
+  HeadphonesIcon,
+  CheckIcon,
+  ChevronRightIcon,
+} from '@/components/ui/Icons';
+
+// ─────────────────────────────────────────────────────────────
+//  DONNÉES DE LA PAGE
+// ─────────────────────────────────────────────────────────────
+
+const VALUES = [
+  {
+    icon: <TargetIcon className="w-8 h-8" />,
+    title: 'Innovation',
+    desc: 'Nous utilisons l\'IA pour vous offrir une expérience de réservation unique et personnalisée.',
+  },
+  {
+    icon: <UsersIcon className="w-8 h-8" />,
+    title: 'Proximité',
+    desc: 'Nous mettons en relation les utilisateurs avec les meilleurs services locaux.',
+  },
+  {
+    icon: <ShieldIcon className="w-8 h-8" />,
+    title: 'Confiance',
+    desc: 'Avis vérifiés, paiement sécurisé et support réactif pour votre tranquillité.',
+  },
+];
+
+const COMPARISON = [
+  { feature: 'Réservation multi-services', reservia: true, others: false },
+  { feature: 'Assistant IA vocal/textuel', reservia: true, others: false },
+  { feature: 'Carte interactive & itinéraire', reservia: true, others: false },
+  { feature: 'Paiement sécurisé', reservia: true, others: true },
+  { feature: 'Annulation gratuite', reservia: true, others: false },
+  { feature: 'Notifications en temps réel', reservia: true, others: false },
+];
+
+const FAQ = [
+  {
+    q: 'Comment réserver un service ?',
+    a: 'Recherchez le service souhaité, comparez les offres, choisissez votre créneau et confirmez la réservation. Vous recevrez une confirmation immédiate.',
+  },
+  {
+    q: 'Puis-je annuler gratuitement ?',
+    a: 'Oui, l\'annulation est gratuite jusqu\'à 2 heures avant le rendez-vous. Consultez les conditions spécifiques de chaque prestataire.',
+  },
+  {
+    q: 'Comment devenir fournisseur ?',
+    a: 'Inscrivez-vous en tant que fournisseur, créez votre fiche établissement, ajoutez vos services et commencez à recevoir des réservations.',
+  },
+  {
+    q: 'Que faire en cas de problème ?',
+    a: 'Contactez notre support 24/7 par email à support@reservia.com ou par téléphone au +216 XX XXX XXX.',
+  },
+];
+
+const TEAM = [
+  {
+    name: 'Mohamed Ali',
+    role: 'CEO & Fondateur',
+    initials: 'MA',
+  },
+  {
+    name: 'Sarra Benali',
+    role: 'CTO',
+    initials: 'SB',
+  },
+  {
+    name: 'Omar Mansouri',
+    role: 'Lead Developer',
+    initials: 'OM',
+  },
+];
+
+// ─────────────────────────────────────────────────────────────
+//  COMPOSANT PRINCIPAL
+// ─────────────────────────────────────────────────────────────
+
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-white dark:bg-dark-surface">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
-        <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            À propos de BookingHub
-          </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            Votre plateforme intelligente de réservation multi-services en Tunisie
-          </p>
+    <div className="min-h-screen bg-[rgb(var(--background))]">
+
+      {/* ══════════════════════════════════════════════
+          HERO SECTION
+      ══════════════════════════════════════════════ */}
+      <section className="relative overflow-hidden section">
+        {/* Décorations */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full opacity-[0.07]"
+          style={{ background: 'radial-gradient(circle, rgb(var(--primary)) 0%, transparent 70%)' }}
+        />
+
+        <div className="container-app relative z-10">
+          <div className="max-w-3xl mx-auto text-center">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[rgba(var(--primary),0.1)] border border-[rgba(var(--primary),0.2)] mb-6">
+              <span className="w-2 h-2 rounded-full bg-[rgb(var(--primary))] animate-pulse-soft" />
+              <span className="text-sm font-medium text-[rgb(var(--primary))]">Notre histoire</span>
+            </div>
+
+            {/* Titre */}
+            <h1 className="font-display text-[rgb(var(--foreground))] mb-6">
+              À propos de <span className="gradient-text">Reservia</span>
+            </h1>
+
+            {/* Sous-titre */}
+            <p className="text-lg text-[rgb(var(--foreground-muted))] max-w-2xl mx-auto leading-relaxed">
+              Notre mission : simplifier la réservation de services locaux grâce à l&apos;intelligence artificielle
+              et offrir une expérience fluide à nos utilisateurs.
+            </p>
+          </div>
         </div>
+      </section>
 
-        {/* Mission */}
-        <section className="mb-16">
-          <div className="grid md:grid-cols-2 gap-8 items-center">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                Notre Mission
-              </h2>
-              <p className="text-gray-600 dark:text-gray-300 mb-4">
-                BookingHub est une plateforme de réservation intelligente qui connecte les clients 
-                aux fournisseurs de services divers (hôtels, restaurants, salons, gyms, etc.) à travers 
-                toute la Tunisie.
-              </p>
-              <p className="text-gray-600 dark:text-gray-300">
-                Nous simplifions la recherche et la réservation de services locaux grâce à notre 
-                technologie IA et notre carte interactive géolocalisée.
-              </p>
-            </div>
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-8">
-              <div className="text-6xl mb-4">🎯</div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                Pourquoi BookingHub ?
-              </h3>
-              <ul className="space-y-2 text-gray-600 dark:text-gray-300">
-                <li>✓ Recherche unifiée multi-catégories</li>
-                <li>✓ Recommandations IA personnalisées</li>
-                <li>✓ Réservation en temps réel</li>
-                <li>✓ Carte interactive avec géolocalisation</li>
-                <li>✓ Assistant vocal IA</li>
-              </ul>
+      {/* ══════════════════════════════════════════════
+          NOTRE HISTOIRE
+      ══════════════════════════════════════════════ */}
+      <section className="section bg-[rgb(var(--surface))]">
+        <div className="container-app">
+          <div className="max-w-4xl mx-auto">
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+              <div>
+                <div className="inline-flex items-center gap-2 mb-4">
+                  <CalendarIcon className="w-5 h-5 text-[rgb(var(--primary))]" />
+                  <span className="text-sm font-medium text-[rgb(var(--primary))]">Depuis 2024</span>
+                </div>
+                <h2 className="font-display text-2xl md:text-3xl text-[rgb(var(--foreground))] mb-4">
+                  Une idée simple :<br />
+                  <span className="gradient-text">unifier les réservations</span>
+                </h2>
+                <p className="text-[rgb(var(--foreground-muted))] mb-4 leading-relaxed">
+                  Reservia est né d&apos;un constat simple : trop de plateformes, trop de temps perdu.
+                  Nous avons créé un guichet unique intelligent pour tous vos besoins de réservation.
+                </p>
+                <p className="text-[rgb(var(--foreground-muted))] leading-relaxed">
+                  Aujourd&apos;hui, Reservia connecte des milliers d&apos;utilisateurs aux meilleurs services locaux,
+                  grâce à une technologie de pointe et une équipe passionnée.
+                </p>
+              </div>
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-[rgb(var(--primary))] to-[rgb(var(--accent))] rounded-2xl blur-2xl opacity-20" />
+                <div className="relative bg-[rgb(var(--card))] rounded-2xl p-8 border border-[rgb(var(--border))]">
+                  <div className="text-6xl mb-4 text-[rgb(var(--primary))]">💡</div>
+                  <p className="text-[rgb(var(--foreground-muted))] italic">
+                    "L&apos;objectif est de rendre la résolution de services aussi simple que commander en ligne."
+                  </p>
+                  <p className="text-[rgb(var(--foreground))] font-semibold mt-4">— L&apos;équipe Reservia</p>
+                </div>
+              </div>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Features */}
-        <section className="mb-16">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">
-            Nos Fonctionnalités
-          </h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="p-6 border border-gray-200 dark:border-gray-700 rounded-lg">
-              <div className="text-4xl mb-4">🔍</div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                Recherche Intelligente
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300">
-                Trouvez rapidement le service idéal grâce à notre moteur de recherche 
-                intelligent et nos filtres avancés.
-              </p>
-            </div>
-            <div className="p-6 border border-gray-200 dark:border-gray-700 rounded-lg">
-              <div className="text-4xl mb-4">🤖</div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                Assistant IA
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300">
-                Notre chatbot intelligent avec support vocal vous guide et vous recommande 
-                des services adaptés à vos besoins.
-              </p>
-            </div>
-            <div className="p-6 border border-gray-200 dark:border-gray-700 rounded-lg">
-              <div className="text-4xl mb-4">📍</div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                Carte Interactive
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300">
-                Visualisez les services autour de vous sur une carte interactive avec 
-                itinéraires et informations en temps réel.
-              </p>
-            </div>
+      {/* ══════════════════════════════════════════════
+          NOS VALEURS
+      ══════════════════════════════════════════════ */}
+      <section className="section">
+        <div className="container-app">
+          <div className="text-center mb-12">
+            <h2 className="font-display text-[rgb(var(--foreground))]">Nos valeurs</h2>
+            <p className="text-[rgb(var(--foreground-muted))] mt-3 max-w-lg mx-auto">
+              Ce qui nous guide au quotidien
+            </p>
           </div>
-        </section>
 
-        {/* Categories */}
-        <section className="mb-16">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">
-            Catégories de Services
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { name: 'Hébergement', icon: '🏨', count: '500+' },
-              { name: 'Restauration', icon: '🍽️', count: '800+' },
-              { name: 'Beauté', icon: '💅', count: '600+' },
-              { name: 'Fitness', icon: '💪', count: '300+' },
-              { name: 'Santé', icon: '🏥', count: '400+' },
-              { name: 'Éducation', icon: '📚', count: '250+' },
-              { name: 'Loisirs', icon: '🎮', count: '350+' },
-              { name: 'Services', icon: '🔧', count: '700+' },
-            ].map((category) => (
-              <div 
-                key={category.name}
-                className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg text-center hover:border-blue-500 transition-colors"
+          <div className="grid md:grid-cols-3 gap-6">
+            {VALUES.map((value, index) => (
+              <div
+                key={value.title}
+                className="card text-center animate-fadeInUp"
+                style={{ animationDelay: `${index * 100}ms` }}
               >
-                <div className="text-3xl mb-2">{category.icon}</div>
-                <h3 className="font-semibold text-gray-900 dark:text-white">{category.name}</h3>
-                <p className="text-sm text-gray-500">{category.count} fournisseurs</p>
+                <div className="w-16 h-16 rounded-2xl bg-[rgba(var(--primary),0.1)] flex items-center justify-center mx-auto mb-4 text-[rgb(var(--primary))]">
+                  {value.icon}
+                </div>
+                <h3 className="font-semibold text-[rgb(var(--foreground))] mb-2">{value.title}</h3>
+                <p className="text-sm text-[rgb(var(--foreground-muted))]">{value.desc}</p>
               </div>
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Contact */}
-        <section>
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-8 text-center">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-              Vous êtes un fournisseur de services ?
-            </h2>
-            <p className="text-gray-600 dark:text-gray-300 mb-6">
-              Rejoignez BookingHub et atteignez des milliers de clients en Tunisie
+      {/* ══════════════════════════════════════════════
+          POURQUOI RESERVIA ? (Tableau comparatif)
+      ══════════════════════════════════════════════ */}
+      <section className="section bg-[rgb(var(--surface))]">
+        <div className="container-app">
+          <div className="text-center mb-12">
+            <h2 className="font-display text-[rgb(var(--foreground))]">Pourquoi Reservia ?</h2>
+            <p className="text-[rgb(var(--foreground-muted))] mt-3">
+              La différence avec les plateformes traditionnelles
             </p>
-            <a
-              href="/register?role=provider"
-              className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
-            >
-              Créer un compte fournisseur
-            </a>
           </div>
-        </section>
-      </div>
+
+          <div className="max-w-3xl mx-auto">
+            <div className="rounded-2xl overflow-hidden border border-[rgb(var(--border))]">
+              <div className="grid grid-cols-3 bg-[rgba(var(--primary),0.05)] p-4 font-semibold text-[rgb(var(--foreground))]">
+                <div>Fonctionnalité</div>
+                <div className="text-center">Reservia</div>
+                <div className="text-center">Autres plateformes</div>
+              </div>
+              {COMPARISON.map((item, index) => (
+                <div
+                  key={item.feature}
+                  className={`grid grid-cols-3 p-4 text-sm ${
+                    index !== COMPARISON.length - 1 ? 'border-b border-[rgb(var(--border))]' : ''
+                  }`}
+                >
+                  <div className="text-[rgb(var(--foreground))]">{item.feature}</div>
+                  <div className="text-center">
+                    {item.reservia ? (
+                      <CheckIcon className="w-5 h-5 text-green-500 mx-auto" />
+                    ) : (
+                      <span className="text-[rgb(var(--foreground-muted))]">—</span>
+                    )}
+                  </div>
+                  <div className="text-center">
+                    {item.others ? (
+                      <CheckIcon className="w-5 h-5 text-green-500 mx-auto" />
+                    ) : (
+                      <span className="text-[rgb(var(--foreground-muted))]">—</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════
+          FAQ
+      ══════════════════════════════════════════════ */}
+      <section className="section">
+        <div className="container-app">
+          <div className="text-center mb-12">
+            <h2 className="font-display text-[rgb(var(--foreground))]">Questions fréquentes</h2>
+            <p className="text-[rgb(var(--foreground-muted))] mt-3">
+              Tout ce que vous devez savoir
+            </p>
+          </div>
+
+          <div className="max-w-3xl mx-auto space-y-4">
+            {FAQ.map((item, index) => (
+              <details
+                key={index}
+                className="card group animate-fadeInUp"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <summary className="flex items-center justify-between cursor-pointer list-none p-4 font-semibold text-[rgb(var(--foreground))]">
+                  {item.q}
+                  <ChevronRightIcon className="w-5 h-5 transition-transform group-open:rotate-90" />
+                </summary>
+                <div className="px-4 pb-4 text-[rgb(var(--foreground-muted))] border-t border-[rgb(var(--border))] pt-3">
+                  {item.a}
+                </div>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════
+          L'ÉQUIPE
+      ══════════════════════════════════════════════ */}
+      <section className="section bg-[rgb(var(--surface))]">
+        <div className="container-app">
+          <div className="text-center mb-12">
+            <h2 className="font-display text-[rgb(var(--foreground))]">L&apos;équipe</h2>
+            <p className="text-[rgb(var(--foreground-muted))] mt-3">
+              Des passionnés à votre service
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+            {TEAM.map((member, index) => (
+              <div
+                key={member.name}
+                className="card text-center animate-fadeInUp"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center mx-auto mb-4">
+                  <span className="text-2xl font-bold text-white">{member.initials}</span>
+                </div>
+                <h3 className="font-semibold text-[rgb(var(--foreground))]">{member.name}</h3>
+                <p className="text-sm text-[rgb(var(--foreground-muted))]">{member.role}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════
+          CONTACT
+      ══════════════════════════════════════════════ */}
+      <section className="section">
+        <div className="container-app">
+          <div
+            className="relative overflow-hidden rounded-[var(--radius-xl)] px-8 py-12 text-center"
+            style={{
+              background: 'linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--accent)) 100%)',
+            }}
+          >
+            <div className="relative z-10 max-w-2xl mx-auto">
+              <HeadphonesIcon className="w-12 h-12 text-white mx-auto mb-4" />
+              <h2 className="font-display text-white text-2xl md:text-3xl mb-4">
+                Une question ? Besoin d&apos;aide ?
+              </h2>
+              <p className="text-white/80 mb-6">
+                Notre équipe est là pour vous accompagner
+              </p>
+              <div className="flex flex-wrap justify-center gap-4">
+                <a
+                  href="mailto:support@reservia.com"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-white text-[rgb(var(--primary))] rounded-full font-semibold hover:shadow-lg transition-all"
+                >
+                  support@reservia.com
+                </a>
+                <a
+                  href="tel:+21612345678"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-white/20 text-white rounded-full font-semibold hover:bg-white/30 transition-all"
+                >
+                  +216 XX XXX XXX
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

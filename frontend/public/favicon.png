@@ -1,0 +1,21 @@
+<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" fill="none">
+
+  <!-- Background -->
+  <rect x="4" y="4" width="40" height="40" rx="12" fill="#0F172A"></rect>
+
+  <!-- Letter P -->
+  <path d="M18 34V14H27C30 14 32 16 32 19C32 22 30 24 27 24H18" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+
+  <!-- Central node -->
+  <circle cx="18" cy="24" r="2.5" fill="#4F46E5"></circle>
+
+  <!-- Destination node -->
+  <circle cx="32" cy="34" r="2.5" fill="#22C55E"></circle>
+
+  <!-- Connection (leg of R concept) -->
+  <path d="M18 24L32 34" stroke="#22C55E" stroke-width="2.5" stroke-linecap="round"></path>
+
+  <!-- Direction arrow -->
+  <polygon points="32,38 36,32 28,32" fill="#22C55E" opacity="0.85"></polygon>
+
+</svg>
