@@ -1,0 +1,40 @@
+{
+  "name": "frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@mapbox/mapbox-gl-geocoder": "^5.1.2",
+    "@tailwindcss/postcss": "^4.2.4",
+    "@types/d3": "^7.4.3",
+    "@types/topojson-client": "^3.1.5",
+    "axios": "^1.7.9",
+    "bcryptjs": "^3.0.3",
+    "d3": "^7.9.0",
+    "js-cookie": "^3.0.5",
+    "mapbox-gl": "^3.7.0",
+    "next": "14.2.15",
+    "next-auth": "^4.24.10",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "socket.io-client": "^4.8.1",
+    "topojson-client": "^3.1.0"
+  },
+  "devDependencies": {
+    "@types/js-cookie": "^3.0.6",
+    "@types/node": "^20",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "autoprefixer": "^10.5.0",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.15",
+    "postcss": "^8.5.10",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5"
+  }
+}
