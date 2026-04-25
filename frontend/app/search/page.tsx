@@ -1,16 +1,63 @@
-// app/search/page.tsx
-
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useServices } from '@/features/services/hooks/useServices';
-import SearchBar from '@/components/ui/SearchBar';
-import Map from '@/components/map/Map';
-import type { SearchFilters } from '@/types';
+import TunisiaMap from '@/components/charts/TunisiaMap';
 import ServiceCard from '@/components/service/ServiceCard';
+import { useServices } from '@/features/services/hooks/useServices';
+import type { SearchFilters } from '@/types';
+import {
+  AllCategoriesIcon,
+  RestaurantIcon,
+  HotelIcon,
+  SpaIcon,
+  FitnessIcon,
+  HealthIcon,
+  LocationIcon,
+  SearchIcon,
+  StarIcon,
+} from '@/components/ui/Icons';
+
+// Coordonnées approximatives des gouvernorats
+const GOVERNORATE_COORDINATES: Record<string, { lat: number; lng: number }> = {
+  "Tunis": { lat: 36.8065, lng: 10.1815 },
+  "Ariana": { lat: 36.8625, lng: 10.1956 },
+  "Ben Arous": { lat: 36.753, lng: 10.218 },
+  "Manouba": { lat: 36.807, lng: 10.096 },
+  "Nabeul": { lat: 36.456, lng: 10.734 },
+  "Zaghouan": { lat: 36.403, lng: 10.143 },
+  "Bizerte": { lat: 37.274, lng: 9.874 },
+  "Béja": { lat: 36.725, lng: 9.182 },
+  "Jendouba": { lat: 36.501, lng: 8.779 },
+  "Le Kef": { lat: 36.178, lng: 8.711 },
+  "Siliana": { lat: 36.085, lng: 9.374 },
+  "Kairouan": { lat: 35.678, lng: 10.096 },
+  "Kasserine": { lat: 35.167, lng: 8.837 },
+  "Sidi Bouzid": { lat: 35.038, lng: 9.485 },
+  "Sousse": { lat: 35.825, lng: 10.636 },
+  "Monastir": { lat: 35.765, lng: 10.826 },
+  "Mahdia": { lat: 35.504, lng: 11.062 },
+  "Sfax": { lat: 34.741, lng: 10.761 },
+  "Gafsa": { lat: 34.425, lng: 8.784 },
+  "Tozeur": { lat: 33.924, lng: 8.133 },
+  "Kébili": { lat: 33.704, lng: 8.969 },
+  "Gabès": { lat: 33.881, lng: 10.098 },
+  "Médenine": { lat: 33.355, lng: 10.505 },
+  "Tataouine": { lat: 32.93, lng: 10.451 },
+};
+
+// Catégories de services avec icônes SVG
+const CATEGORIES = [
+  { id: 'all', name: 'Toutes catégories', icon: AllCategoriesIcon },
+  { id: 'restaurant', name: 'Restaurants', icon: RestaurantIcon },
+  { id: 'hotel', name: 'Hôtels', icon: HotelIcon },
+  { id: 'spa', name: 'Beauté & Bien-être', icon: SpaIcon },
+  { id: 'fitness', name: 'Salles de sport', icon: FitnessIcon },
+  { id: 'health', name: 'Santé', icon: HealthIcon },
+];
 
 export default function SearchPage() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedGovernorate, setSelectedGovernorate] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [filters, setFilters] = useState<SearchFilters>({
     category: '',
     minPrice: undefined,
@@ -18,157 +65,205 @@ export default function SearchPage() {
     minRating: undefined,
     sortBy: 'smart',
   });
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  
   const { services, loading, error, search } = useServices();
 
-  // Get user location
   useEffect(() => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-        },
-        (error) => {
-          console.error('Geolocation error:', error);
-        }
-      );
+    if (selectedGovernorate) {
+      const coords = GOVERNORATE_COORDINATES[selectedGovernorate];
+      search('', {
+        ...filters,
+        category: selectedCategory !== 'all' ? selectedCategory : '',
+        location: coords ? {
+          lat: coords.lat,
+          lng: coords.lng,
+          radius: 50,
+        } : undefined,
+      });
     }
-  }, []);
+  }, [selectedGovernorate, selectedCategory, filters, search]);
 
-  // Update filters with location
-  useEffect(() => {
-    if (userLocation && !filters.location) {
-      setFilters(prev => ({
-        ...prev,
-        location: {
-          lng: userLocation.lng,
-          lat: userLocation.lat,
-          radius: 10,
-        },
-      }));
-    }
-  }, [userLocation, filters.location]);
+  const handleGovernorateClick = (governorateName: string) => {
+    setSelectedGovernorate(governorateName);
+  };
 
-  useEffect(() => {
-    if (searchQuery) {
-      search(searchQuery, filters);
-    }
-  }, [searchQuery, filters, search]);
+  const handleBackToMap = () => {
+    setSelectedGovernorate(null);
+    setSelectedCategory('all');
+  };
 
   const handleFilterChange = (newFilters: Partial<SearchFilters>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
-  };
-
-  const handleNearMe = () => {
-    if (userLocation) {
-      setFilters(prev => ({
-        ...prev,
-        location: {
-          lng: userLocation.lng,
-          lat: userLocation.lat,
-          radius: 10,
-        },
-      }));
-      if (searchQuery) {
-        search(searchQuery, {
-          ...filters,
-          location: {
-            lng: userLocation.lng,
-            lat: userLocation.lat,
-            radius: 10,
-          },
-        });
-      }
+    if (selectedGovernorate) {
+      const coords = GOVERNORATE_COORDINATES[selectedGovernorate];
+      search('', {
+        ...filters,
+        ...newFilters,
+        category: selectedCategory !== 'all' ? selectedCategory : '',
+        location: coords ? {
+          lat: coords.lat,
+          lng: coords.lng,
+          radius: 50,
+        } : undefined,
+      });
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <SearchBar 
-          onSearch={setSearchQuery} 
-          onFilterChange={handleFilterChange}
-          onNearMe={handleNearMe}
-        />
-
-        {/* View Toggle */}
-        <div className="flex justify-between items-center mb-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            {services.length} service(s) trouvé(s)
+  // Vue carte (sélection du gouvernorat)
+  if (!selectedGovernorate) {
+    return (
+      <div className="search-page-container">
+        <div className="search-page-content">
+          
+          {/* Catégories */}
+          <div className="search-categories">
+            <div className="search-categories-wrapper">
+              {CATEGORIES.map((cat) => {
+                const IconComponent = cat.icon;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`search-category-btn ${selectedCategory === cat.id ? 'search-category-btn-active' : 'search-category-btn-inactive'}`}
+                  >
+                    <IconComponent className="w-4 h-4" />
+                    <span>{cat.name}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
-                viewMode === 'list' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-              Liste
-            </button>
-            <button
-              onClick={() => setViewMode('map')}
-              className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
-                viewMode === 'map' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-              </svg>
-              Carte
-            </button>
+
+          {/* Étapes 1 → 2 → 3 avec icônes SVG */}
+          <div className="search-steps">
+            <div className="search-step">
+              <div className="search-step-number">1</div>
+              <div className="search-step-content">
+                <div className="search-step-icon">
+                  <LocationIcon className="w-6 h-6" />
+                </div>
+                <h3 className="search-step-title">Choisissez une région</h3>
+                <p className="search-step-desc">Cliquez sur un gouvernorat sur la carte</p>
+              </div>
+              <div className="search-step-arrow">→</div>
+            </div>
+
+            <div className="search-step">
+              <div className="search-step-number">2</div>
+              <div className="search-step-content">
+                <div className="search-step-icon">
+                  <SearchIcon className="w-6 h-6" />
+                </div>
+                <h3 className="search-step-title">Filtrez par catégorie</h3>
+                <p className="search-step-desc">Sélectionnez le type de service souhaité</p>
+              </div>
+              <div className="search-step-arrow">→</div>
+            </div>
+
+            <div className="search-step">
+              <div className="search-step-number">3</div>
+              <div className="search-step-content">
+                <div className="search-step-icon">
+                  <StarIcon className="w-6 h-6" />
+                </div>
+                <h3 className="search-step-title">Réservez</h3>
+                <p className="search-step-desc">Parcourez et réservez en quelques clics</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Carte Tunisie */}
+          <TunisiaMap onGovernorateClick={handleGovernorateClick} />
+
+        </div>
+      </div>
+    );
+  }
+
+  // Vue résultats
+  return (
+    <div className="search-results-container">
+      <div className="search-results-header">
+        <div className="search-results-header-content">
+          <button onClick={handleBackToMap} className="search-back-btn">
+            <svg className="search-back-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Retour à la carte
+          </button>
+          <h1 className="search-results-title">{selectedGovernorate}</h1>
+          <p className="search-results-subtitle">
+            {selectedCategory !== 'all' 
+              ? CATEGORIES.find(c => c.id === selectedCategory)?.name 
+              : 'Tous services'}
+          </p>
+        </div>
+      </div>
+
+      <div className="search-results-content">
+        
+        <div className="search-filters">
+          <div className="search-filters-grid">
+            <div className="search-filter-group">
+              <label className="search-filter-label">Prix min</label>
+              <input
+                type="number"
+                placeholder="Min"
+                className="search-filter-input"
+                onChange={(e) => handleFilterChange({ minPrice: e.target.value ? Number(e.target.value) : undefined })}
+              />
+            </div>
+            <div className="search-filter-group">
+              <label className="search-filter-label">Prix max</label>
+              <input
+                type="number"
+                placeholder="Max"
+                className="search-filter-input"
+                onChange={(e) => handleFilterChange({ maxPrice: e.target.value ? Number(e.target.value) : undefined })}
+              />
+            </div>
+            <div className="search-filter-group">
+              <label className="search-filter-label">Trier par</label>
+              <select
+                className="search-filter-select"
+                onChange={(e) => handleFilterChange({ sortBy: e.target.value as any })}
+              >
+                <option value="smart">Meilleur score</option>
+                <option value="rating">Note la plus élevée</option>
+                <option value="price_asc">Prix croissant</option>
+                <option value="price_desc">Prix décroissant</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        {error && (
-          <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4 mb-4">
-            <p className="text-sm font-medium text-red-800 dark:text-red-400">{error}</p>
-          </div>
-        )}
-
         {loading ? (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">Chargement des services...</p>
+          <div className="search-loading">
+            <div className="search-spinner"></div>
+            <p className="search-loading-text">Chargement des services...</p>
           </div>
-        ) : viewMode === 'list' ? (
-          <>
-            {services.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-6xl mb-4">🔍</div>
-                <p className="text-gray-500 dark:text-gray-400">Aucun service trouvé</p>
-                <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-                  Essayez de modifier vos critères de recherche
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {services.map((service) => (
-                  <ServiceCard key={service._id} service={service} />
-                ))}
-              </div>
-            )}
-          </>
+        ) : error ? (
+          <div className="search-error">
+            <p className="search-error-text">{error}</p>
+            <button onClick={handleBackToMap} className="search-error-btn">Retour à la carte</button>
+          </div>
+        ) : services.length === 0 ? (
+          <div className="search-empty">
+            <div className="search-empty-icon">🔍</div>
+            <p className="search-empty-title">Aucun service trouvé dans cette région</p>
+            <button onClick={handleBackToMap} className="search-empty-btn">Explorer d'autres régions</button>
+          </div>
         ) : (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-            {services.length > 0 ? (
-              <Map services={services} center={userLocation || undefined} />
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-gray-500">Aucun service à afficher sur la carte</p>
-              </div>
-            )}
-          </div>
+          <>
+            <div className="search-results-count">
+              <p className="search-results-count-text">{services.length} service(s) trouvé(s)</p>
+            </div>
+            <div className="search-results-grid">
+              {services.map((service) => (
+                <ServiceCard key={service._id} service={service} />
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>

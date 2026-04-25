@@ -11,226 +11,6 @@ interface NavbarProps {
   user?: User | null;
 }
 
-// ── Shared nav wrapper ──────────────────────────────────────────────────────
-function NavWrapper({ children, dark = false }: { children: React.ReactNode; dark?: boolean }) {
-  return (
-    <nav
-      className={`nav sticky top-0 z-50 ${
-        dark ? 'bg-gray-900 dark:bg-gray-950 border-gray-700' : ''
-      }`}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-3 items-center h-16">
-          {children}
-        </div>
-      </div>
-    </nav>
-  );
-}
-
-// ── Nav logo wrapper — badge for admin ─────────────────────────────────────
-function NavLogo({ href, badge }: { href: string; badge?: string }) {
-  return (
-    <div className="flex items-center gap-2 shrink-0">
-      <Logo href={href} size="md" variant="default" animated />
-      {badge && (
-        <span className="text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded bg-red-600 text-white">
-          {badge}
-        </span>
-      )}
-    </div>
-  );
-}
-
-// ── Nav link ───────────────────────────────────────────────────────────────
-function NavLink({
-  href,
-  active,
-  children,
-  dark = false,
-}: {
-  href: string;
-  active: boolean;
-  children: React.ReactNode;
-  dark?: boolean;
-}) {
-  const base = dark
-    ? 'text-gray-300 hover:text-white'
-    : 'text-[rgb(var(--foreground-muted))] hover:text-[rgb(var(--primary))]';
-  const activeClass = dark ? 'text-white font-semibold' : 'text-[rgb(var(--primary))] font-semibold';
-  return (
-    <Link
-      href={href}
-      className={`flex items-center gap-1.5 text-sm transition-colors duration-150 whitespace-nowrap ${base} ${active ? activeClass : ''}`}
-    >
-      {children}
-    </Link>
-  );
-}
-
-// ── Icon button ────────────────────────────────────────────────────────────
-function IconButton({
-  onClick,
-  children,
-  dark = false,
-}: {
-  onClick: () => void;
-  children: React.ReactNode;
-  dark?: boolean;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`relative p-2 rounded-full transition-colors duration-150 ${
-        dark
-          ? 'text-gray-300 hover:text-white hover:bg-gray-700'
-          : 'text-[rgb(var(--foreground-muted))] hover:text-[rgb(var(--primary))] hover:bg-[rgb(var(--surface-raised))]'
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-// ── Notification dot ───────────────────────────────────────────────────────
-function NotifDot() {
-  return (
-    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-900" />
-  );
-}
-
-// ── Bell icon ──────────────────────────────────────────────────────────────
-function BellIcon() {
-  return (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-    </svg>
-  );
-}
-
-// ── Burger icon ────────────────────────────────────────────────────────────
-function BurgerIcon({ open }: { open: boolean }) {
-  return (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      {open ? (
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-      ) : (
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-      )}
-    </svg>
-  );
-}
-
-// ── Notification dropdown ──────────────────────────────────────────────────
-function NotifDropdown({
-  allLink,
-  title,
-  dark = false,
-}: {
-  allLink: string;
-  title: string;
-  dark?: boolean;
-}) {
-  const bg = dark ? 'bg-gray-800 border-gray-700' : 'bg-[rgb(var(--surface))] border-[rgb(var(--border))]';
-  const divider = dark ? 'border-gray-700' : 'border-[rgb(var(--border))]';
-  const text = dark ? 'text-gray-400' : 'text-[rgb(var(--foreground-subtle))]';
-  const linkHover = dark ? 'hover:bg-gray-700 text-blue-400' : 'hover:bg-[rgb(var(--surface-raised))] text-[rgb(var(--primary))]';
-  return (
-    <div className={`absolute right-0 mt-2 w-80 rounded-xl shadow-lg z-50 border overflow-hidden ${bg}`}>
-      <div className={`px-4 py-3 border-b ${divider}`}>
-        <h3 className="font-semibold text-sm">{title}</h3>
-      </div>
-      <div className="px-4 py-4">
-        <p className={`text-sm ${text}`}>Aucune nouvelle notification</p>
-      </div>
-      <Link href={allLink} className={`block px-4 py-3 text-center text-sm font-medium border-t transition-colors ${divider} ${linkHover}`}>
-        Voir toutes
-      </Link>
-    </div>
-  );
-}
-
-// ── Profile dropdown ───────────────────────────────────────────────────────
-function ProfileDropdown({
-  user,
-  links,
-  onLogout,
-  dark = false,
-  role,
-}: {
-  user: User;
-  links: { href: string; label: string }[];
-  onLogout: () => void;
-  dark?: boolean;
-  role?: string;
-}) {
-  const bg = dark ? 'bg-gray-800 border-gray-700' : 'bg-[rgb(var(--surface))] border-[rgb(var(--border))]';
-  const divider = dark ? 'border-gray-700' : 'border-[rgb(var(--border))]';
-  const linkClass = dark
-    ? 'text-gray-300 hover:bg-gray-700'
-    : 'text-[rgb(var(--foreground))] hover:bg-[rgb(var(--surface-raised))]';
-  return (
-    <div className={`absolute right-0 mt-2 w-56 rounded-xl shadow-lg z-50 border overflow-hidden ${bg}`}>
-      <div className={`px-4 py-3 border-b ${divider}`}>
-        <p className="font-semibold text-sm">{user.firstName} {user.lastName}</p>
-        <p className={`text-xs mt-0.5 ${dark ? 'text-gray-400' : 'text-[rgb(var(--foreground-subtle))]'}`}>
-          {role ?? user.email}
-        </p>
-      </div>
-      <div className="py-1">
-        {links.map((l) => (
-          <Link key={l.href} href={l.href} className={`block px-4 py-2 text-sm transition-colors ${linkClass}`}>
-            {l.label}
-          </Link>
-        ))}
-      </div>
-      <div className={`border-t py-1 ${divider}`}>
-        <button
-          onClick={onLogout}
-          className={`w-full text-left px-4 py-2 text-sm text-red-500 transition-colors ${
-            dark ? 'hover:bg-gray-700' : 'hover:bg-[rgb(var(--surface-raised))]'
-          }`}
-        >
-          Déconnexion
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── Avatar ─────────────────────────────────────────────────────────────────
-function Avatar({ user, color = 'bg-[rgb(var(--primary))]' }: { user: User; color?: string }) {
-  return (
-    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold ${color}`}>
-      {user.firstName?.[0]}{user.lastName?.[0]}
-    </div>
-  );
-}
-
-// ── Mobile menu ────────────────────────────────────────────────────────────
-function MobileMenu({ links, extra }: { links: { href: string; label: string }[]; extra?: React.ReactNode }) {
-  return (
-    <div className="border-t border-[rgb(var(--border))] bg-[rgb(var(--surface))]">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col gap-1">
-        {links.map((l) => (
-          <Link
-            key={l.href}
-            href={l.href}
-            className="px-3 py-2.5 rounded-lg text-sm font-medium text-[rgb(var(--foreground-muted))] hover:bg-[rgb(var(--surface-raised))] hover:text-[rgb(var(--primary))] transition-colors"
-          >
-            {l.label}
-          </Link>
-        ))}
-        {extra}
-      </div>
-    </div>
-  );
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// MAIN COMPONENT
-// ══════════════════════════════════════════════════════════════════════════════
 export default function Navbar({ user: propUser }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -240,6 +20,10 @@ export default function Navbar({ user: propUser }: NavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (propUser) {
@@ -268,53 +52,92 @@ export default function Navbar({ user: propUser }: NavbarProps) {
     router.push('/login');
   };
 
-  // ── VISITEUR ──────────────────────────────────────────────────────────────
+  // Icônes SVG
+  const BellIcon = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+    </svg>
+  );
+
+  const BurgerIcon = ({ open }: { open: boolean }) => (
+    <svg className="navbar-burger-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      {open ? (
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+      ) : (
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+      )}
+    </svg>
+  );
+
+  const SearchIcon = () => (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+  );
+
+  const MapIcon = () => (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+    </svg>
+  );
+
+  // ============================================
+  // VISITEUR
+  // ============================================
   if (!user) {
     return (
       <>
-        <NavWrapper>
-          {/* Col 1 — Logo */}
-          <div className="flex items-center">
-            <NavLogo href="/" />
-          </div>
+        <div className="navbar-wrapper">
+          <div className="navbar-container">
+            <div className="navbar-flex">
+              {/* Logo */}
+              <div className="navbar-logo-group">
+                <Logo href="/" size="md" variant="default" animated />
+              </div>
 
-          {/* Col 2 — Links (centered) */}
-          <div className="hidden md:flex items-center justify-center gap-6">
-            <NavLink href="/" active={pathname === '/'}>Accueil</NavLink>
-            <NavLink href="/search" active={pathname === '/search'}>Explorer</NavLink>
-            <NavLink href="/about" active={pathname === '/about'}>À propos</NavLink>
-          </div>
+              {/* Liens desktop */}
+              <div className="navbar-links">
+                <Link href="/" className={`navbar-link ${pathname === '/' ? 'navbar-link-active' : ''}`}>Accueil</Link>
+                <Link href="/search" className={`navbar-link ${pathname === '/search' ? 'navbar-link-active' : ''}`}>Explorer</Link>
+                <Link href="/about" className={`navbar-link ${pathname === '/about' ? 'navbar-link-active' : ''}`}>À propos</Link>
+              </div>
 
-          {/* Col 3 — Actions (right) */}
-          <div className="flex items-center justify-end gap-3">
-            <div className="hidden md:flex items-center gap-3">
-              <ThemeToggle />
-              <Link href="/login" className="btn btn-ghost btn-sm">Se connecter</Link>
-              <Link href="/register" className="btn btn-primary btn-sm">S&apos;inscrire</Link>
-            </div>
-            <div className="flex md:hidden items-center gap-2">
-              <ThemeToggle />
-              <IconButton onClick={() => setIsOpen(!isOpen)}><BurgerIcon open={isOpen} /></IconButton>
+              {/* Actions */}
+              <div className="navbar-actions">
+                <div className="navbar-desktop-actions">
+                  <ThemeToggle />
+                  <Link href="/login" className="btn btn-ghost btn-sm">Se connecter</Link>
+                  <Link href="/register" className="btn btn-primary btn-sm">S'inscrire</Link>
+                </div>
+                <div className="navbar-mobile-actions">
+                  <ThemeToggle />
+                  <button onClick={() => setIsOpen(!isOpen)} className="navbar-icon-btn">
+                    <BurgerIcon open={isOpen} />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </NavWrapper>
+        </div>
 
         {isOpen && (
-          <MobileMenu
-            links={[
-              { href: '/', label: 'Accueil' },
-              { href: '/search', label: 'Explorer' },
-              { href: '/about', label: 'À propos' },
-              { href: '/login', label: 'Se connecter' },
-              { href: '/register', label: "S'inscrire" },
-            ]}
-          />
+          <div className="navbar-mobile-menu">
+            <div className="navbar-mobile-links">
+              <Link href="/" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Accueil</Link>
+              <Link href="/search" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Explorer</Link>
+              <Link href="/about" onClick={() => setIsOpen(false)} className="navbar-mobile-link">À propos</Link>
+              <Link href="/login" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Se connecter</Link>
+              <Link href="/register" onClick={() => setIsOpen(false)} className="navbar-mobile-link">S'inscrire</Link>
+            </div>
+          </div>
         )}
       </>
     );
   }
 
-  // ── CLIENT ────────────────────────────────────────────────────────────────
+  // ============================================
+  // CLIENT
+  // ============================================
   if (user.role === 'client') {
     const clientLinks = [
       { href: '/client/profile', label: 'Mon profil' },
@@ -323,83 +146,99 @@ export default function Navbar({ user: propUser }: NavbarProps) {
       { href: '/client/reviews', label: 'Mes avis postés' },
       { href: '/help', label: 'Aide / Tutoriel carte' },
     ];
+
     return (
       <>
-        <NavWrapper>
-          {/* Col 1 — Logo */}
-          <div className="flex items-center">
-            <NavLogo href="/client/dashboard" />
-          </div>
+        <div className="navbar-wrapper">
+          <div className="navbar-container">
+            <div className="navbar-flex">
+              <div className="navbar-logo-group">
+                <Logo href="/client/dashboard" size="md" variant="default" animated />
+              </div>
 
-          {/* Col 2 — Links (centered) */}
-          <div className="hidden md:flex items-center justify-center gap-6">
-            <NavLink href="/search" active={pathname === '/search'}>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              Recherche
-            </NavLink>
-            <NavLink href="/map" active={pathname === '/map'}>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-              </svg>
-              Carte
-            </NavLink>
-            <NavLink href="/client/bookings" active={pathname === '/client/bookings'}>Mes réservations</NavLink>
-            <NavLink href="/client/favorites" active={pathname === '/client/favorites'}>Favoris</NavLink>
-          </div>
+              <div className="navbar-links">
+                <Link href="/search" className={`navbar-link ${pathname === '/search' ? 'navbar-link-active' : ''}`}>
+                  <SearchIcon /> Recherche
+                </Link>
+                <Link href="/map" className={`navbar-link ${pathname === '/map' ? 'navbar-link-active' : ''}`}>
+                  <MapIcon /> Carte
+                </Link>
+                <Link href="/client/bookings" className={`navbar-link ${pathname === '/client/bookings' ? 'navbar-link-active' : ''}`}>
+                  Mes réservations
+                </Link>
+                <Link href="/client/favorites" className={`navbar-link ${pathname === '/client/favorites' ? 'navbar-link-active' : ''}`}>
+                  Favoris
+                </Link>
+              </div>
 
-          {/* Col 3 — Actions (right) */}
-          <div className="flex items-center justify-end gap-2">
-            <div className="relative" ref={notificationsRef}>
-              <IconButton onClick={() => setNotificationsOpen(!notificationsOpen)}>
-                <BellIcon /><NotifDot />
-              </IconButton>
-              {notificationsOpen && <NotifDropdown allLink="/client/notifications" title="Notifications" />}
+              <div className="navbar-actions">
+                <div className="relative" ref={notificationsRef}>
+                  <button onClick={() => setNotificationsOpen(!notificationsOpen)} className="navbar-icon-btn">
+                    <BellIcon />
+                    <span className="navbar-notif-dot"></span>
+                  </button>
+                  {notificationsOpen && (
+                    <div className="navbar-dropdown">
+                      <div className="navbar-dropdown-header"><h3 className="navbar-dropdown-title">Notifications</h3></div>
+                      <div className="navbar-dropdown-empty">Aucune nouvelle notification</div>
+                      <Link href="/client/notifications" className="navbar-dropdown-link">Voir toutes</Link>
+                    </div>
+                  )}
+                </div>
+
+                <ThemeToggle />
+
+                <div className="relative" ref={profileRef}>
+                  <button onClick={() => setProfileOpen(!profileOpen)} className="navbar-avatar-btn">
+                    <div className="navbar-avatar">{user.firstName?.[0]}{user.lastName?.[0]}</div>
+                  </button>
+                  {profileOpen && (
+                    <div className="navbar-dropdown navbar-dropdown-sm">
+                      <div className="navbar-dropdown-header">
+                        <p className="font-semibold text-sm">{user.firstName} {user.lastName}</p>
+                        <p className="navbar-dropdown-text">{user.email}</p>
+                      </div>
+                      <div>
+                        {clientLinks.map((link) => (
+                          <Link key={link.href} href={link.href} className="navbar-profile-item">{link.label}</Link>
+                        ))}
+                      </div>
+                      <div className="border-t border-[rgb(var(--border))] py-1">
+                        <button onClick={handleLogout} className="navbar-profile-logout">Déconnexion</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="navbar-mobile-actions">
+                  <button onClick={() => setIsOpen(!isOpen)} className="navbar-icon-btn">
+                    <BurgerIcon open={isOpen} />
+                  </button>
+                </div>
+              </div>
             </div>
-
-            <ThemeToggle />
-
-            <div className="relative" ref={profileRef}>
-              <button
-                onClick={() => setProfileOpen(!profileOpen)}
-                className="rounded-full hover:ring-2 hover:ring-[rgb(var(--primary))] transition-all"
-              >
-                <Avatar user={user} />
-              </button>
-              {profileOpen && <ProfileDropdown user={user} links={clientLinks} onLogout={handleLogout} />}
-            </div>
-
-            <div className="md:hidden">
-              <IconButton onClick={() => setIsOpen(!isOpen)}><BurgerIcon open={isOpen} /></IconButton>
-            </div>
           </div>
-        </NavWrapper>
+        </div>
 
         {isOpen && (
-          <MobileMenu
-            links={[
-              { href: '/search', label: 'Recherche' },
-              { href: '/map', label: 'Carte' },
-              { href: '/client/bookings', label: 'Mes réservations' },
-              { href: '/client/favorites', label: 'Favoris' },
-              { href: '/client/profile', label: 'Mon profil' },
-            ]}
-            extra={
-              <button
-                onClick={handleLogout}
-                className="px-3 py-2.5 rounded-lg text-sm font-medium text-red-500 hover:bg-[rgb(var(--surface-raised))] text-left transition-colors"
-              >
-                Déconnexion
-              </button>
-            }
-          />
+          <div className="navbar-mobile-menu">
+            <div className="navbar-mobile-links">
+              <Link href="/search" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Recherche</Link>
+              <Link href="/map" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Carte</Link>
+              <Link href="/client/bookings" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Mes réservations</Link>
+              <Link href="/client/favorites" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Favoris</Link>
+              <Link href="/client/profile" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Mon profil</Link>
+              <button onClick={handleLogout} className="navbar-mobile-logout">Déconnexion</button>
+            </div>
+          </div>
         )}
       </>
     );
   }
 
-  // ── PROVIDER ──────────────────────────────────────────────────────────────
+  // ============================================
+  // PROVIDER
+  // ============================================
   if (user.role === 'provider') {
     const providerLinks = [
       { href: '/provider/profile', label: 'Mon établissement' },
@@ -408,115 +247,157 @@ export default function Navbar({ user: propUser }: NavbarProps) {
       { href: '/provider/statistics', label: 'Statistiques avancées' },
       { href: '/provider/billing', label: 'Abonnement / Facturation' },
     ];
+
     return (
       <>
-        <NavWrapper>
-          {/* Col 1 — Logo */}
-          <div className="flex items-center">
-            <NavLogo href="/provider/dashboard" />
-          </div>
+        <div className="navbar-wrapper">
+          <div className="navbar-container">
+            <div className="navbar-flex">
+              <div className="navbar-logo-group">
+                <Logo href="/provider/dashboard" size="md" variant="default" animated />
+              </div>
 
-          {/* Col 2 — Links (centered) */}
-          <div className="hidden md:flex items-center justify-center gap-5">
-            <NavLink href="/provider/services" active={pathname === '/provider/services'}>Mes services</NavLink>
-            <NavLink href="/provider/location" active={pathname === '/provider/location'}>Localisation</NavLink>
-            <NavLink href="/provider/availability" active={pathname === '/provider/availability'}>Disponibilités</NavLink>
-            <NavLink href="/provider/bookings" active={pathname === '/provider/bookings'}>Réservations</NavLink>
-            <NavLink href="/provider/reviews" active={pathname === '/provider/reviews'}>Avis & notes</NavLink>
-          </div>
+              <div className="navbar-links">
+                <Link href="/provider/services" className={`navbar-link ${pathname === '/provider/services' ? 'navbar-link-active' : ''}`}>Mes services</Link>
+                <Link href="/provider/location" className={`navbar-link ${pathname === '/provider/location' ? 'navbar-link-active' : ''}`}>Localisation</Link>
+                <Link href="/provider/availability" className={`navbar-link ${pathname === '/provider/availability' ? 'navbar-link-active' : ''}`}>Disponibilités</Link>
+                <Link href="/provider/bookings" className={`navbar-link ${pathname === '/provider/bookings' ? 'navbar-link-active' : ''}`}>Réservations</Link>
+                <Link href="/provider/reviews" className={`navbar-link ${pathname === '/provider/reviews' ? 'navbar-link-active' : ''}`}>Avis & notes</Link>
+              </div>
 
-          {/* Col 3 — Actions (right) */}
-          <div className="flex items-center justify-end gap-2">
-            <div className="relative" ref={notificationsRef}>
-              <IconButton onClick={() => setNotificationsOpen(!notificationsOpen)}>
-                <BellIcon /><NotifDot />
-              </IconButton>
-              {notificationsOpen && <NotifDropdown allLink="/provider/notifications" title="Notifications" />}
+              <div className="navbar-actions">
+                <div className="relative" ref={notificationsRef}>
+                  <button onClick={() => setNotificationsOpen(!notificationsOpen)} className="navbar-icon-btn">
+                    <BellIcon />
+                    <span className="navbar-notif-dot"></span>
+                  </button>
+                  {notificationsOpen && (
+                    <div className="navbar-dropdown">
+                      <div className="navbar-dropdown-header"><h3 className="navbar-dropdown-title">Notifications</h3></div>
+                      <div className="navbar-dropdown-empty">Aucune nouvelle notification</div>
+                      <Link href="/provider/notifications" className="navbar-dropdown-link">Voir toutes</Link>
+                    </div>
+                  )}
+                </div>
+
+                <ThemeToggle />
+
+                <div className="relative" ref={profileRef}>
+                  <button onClick={() => setProfileOpen(!profileOpen)} className="navbar-avatar-btn">
+                    <div className="navbar-avatar navbar-avatar-green">{user.firstName?.[0]}{user.lastName?.[0]}</div>
+                  </button>
+                  {profileOpen && (
+                    <div className="navbar-dropdown navbar-dropdown-sm">
+                      <div className="navbar-dropdown-header">
+                        <p className="font-semibold text-sm">{user.firstName} {user.lastName}</p>
+                        <p className="navbar-dropdown-text">Fournisseur</p>
+                      </div>
+                      <div>
+                        {providerLinks.map((link) => (
+                          <Link key={link.href} href={link.href} className="navbar-profile-item">{link.label}</Link>
+                        ))}
+                      </div>
+                      <div className="border-t border-[rgb(var(--border))] py-1">
+                        <button onClick={handleLogout} className="navbar-profile-logout">Déconnexion</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="navbar-mobile-actions">
+                  <button onClick={() => setIsOpen(!isOpen)} className="navbar-icon-btn">
+                    <BurgerIcon open={isOpen} />
+                  </button>
+                </div>
+              </div>
             </div>
-
-            <ThemeToggle />
-
-            <div className="relative" ref={profileRef}>
-              <button
-                onClick={() => setProfileOpen(!profileOpen)}
-                className="rounded-full hover:ring-2 hover:ring-[rgb(var(--primary))] transition-all"
-              >
-                <Avatar user={user} color="bg-emerald-600" />
-              </button>
-              {profileOpen && <ProfileDropdown user={user} links={providerLinks} onLogout={handleLogout} role="Fournisseur" />}
-            </div>
-
-            <div className="md:hidden">
-              <IconButton onClick={() => setIsOpen(!isOpen)}><BurgerIcon open={isOpen} /></IconButton>
-            </div>
           </div>
-        </NavWrapper>
+        </div>
 
         {isOpen && (
-          <MobileMenu
-            links={[
-              { href: '/provider/services', label: 'Mes services' },
-              { href: '/provider/location', label: 'Localisation' },
-              { href: '/provider/availability', label: 'Disponibilités' },
-              { href: '/provider/bookings', label: 'Réservations' },
-              { href: '/provider/reviews', label: 'Avis & notes' },
-            ]}
-            extra={
-              <button
-                onClick={handleLogout}
-                className="px-3 py-2.5 rounded-lg text-sm font-medium text-red-500 hover:bg-[rgb(var(--surface-raised))] text-left transition-colors"
-              >
-                Déconnexion
-              </button>
-            }
-          />
+          <div className="navbar-mobile-menu">
+            <div className="navbar-mobile-links">
+              <Link href="/provider/services" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Mes services</Link>
+              <Link href="/provider/location" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Localisation</Link>
+              <Link href="/provider/availability" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Disponibilités</Link>
+              <Link href="/provider/bookings" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Réservations</Link>
+              <Link href="/provider/reviews" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Avis & notes</Link>
+              <button onClick={handleLogout} className="navbar-mobile-logout">Déconnexion</button>
+            </div>
+          </div>
         )}
       </>
     );
   }
 
-  // ── ADMIN ─────────────────────────────────────────────────────────────────
+  // ============================================
+  // ADMIN
+  // ============================================
   if (user.role === 'admin') {
     const adminLinks = [{ href: '/admin/profile', label: 'Profil admin' }];
+
     return (
-      <NavWrapper dark>
-        {/* Col 1 — Logo */}
-        <div className="flex items-center">
-          <NavLogo href="/admin/dashboard" badge="ADMIN" />
-        </div>
+      <>
+        <div className="navbar-wrapper">
+          <div className="navbar-container">
+            <div className="navbar-flex">
+              <div className="navbar-logo-group">
+                <Logo href="/admin/dashboard" size="md" variant="default" animated />
+                <span className="navbar-admin-badge">ADMIN</span>
+              </div>
 
-        {/* Col 2 — Links (centered) */}
-        <div className="hidden md:flex items-center justify-center gap-5">
-          <NavLink href="/admin/overview" active={pathname === '/admin/overview'} dark>Supervision</NavLink>
-          <NavLink href="/admin/users" active={pathname === '/admin/users'} dark>Utilisateurs</NavLink>
-          <NavLink href="/admin/pending-services" active={pathname === '/admin/pending-services'} dark>Services à valider</NavLink>
-          <NavLink href="/admin/reported-reviews" active={pathname === '/admin/reported-reviews'} dark>Avis signalés</NavLink>
-          <NavLink href="/admin/logs" active={pathname === '/admin/logs'} dark>Logs</NavLink>
-          <NavLink href="/admin/alerts" active={pathname === '/admin/alerts'} dark>Alertes</NavLink>
-        </div>
+              <div className="navbar-links">
+                <Link href="/admin/overview" className={`navbar-link navbar-link-dark ${pathname === '/admin/overview' ? 'navbar-link-active-dark' : ''}`}>Supervision</Link>
+                <Link href="/admin/users" className={`navbar-link navbar-link-dark ${pathname === '/admin/users' ? 'navbar-link-active-dark' : ''}`}>Utilisateurs</Link>
+                <Link href="/admin/pending-services" className={`navbar-link navbar-link-dark ${pathname === '/admin/pending-services' ? 'navbar-link-active-dark' : ''}`}>Services à valider</Link>
+                <Link href="/admin/reported-reviews" className={`navbar-link navbar-link-dark ${pathname === '/admin/reported-reviews' ? 'navbar-link-active-dark' : ''}`}>Avis signalés</Link>
+                <Link href="/admin/logs" className={`navbar-link navbar-link-dark ${pathname === '/admin/logs' ? 'navbar-link-active-dark' : ''}`}>Logs</Link>
+                <Link href="/admin/alerts" className={`navbar-link navbar-link-dark ${pathname === '/admin/alerts' ? 'navbar-link-active-dark' : ''}`}>Alertes</Link>
+              </div>
 
-        {/* Col 3 — Actions (right) */}
-        <div className="flex items-center justify-end gap-2">
-          <div className="relative" ref={notificationsRef}>
-            <IconButton onClick={() => setNotificationsOpen(!notificationsOpen)} dark>
-              <BellIcon /><NotifDot />
-            </IconButton>
-            {notificationsOpen && <NotifDropdown allLink="/admin/alerts" title="Alertes système" dark />}
+              <div className="navbar-actions">
+                <div className="relative" ref={notificationsRef}>
+                  <button onClick={() => setNotificationsOpen(!notificationsOpen)} className="navbar-icon-btn navbar-icon-btn-dark">
+                    <BellIcon />
+                    <span className="navbar-notif-dot"></span>
+                  </button>
+                  {notificationsOpen && (
+                    <div className="navbar-dropdown bg-gray-800 border-gray-700">
+                      <div className="navbar-dropdown-header border-gray-700"><h3 className="navbar-dropdown-title text-white">Alertes système</h3></div>
+                      <div className="navbar-dropdown-empty text-gray-400">Aucune alerte</div>
+                      <Link href="/admin/alerts" className="navbar-dropdown-link text-gray-300 hover:bg-gray-700 hover:text-blue-400">Voir toutes</Link>
+                    </div>
+                  )}
+                </div>
+
+                <ThemeToggle />
+
+                <div className="relative" ref={profileRef}>
+                  <button onClick={() => setProfileOpen(!profileOpen)} className="navbar-avatar-btn">
+                    <div className="navbar-avatar navbar-avatar-red">{user.firstName?.[0]}{user.lastName?.[0]}</div>
+                  </button>
+                  {profileOpen && (
+                    <div className="navbar-dropdown navbar-dropdown-sm bg-gray-800 border-gray-700">
+                      <div className="navbar-dropdown-header border-gray-700">
+                        <p className="font-semibold text-sm text-white">{user.firstName} {user.lastName}</p>
+                        <p className="navbar-dropdown-text text-gray-400">Administrateur</p>
+                      </div>
+                      <div>
+                        {adminLinks.map((link) => (
+                          <Link key={link.href} href={link.href} className="navbar-profile-item text-gray-300 hover:bg-gray-700">{link.label}</Link>
+                        ))}
+                      </div>
+                      <div className="border-t border-gray-700 py-1">
+                        <button onClick={handleLogout} className="navbar-profile-logout text-red-400 hover:bg-gray-700">Déconnexion</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
-
-          <ThemeToggle />
-
-          <div className="relative" ref={profileRef}>
-            <button
-              onClick={() => setProfileOpen(!profileOpen)}
-              className="rounded-full hover:ring-2 hover:ring-red-500 transition-all"
-            >
-              <Avatar user={user} color="bg-red-600" />
-            </button>
-            {profileOpen && <ProfileDropdown user={user} links={adminLinks} onLogout={handleLogout} role="Administrateur" dark />}
-          </div>
         </div>
-      </NavWrapper>
+      </>
     );
   }
 

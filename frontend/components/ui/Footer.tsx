@@ -1,8 +1,13 @@
-// components/ui/Footer.tsx
 'use client';
 
 import Link from 'next/link';
 import Logo from './Logo';
+import {
+  FacebookIcon,
+  TwitterIcon,
+  LinkedinIcon,
+  InstagramIcon,
+} from './Icons';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -25,26 +30,24 @@ export default function Footer() {
               <a 
                 href="#" 
                 className="text-[rgb(var(--foreground-muted))] hover:text-[rgb(var(--primary))] transition-colors"
+                aria-label="Facebook"
               >
-                Facebook
+                <FacebookIcon className="w-5 h-5" />
+              </a>
+             
+              <a 
+                href="#" 
+                className="text-[rgb(var(--foreground-muted))] hover:text-[rgb(var(--primary))] transition-colors"
+                aria-label="LinkedIn"
+              >
+                <LinkedinIcon className="w-5 h-5" />
               </a>
               <a 
                 href="#" 
                 className="text-[rgb(var(--foreground-muted))] hover:text-[rgb(var(--primary))] transition-colors"
+                aria-label="Instagram"
               >
-                Twitter
-              </a>
-              <a 
-                href="#" 
-                className="text-[rgb(var(--foreground-muted))] hover:text-[rgb(var(--primary))] transition-colors"
-              >
-                LinkedIn
-              </a>
-              <a 
-                href="#" 
-                className="text-[rgb(var(--foreground-muted))] hover:text-[rgb(var(--primary))] transition-colors"
-              >
-                Instagram
+                <InstagramIcon className="w-5 h-5" />
               </a>
             </div>
           </div>

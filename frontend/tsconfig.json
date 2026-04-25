@@ -13,15 +13,9 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "paths": {
-      "@/*": ["./*"]
-    },
-    "types": ["node"]
+    "plugins": [{ "name": "next" }],
+    "paths": { "@/*": ["./*"] }
+    // ❌ supprime "types": ["node"]  ← c'était ça le problème
   },
   "include": [
     "next-env.d.ts",
