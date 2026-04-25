@@ -9,3 +9,16 @@ export type { LoginCredentials, User, LoginResponse } from './auth/login';
 
 export { register } from './auth/register';
 export type { RegisterData } from './auth/register';
+
+// 🆕 Chatbot APIs
+export * from './chatbot';
+export type {
+  ChatRequest,
+  ChatResponse,
+  Location,
+  SpeechToTextResponse,
+  TextToSpeechRequest,
+  TextToSpeechResponse,
+  RecommendationsResponse,
+  Recommendation,
+} from './chatbot/types';

@@ -46,10 +46,21 @@ export default () => ({
     apiKey: process.env.SENDGRID_API_KEY,
   },
 
+  // ✅ ANCIEN (gardé pour compatibilité)
   email: {
     host: process.env.EMAIL_HOST,
     port: parseInt(process.env.EMAIL_PORT || '587', 10),
     user: process.env.EMAIL_USER,
     password: process.env.EMAIL_PASSWORD,
+  },
+
+  // ✅ NOUVEAU - lit les bonnes variables SMTP_*
+  smtp: {
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT || '587', 10),
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
   },
 });

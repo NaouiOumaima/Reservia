@@ -1,6 +1,8 @@
+// frontend/providers/AuthProvider.tsx
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { login as loginApi, register as registerApi, logout as logoutApi, getCurrentUser, type LoginCredentials, type RegisterData, type User } from '@/lib/api';
 
 interface AuthContextType {
@@ -22,18 +24,28 @@ export const useAuth = () => {
   return context;
 };
 
+// 🆕 Routes qui ne nécessitent pas d'authentification
+const PUBLIC_ROUTES = ['/login', '/register', '/verify-email', '/about', '/search', '/'];
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const pathname = usePathname();
 
   useEffect(() => {
     const initAuth = () => {
+      // 🆕 Si on est sur une route publique, on ne bloque pas
+      if (PUBLIC_ROUTES.includes(pathname) || pathname?.startsWith('/verify-email')) {
+        setIsLoading(false);
+        return;
+      }
+      
       const currentUser = getCurrentUser();
       setUser(currentUser);
       setIsLoading(false);
     };
     initAuth();
-  }, []);
+  }, [pathname]);
 
   const login = async (credentials: LoginCredentials) => {
     const response = await loginApi(credentials);

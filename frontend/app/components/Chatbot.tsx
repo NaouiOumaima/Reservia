@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { aiApi } from '@/lib/api/client';
 import { SpeechRecognition } from '@/types';
 
 interface Message {

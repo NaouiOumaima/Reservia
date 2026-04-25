@@ -10,7 +10,7 @@ import { AuthModule } from './modules/auth/auth.module';
 // import { SearchModule } from './modules/search/search.module';
 // import { NotificationsModule } from './modules/notifications/notifications.module';
 // import { DashboardModule } from './modules/dashboard/dashboard.module';
-// import { AiModule } from './modules/ai/ai.module';
+import { AiModule } from './modules/ai/ai.module';
 // import { WebsocketModule } from './modules/websocket/websocket.module';
 import configuration from './config/configuration';
 
@@ -32,6 +32,7 @@ import configuration from './config/configuration';
       global: true,
     }),
     AuthModule,  // SEUL MODULE ACTIF POUR L'INSTANT
+    AiModule,
   ],
   controllers: [],  // Pas de controllers pour l'instant
   providers: [],    // Pas de providers pour l'instant

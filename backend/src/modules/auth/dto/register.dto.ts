@@ -1,3 +1,4 @@
+// backend/src/modules/auth/dto/register.dto.ts
 import {
   IsEmail,
   IsString,
@@ -37,7 +38,7 @@ export class RegisterDto {
   @IsOptional()
   phone?: string;
 
-  @ValidateIf((o) => o.role === 'provider')
+  @ValidateIf((o) => o.role === UserRole.PROVIDER)
   @IsString()
   @MinLength(2)
   businessName?: string;

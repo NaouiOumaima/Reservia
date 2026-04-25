@@ -3,10 +3,11 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import Navbar from '@/components/ui/Navbar';
-import Footer from '@/components/ui/Footer';  // ← AJOUTER CETTE LIGNE
+import Footer from '@/components/ui/Footer';
 import ThemeProvider from '@/providers/ThemeProvider';
 import { AuthProvider } from '@/providers/AuthProvider';
 import './globals.css';
+import Chatbot from '@/features/chatbot/Chatbot';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -23,8 +24,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AuthProvider>
             <div className="min-h-screen flex flex-col">
               <Navbar />
-              <main className="flex-1 pt-16">{children}</main>
-              <Footer />  {/* ← AJOUTER CETTE LIGNE */}
+              <main className="flex-1 pt-16">
+                {children}
+              </main>
+              <Footer />
+              <Chatbot />
             </div>
           </AuthProvider>
         </ThemeProvider>

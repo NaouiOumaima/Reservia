@@ -1,3 +1,4 @@
+// backend/src/database/schemas/user.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
@@ -37,6 +38,19 @@ export class User {
 
   @Prop()
   lastLogin?: Date;
+
+  // ========== CHAMPS POUR CONFIRMATION D'EMAIL ==========
+  @Prop({ default: false })
+  isEmailVerified!: boolean;
+
+  @Prop()
+  emailVerificationToken?: string;
+
+  @Prop()
+  emailVerificationExpires?: Date;
+
+  @Prop({ default: 'pending' })
+  providerStatus!: string; // pending, active, suspended, rejected
 
   // Client preferences
   @Prop({ type: Object })
@@ -102,6 +116,8 @@ export class User {
 
 export const UserSchema = SchemaFactory.createForClass(User);
 
+// Indexes
 UserSchema.index({ location: '2dsphere' });
 UserSchema.index({ email: 1 });
 UserSchema.index({ role: 1 });
+UserSchema.index({ emailVerificationToken: 1 });

@@ -1,25 +1,59 @@
 // src/modules/ai/dto/ai.dto.ts
+import { IsString, IsOptional, IsObject, IsNumber, IsNotEmpty, Min, Max } from 'class-validator';
+
+export class LocationDto {
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  lat: number;
+
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  lng: number;
+}
 
 export class ChatbotRequestDto {
-  query!: string;
+  @IsString()
+  @IsNotEmpty()
+  query: string;
+
+  @IsOptional()
+  @IsString()
   userId?: string;
-  location?: {
-    lat: number;
-    lng: number;
-  };
+
+  @IsOptional()
+  @IsObject()
+  location?: LocationDto;
+
+  @IsOptional()
+  @IsString()
+  sessionId?: string;
+
+  @IsOptional()
+  @IsString()
+  language?: string;
 }
 
 export class ChatbotResponseDto {
-  reply!: string;
-  intent!: string;
-  entities!: any;
+  reply: string;
+  intent: string;
+  entities: any;
+  suggestedActions?: string[];
+  data?: any;
 }
 
-export class SpeechToTextDto {
-  audio!: Buffer;
+export class IntentRequestDto {
+  @IsString()
+  text: string;
+
+  @IsOptional()
+  context?: any;
 }
 
-export class TextToSpeechDto {
-  text!: string;
-  lang?: string;
+export class IntentResponseDto {
+  intent: string;
+  confidence: number;
+  entities: any;
+  sentiment: 'positive' | 'negative' | 'neutral';
 }
