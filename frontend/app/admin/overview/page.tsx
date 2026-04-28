@@ -2,8 +2,8 @@
 
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { User } from '@/types';
 
 export default function AdminOverviewPage() {
   const [stats, setStats] = useState({

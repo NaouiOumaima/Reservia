@@ -14,7 +14,10 @@
     "jsx": "preserve",
     "incremental": true,
     "plugins": [{ "name": "next" }],
-    "paths": { "@/*": ["./*"] }
+    "paths": { "@/*": ["./*"] },
+        "typeRoots": ["./node_modules/@types", "./src/types"]
+
+
     // ❌ supprime "types": ["node"]  ← c'était ça le problème
   },
   "include": [

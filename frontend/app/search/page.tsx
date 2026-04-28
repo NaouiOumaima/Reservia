@@ -1,86 +1,55 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import TunisiaMap from '@/components/charts/TunisiaMap';
 import ServiceCard from '@/components/service/ServiceCard';
 import { useServices } from '@/features/services/hooks/useServices';
-import type { SearchFilters } from '@/types';
-import {
-  AllCategoriesIcon,
-  RestaurantIcon,
-  HotelIcon,
-  SpaIcon,
-  FitnessIcon,
-  HealthIcon,
-  LocationIcon,
-  SearchIcon,
-  StarIcon,
-} from '@/components/ui/Icons';
+import { TUNISIAN_GOVERNORATES, GOVERNORATE_COORDINATES } from '@/lib/api/constants/governorates';
+import { SearchIcon, StarIcon, LocationIcon, AllCategoriesIcon, RestaurantIcon, HotelIcon, SpaIcon, FitnessIcon } from '@/components/ui/Icons';
 
-// Coordonnées approximatives des gouvernorats
-const GOVERNORATE_COORDINATES: Record<string, { lat: number; lng: number }> = {
-  "Tunis": { lat: 36.8065, lng: 10.1815 },
-  "Ariana": { lat: 36.8625, lng: 10.1956 },
-  "Ben Arous": { lat: 36.753, lng: 10.218 },
-  "Manouba": { lat: 36.807, lng: 10.096 },
-  "Nabeul": { lat: 36.456, lng: 10.734 },
-  "Zaghouan": { lat: 36.403, lng: 10.143 },
-  "Bizerte": { lat: 37.274, lng: 9.874 },
-  "Béja": { lat: 36.725, lng: 9.182 },
-  "Jendouba": { lat: 36.501, lng: 8.779 },
-  "Le Kef": { lat: 36.178, lng: 8.711 },
-  "Siliana": { lat: 36.085, lng: 9.374 },
-  "Kairouan": { lat: 35.678, lng: 10.096 },
-  "Kasserine": { lat: 35.167, lng: 8.837 },
-  "Sidi Bouzid": { lat: 35.038, lng: 9.485 },
-  "Sousse": { lat: 35.825, lng: 10.636 },
-  "Monastir": { lat: 35.765, lng: 10.826 },
-  "Mahdia": { lat: 35.504, lng: 11.062 },
-  "Sfax": { lat: 34.741, lng: 10.761 },
-  "Gafsa": { lat: 34.425, lng: 8.784 },
-  "Tozeur": { lat: 33.924, lng: 8.133 },
-  "Kébili": { lat: 33.704, lng: 8.969 },
-  "Gabès": { lat: 33.881, lng: 10.098 },
-  "Médenine": { lat: 33.355, lng: 10.505 },
-  "Tataouine": { lat: 32.93, lng: 10.451 },
-};
-
-// Catégories de services avec icônes SVG
 const CATEGORIES = [
-  { id: 'all', name: 'Toutes catégories', icon: AllCategoriesIcon },
+  { id: '', name: 'Toutes catégories', icon: AllCategoriesIcon },
   { id: 'restaurant', name: 'Restaurants', icon: RestaurantIcon },
   { id: 'hotel', name: 'Hôtels', icon: HotelIcon },
   { id: 'spa', name: 'Beauté & Bien-être', icon: SpaIcon },
-  { id: 'fitness', name: 'Salles de sport', icon: FitnessIcon },
-  { id: 'health', name: 'Santé', icon: HealthIcon },
+  { id: 'gym', name: 'Salles de sport', icon: FitnessIcon },
 ];
 
 export default function SearchPage() {
-  const [selectedGovernorate, setSelectedGovernorate] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [filters, setFilters] = useState<SearchFilters>({
-    category: '',
-    minPrice: undefined,
-    maxPrice: undefined,
-    minRating: undefined,
-    sortBy: 'smart',
-  });
-  
+  const router = useRouter();
   const { services, loading, error, search } = useServices();
+  
+  const [selectedGovernorate, setSelectedGovernorate] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [filters, setFilters] = useState({
+    minPrice: 0,
+    maxPrice: 500,
+    minRating: 0,
+  });
 
+  // Recherche quand un gouvernorat est sélectionné ou quand les filtres changent
   useEffect(() => {
-    if (selectedGovernorate) {
-      const coords = GOVERNORATE_COORDINATES[selectedGovernorate];
-      search('', {
-        ...filters,
-        category: selectedCategory !== 'all' ? selectedCategory : '',
-        location: coords ? {
+    const performSearch = async () => {
+      const searchFilters: any = {
+        category: selectedCategory || undefined,
+        minPrice: filters.minPrice > 0 ? filters.minPrice : undefined,
+        maxPrice: filters.maxPrice < 500 ? filters.maxPrice : undefined,
+        minRating: filters.minRating > 0 ? filters.minRating : undefined,
+      };
+      
+      if (selectedGovernorate && GOVERNORATE_COORDINATES[selectedGovernorate as keyof typeof GOVERNORATE_COORDINATES]) {
+        const coords = GOVERNORATE_COORDINATES[selectedGovernorate as keyof typeof GOVERNORATE_COORDINATES];
+        searchFilters.location = {
           lat: coords.lat,
           lng: coords.lng,
           radius: 50,
-        } : undefined,
-      });
-    }
+        };
+        await search('', searchFilters);
+      }
+    };
+    
+    performSearch();
   }, [selectedGovernorate, selectedCategory, filters, search]);
 
   const handleGovernorateClick = (governorateName: string) => {
@@ -89,24 +58,21 @@ export default function SearchPage() {
 
   const handleBackToMap = () => {
     setSelectedGovernorate(null);
-    setSelectedCategory('all');
+    setSelectedCategory('');
+    setFilters({ minPrice: 0, maxPrice: 500, minRating: 0 });
   };
 
-  const handleFilterChange = (newFilters: Partial<SearchFilters>) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
-    if (selectedGovernorate) {
-      const coords = GOVERNORATE_COORDINATES[selectedGovernorate];
-      search('', {
-        ...filters,
-        ...newFilters,
-        category: selectedCategory !== 'all' ? selectedCategory : '',
-        location: coords ? {
-          lat: coords.lat,
-          lng: coords.lng,
-          radius: 50,
-        } : undefined,
-      });
-    }
+  const handleCategoryChange = (categoryId: string) => {
+    setSelectedCategory(categoryId);
+  };
+
+  const handleFilterChange = (key: keyof typeof filters, value: number) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const resetFilters = () => {
+    setSelectedCategory('');
+    setFilters({ minPrice: 0, maxPrice: 500, minRating: 0 });
   };
 
   // Vue carte (sélection du gouvernorat)
@@ -123,7 +89,7 @@ export default function SearchPage() {
                 return (
                   <button
                     key={cat.id}
-                    onClick={() => setSelectedCategory(cat.id)}
+                    onClick={() => handleCategoryChange(cat.id)}
                     className={`search-category-btn ${selectedCategory === cat.id ? 'search-category-btn-active' : 'search-category-btn-inactive'}`}
                   >
                     <IconComponent className="w-4 h-4" />
@@ -134,7 +100,7 @@ export default function SearchPage() {
             </div>
           </div>
 
-          {/* Étapes 1 → 2 → 3 avec icônes SVG */}
+          {/* Étapes 1 → 2 → 3 */}
           <div className="search-steps">
             <div className="search-step">
               <div className="search-step-number">1</div>
@@ -193,7 +159,7 @@ export default function SearchPage() {
           </button>
           <h1 className="search-results-title">{selectedGovernorate}</h1>
           <p className="search-results-subtitle">
-            {selectedCategory !== 'all' 
+            {selectedCategory 
               ? CATEGORIES.find(c => c.id === selectedCategory)?.name 
               : 'Tous services'}
           </p>
@@ -202,6 +168,7 @@ export default function SearchPage() {
 
       <div className="search-results-content">
         
+        {/* Filtres */}
         <div className="search-filters">
           <div className="search-filters-grid">
             <div className="search-filter-group">
@@ -210,7 +177,8 @@ export default function SearchPage() {
                 type="number"
                 placeholder="Min"
                 className="search-filter-input"
-                onChange={(e) => handleFilterChange({ minPrice: e.target.value ? Number(e.target.value) : undefined })}
+                value={filters.minPrice || ''}
+                onChange={(e) => handleFilterChange('minPrice', e.target.value ? Number(e.target.value) : 0)}
               />
             </div>
             <div className="search-filter-group">
@@ -219,21 +187,30 @@ export default function SearchPage() {
                 type="number"
                 placeholder="Max"
                 className="search-filter-input"
-                onChange={(e) => handleFilterChange({ maxPrice: e.target.value ? Number(e.target.value) : undefined })}
+                value={filters.maxPrice === 500 ? '' : filters.maxPrice}
+                onChange={(e) => handleFilterChange('maxPrice', e.target.value ? Number(e.target.value) : 500)}
               />
             </div>
             <div className="search-filter-group">
-              <label className="search-filter-label">Trier par</label>
+              <label className="search-filter-label">Note min</label>
               <select
                 className="search-filter-select"
-                onChange={(e) => handleFilterChange({ sortBy: e.target.value as any })}
+                value={filters.minRating}
+                onChange={(e) => handleFilterChange('minRating', Number(e.target.value))}
               >
-                <option value="smart">Meilleur score</option>
-                <option value="rating">Note la plus élevée</option>
-                <option value="price_asc">Prix croissant</option>
-                <option value="price_desc">Prix décroissant</option>
+                <option value={0}>Toutes les notes</option>
+                <option value={4.5}>4.5+ étoiles</option>
+                <option value={4}>4+ étoiles</option>
+                <option value={3}>3+ étoiles</option>
               </select>
             </div>
+            {(selectedCategory || filters.minPrice > 0 || filters.maxPrice < 500 || filters.minRating > 0) && (
+              <div className="search-filter-group">
+                <button onClick={resetFilters} className="btn btn-ghost text-sm mt-6">
+                  Réinitialiser
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

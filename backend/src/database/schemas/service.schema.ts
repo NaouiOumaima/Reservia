@@ -1,5 +1,4 @@
-// src/database/schemas/service.schema.ts
-
+// backend/src/database/schemas/service.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
@@ -68,6 +67,13 @@ export class Service {
   @Prop({ default: true })
   isActive!: boolean;
 
+  // 🆕 AJOUTEZ CES CHAMPS MANQUANTS
+  @Prop({ default: true })
+  isPendingApproval!: boolean;
+
+  @Prop()
+  rejectionReason?: string;
+
   @Prop({ type: Object })
   cancellationPolicy?: {
     minHoursBefore: number;
@@ -86,3 +92,4 @@ ServiceSchema.index({ name: 'text', description: 'text' });
 ServiceSchema.index({ category: 1 });
 ServiceSchema.index({ smartScore: -1 });
 ServiceSchema.index({ providerId: 1 });
+ServiceSchema.index({ isActive: 1, isPendingApproval: 1 });

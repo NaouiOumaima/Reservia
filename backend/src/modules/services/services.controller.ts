@@ -1,10 +1,9 @@
-// src/modules/services/services.controller.ts
-
+// backend/src/modules/services/services.controller.ts
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, Patch } from '@nestjs/common';
 import { ServicesService } from './services.service';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { ServiceCategory } from '../../database/schemas/service.schema';
-import { UpdateServiceDto } from './dto/service.dto';
+import { UpdateServiceDto } from './dto/update-service.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('services')
@@ -29,13 +28,14 @@ export class ServicesController {
     return this.servicesService.findAll({ category, minPrice, maxPrice, minRating, limit, skip });
   }
 
+  // ✅ ENDPOINT NEARBY (recherche à proximité)
   @Get('nearby')
   async findNearby(
-    @Query('lng') lng: number,
-    @Query('lat') lat: number,
-    @Query('radius') radius?: number,
+    @Query('lng') lng: string,
+    @Query('lat') lat: string,
+    @Query('radius') radius?: string,
   ) {
-    return this.servicesService.findNearby(lng, lat, radius);
+    return this.servicesService.findNearby(parseFloat(lng), parseFloat(lat), radius ? parseFloat(radius) : 10);
   }
 
   @Get('provider')
@@ -69,31 +69,5 @@ export class ServicesController {
   @UseGuards(JwtAuthGuard)
   async toggleActive(@Param('id') id: string, @Request() req) {
     return this.servicesService.toggleActive(id, req.user._id);
-  }
-
-  // Admin endpoints
-  @Get('admin/pending')
-  @UseGuards(JwtAuthGuard)
-  async findPending() {
-    return this.servicesService.findPending();
-  }
-
-  @Patch('admin/:id/approve')
-  @UseGuards(JwtAuthGuard)
-  async approveService(@Param('id') id: string) {
-    return this.servicesService.approveService(id);
-  }
-
-  @Patch('admin/:id/reject')
-  @UseGuards(JwtAuthGuard)
-  async rejectService(@Param('id') id: string, @Body('reason') reason: string) {
-    return this.servicesService.rejectService(id, reason);
-  }
-
-  @Get('admin/pending/count')
-  @UseGuards(JwtAuthGuard)
-  async getPendingCount() {
-    const count = await this.servicesService.getPendingCount();
-    return { count };
   }
 }

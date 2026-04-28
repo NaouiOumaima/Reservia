@@ -4,7 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthModule } from './modules/auth/auth.module';
 // import { UsersModule } from './modules/users/users.module';
-// import { ServicesModule } from './modules/services/services.module';
+  import { ServicesModule } from './modules/services/services.module';
 // import { ReservationsModule } from './modules/reservations/reservations.module';
 // import { ReviewsModule } from './modules/reviews/reviews.module';
 // import { SearchModule } from './modules/search/search.module';
@@ -32,6 +32,7 @@ import configuration from './config/configuration';
       global: true,
     }),
     AuthModule,  // SEUL MODULE ACTIF POUR L'INSTANT
+    ServicesModule,
     AiModule,
   ],
   controllers: [],  // Pas de controllers pour l'instant

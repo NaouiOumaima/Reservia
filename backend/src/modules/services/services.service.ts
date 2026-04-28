@@ -78,8 +78,12 @@ export class ServicesService {
       .exec();
   }
 
-  async findNearby(lng: number, lat: number, radius: number = 10) {
-    return this.serviceModel
+  // backend/src/modules/services/services.service.ts
+// Assurez-vous que findNearby utilise les bons champs
+
+async findNearby(lng: number, lat: number, radius: number = 10) {
+  try {
+    const services = await this.serviceModel
       .find({
         isActive: true,
         location: {
@@ -88,13 +92,19 @@ export class ServicesService {
               type: 'Point',
               coordinates: [lng, lat],
             },
-            $maxDistance: radius * 1000, // Convertir km en mètres
+            $maxDistance: radius * 1000,
           },
         },
       })
       .limit(50)
       .exec();
+    
+    return services;
+  } catch (error) {
+    console.error('Erreur findNearby:', error);
+    return [];
   }
+}
 
   async update(id: string, providerId: string, updateServiceDto: UpdateServiceDto) {
     const service = await this.findById(id);

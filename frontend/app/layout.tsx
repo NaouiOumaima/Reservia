@@ -1,5 +1,4 @@
 // app/layout.tsx
-
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import Navbar from '@/components/ui/Navbar';
@@ -24,7 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AuthProvider>
             <div className="min-h-screen flex flex-col">
               <Navbar />
-              <main className="flex-1 pt-16">
+              <main className="flex-1 pt-0">  {/* ← Changez pt-16 en pt-0 */}
                 {children}
               </main>
               <Footer />

@@ -4,7 +4,7 @@
 
 import { useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
-import { Service } from '@/types';
+import { Service } from '@/lib/api';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
@@ -57,8 +57,7 @@ export default function Map({ services, center, onServiceClick }: MapProps) {
           <p class="text-sm text-gray-600 mt-1">${service.location.address}</p>
           <div class="flex items-center gap-2 mt-2">
             <span class="text-yellow-500">⭐</span>
-            <span class="text-sm font-semibold">${service.rating.toFixed(1)}</span>
-            <span class="text-gray-400">(${service.reviewCount} avis)</span>
+<span class="text-sm font-semibold">${(service.rating ?? 0).toFixed(1)}</span>            <span class="text-gray-400">(${service.reviewCount} avis)</span>
           </div>
           <p class="text-lg font-bold text-blue-600 mt-2">${service.price} DT</p>
         </div>

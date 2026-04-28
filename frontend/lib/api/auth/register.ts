@@ -16,7 +16,8 @@ export interface RegisterData {
 
 export const register = async (data: RegisterData): Promise<LoginResponse> => {
   try {
-    const response = await apiClient.post<LoginResponse>('/auth/register', data);
+    // ✅ Ajouter /api/ devant la route
+    const response = await apiClient.post<LoginResponse>('/api/auth/register', data);
     const { accessToken, refreshToken, user } = response.data;
 
     setAccessToken(accessToken);

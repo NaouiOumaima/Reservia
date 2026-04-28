@@ -35,7 +35,8 @@ export interface LoginResponse {
 
 export const login = async (credentials: LoginCredentials): Promise<LoginResponse> => {
   try {
-    const response = await apiClient.post<LoginResponse>('/auth/login', credentials);
+    // ✅ Ajouter /api/ devant la route
+    const response = await apiClient.post<LoginResponse>('/api/auth/login', credentials);
     const { accessToken, refreshToken, user } = response.data;
 
     setAccessToken(accessToken);
@@ -53,7 +54,8 @@ export const logout = async (): Promise<void> => {
   const userId = getStoredUser()?._id;
   if (userId) {
     try {
-      await apiClient.post('/auth/logout', { userId });
+      // ✅ Ajouter /api/ devant la route
+      await apiClient.post('/api/auth/logout', { userId });
     } catch (error) {
       console.error('Logout API error:', error);
     }

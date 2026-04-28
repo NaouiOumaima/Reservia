@@ -434,3 +434,12 @@ export function TaxiIcon({ className = "w-6 h-6", size }: IconProps) {
     </svg>
   );
 }
+
+export function ClockIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...defaultProps(className, size)}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l4 2" />
+    </svg>
+  );
+}

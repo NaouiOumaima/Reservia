@@ -1,0 +1,58 @@
+// lib/api/constants/governorates.ts
+
+export const TUNISIAN_GOVERNORATES = [
+  'Ariana',
+  'Béja',
+  'Ben Arous',
+  'Bizerte',
+  'Gabès',
+  'Gafsa',
+  'Jendouba',
+  'Kairouan',
+  'Kasserine',
+  'Kébili',
+  'Le Kef',
+  'Mahdia',
+  'Manouba',
+  'Médenine',
+  'Monastir',
+  'Nabeul',
+  'Sfax',
+  'Sidi Bouzid',
+  'Siliana',
+  'Sousse',
+  'Tunis',
+  'Zaghouan',
+  'Tozeur',
+  'Tataouine',
+] as const;
+
+export type Governorate = typeof TUNISIAN_GOVERNORATES[number];
+
+// ✅ Coordonnées avec clés entre guillemets
+export const GOVERNORATE_COORDINATES: Record<Governorate, { lat: number; lng: number }> = {
+  'Ariana': { lat: 36.8603, lng: 10.1954 },
+  'Béja': { lat: 36.725, lng: 9.181 },
+  'Ben Arous': { lat: 36.753, lng: 10.218 },
+  'Bizerte': { lat: 37.274, lng: 9.873 },
+  'Gabès': { lat: 33.881, lng: 10.098 },
+  'Gafsa': { lat: 34.425, lng: 8.784 },
+  'Jendouba': { lat: 36.501, lng: 8.78 },
+  'Kairouan': { lat: 35.678, lng: 10.096 },
+  'Kasserine': { lat: 35.167, lng: 8.836 },
+  'Kébili': { lat: 33.704, lng: 8.969 },
+  'Le Kef': { lat: 36.174, lng: 8.704 },
+  'Mahdia': { lat: 35.504, lng: 11.062 },
+  'Manouba': { lat: 36.807, lng: 10.095 },
+  'Médenine': { lat: 33.354, lng: 10.505 },
+  'Monastir': { lat: 35.764, lng: 10.811 },
+  'Nabeul': { lat: 36.456, lng: 10.737 },
+  'Sfax': { lat: 34.74, lng: 10.76 },
+  'Sidi Bouzid': { lat: 35.038, lng: 9.485 },
+  'Siliana': { lat: 36.088, lng: 9.37 },
+  'Sousse': { lat: 35.825, lng: 10.636 },
+  'Tunis': { lat: 36.8065, lng: 10.1815 },
+  'Zaghouan': { lat: 36.402, lng: 10.142 },
+  'Tozeur': { lat: 33.919, lng: 8.133 },
+  'Tataouine': { lat: 32.929, lng: 10.451 },
+};

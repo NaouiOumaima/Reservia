@@ -3,7 +3,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Service } from '@/types';
+import { Service } from '@/lib/api';
 import Image from 'next/image';
 
 interface ServiceCardProps {
@@ -69,8 +69,7 @@ export default function ServiceCard({ service, onBook }: ServiceCardProps) {
             <div className="flex items-center">
               <span className="text-yellow-500">⭐</span>
               <span className="ml-1 text-sm font-semibold text-gray-900 dark:text-white">
-                {service.rating.toFixed(1)}
-              </span>
+{(service.rating ?? 0).toFixed(1)}              </span>
             </div>
             <span className="text-gray-300 dark:text-gray-600">•</span>
             <span className="text-sm text-gray-500 dark:text-gray-400">

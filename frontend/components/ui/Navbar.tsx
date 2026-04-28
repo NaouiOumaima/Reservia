@@ -160,9 +160,9 @@ export default function Navbar({ user: propUser }: NavbarProps) {
                 <Link href="/search" className={`navbar-link ${pathname === '/search' ? 'navbar-link-active' : ''}`}>
                   <SearchIcon /> Recherche
                 </Link>
-                <Link href="/map" className={`navbar-link ${pathname === '/map' ? 'navbar-link-active' : ''}`}>
-                  <MapIcon /> Carte
-                </Link>
+               <Link href="/client/carte" className={`navbar-link ${pathname === '/client/carte' ? 'navbar-link-active' : ''}`}>
+    <MapIcon /> Carte
+  </Link>
                 <Link href="/client/bookings" className={`navbar-link ${pathname === '/client/bookings' ? 'navbar-link-active' : ''}`}>
                   Mes réservations
                 </Link>
@@ -221,115 +221,135 @@ export default function Navbar({ user: propUser }: NavbarProps) {
         </div>
 
         {isOpen && (
-          <div className="navbar-mobile-menu">
-            <div className="navbar-mobile-links">
-              <Link href="/search" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Recherche</Link>
-              <Link href="/map" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Carte</Link>
-              <Link href="/client/bookings" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Mes réservations</Link>
-              <Link href="/client/favorites" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Favoris</Link>
-              <Link href="/client/profile" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Mon profil</Link>
-              <button onClick={handleLogout} className="navbar-mobile-logout">Déconnexion</button>
-            </div>
-          </div>
-        )}
+  <div className="navbar-mobile-menu">
+    <div className="navbar-mobile-links">
+      <Link href="/search" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Recherche</Link>
+      {/* ❌ CORRIGER ICI : remplacer /map par /client/carte */}
+      <Link href="/client/carte" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Carte</Link>
+      <Link href="/client/bookings" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Mes réservations</Link>
+      <Link href="/client/favorites" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Favoris</Link>
+      <Link href="/client/profile" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Mon profil</Link>
+      <button onClick={handleLogout} className="navbar-mobile-logout">Déconnexion</button>
+    </div>
+  </div>
+)}
       </>
     );
   }
 
   // ============================================
-  // PROVIDER
-  // ============================================
-  if (user.role === 'provider') {
-    const providerLinks = [
-      { href: '/provider/profile', label: 'Mon établissement' },
-      { href: '/provider/hours', label: "Horaires d'ouverture" },
-      { href: '/provider/location', label: 'Vérifier ma position' },
-      { href: '/provider/statistics', label: 'Statistiques avancées' },
-      { href: '/provider/billing', label: 'Abonnement / Facturation' },
-    ];
+// PROVIDER
+// ============================================
+if (user.role === 'provider') {
+  const providerLinks = [
+    { href: '/provider/dashboard', label: 'Tableau de bord' },
+    { href: '/provider/services', label: 'Mes services' },
+    { href: '/provider/location', label: 'Localisation' },
+    { href: '/provider/availability', label: 'Disponibilités' },
+    { href: '/provider/bookings', label: 'Réservations' },
+    { href: '/provider/reviews', label: 'Avis & notes' },
+  ];
 
-    return (
-      <>
-        <div className="navbar-wrapper">
-          <div className="navbar-container">
-            <div className="navbar-flex">
-              <div className="navbar-logo-group">
-                <Logo href="/provider/dashboard" size="md" variant="default" animated />
+  return (
+    <>
+      <div className="navbar-wrapper">
+        <div className="navbar-container">
+          <div className="navbar-flex">
+            <div className="navbar-logo-group">
+              <Logo href="/provider/dashboard" size="md" variant="default" animated />
+            </div>
+
+            <div className="navbar-links">
+              {providerLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`navbar-link ${pathname === link.href ? 'navbar-link-active' : ''}`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+
+            <div className="navbar-actions">
+              {/* Notifications */}
+              <div className="relative" ref={notificationsRef}>
+                <button onClick={() => setNotificationsOpen(!notificationsOpen)} className="navbar-icon-btn">
+                  <BellIcon />
+                  <span className="navbar-notif-dot"></span>
+                </button>
+                {notificationsOpen && (
+                  <div className="navbar-dropdown">
+                    <div className="navbar-dropdown-header"><h3 className="navbar-dropdown-title">Notifications</h3></div>
+                    <div className="navbar-dropdown-empty">Aucune nouvelle notification</div>
+                    <Link href="/provider/notifications" className="navbar-dropdown-link">Voir toutes</Link>
+                  </div>
+                )}
               </div>
 
-              <div className="navbar-links">
-                <Link href="/provider/services" className={`navbar-link ${pathname === '/provider/services' ? 'navbar-link-active' : ''}`}>Mes services</Link>
-                <Link href="/provider/location" className={`navbar-link ${pathname === '/provider/location' ? 'navbar-link-active' : ''}`}>Localisation</Link>
-                <Link href="/provider/availability" className={`navbar-link ${pathname === '/provider/availability' ? 'navbar-link-active' : ''}`}>Disponibilités</Link>
-                <Link href="/provider/bookings" className={`navbar-link ${pathname === '/provider/bookings' ? 'navbar-link-active' : ''}`}>Réservations</Link>
-                <Link href="/provider/reviews" className={`navbar-link ${pathname === '/provider/reviews' ? 'navbar-link-active' : ''}`}>Avis & notes</Link>
+              <ThemeToggle />
+
+              {/* Profil */}
+              <div className="relative" ref={profileRef}>
+                <button onClick={() => setProfileOpen(!profileOpen)} className="navbar-avatar-btn">
+                  <div className="navbar-avatar navbar-avatar-green">
+                    {user.firstName?.[0]}{user.lastName?.[0]}
+                  </div>
+                </button>
+                {profileOpen && (
+                  <div className="navbar-dropdown navbar-dropdown-sm">
+                    <div className="navbar-dropdown-header">
+                      <p className="font-semibold text-sm">{user.firstName} {user.lastName}</p>
+                      <p className="navbar-dropdown-text">Fournisseur</p>
+                    </div>
+                    <div>
+                      <Link href="/provider/dashboard" className="navbar-profile-item">Tableau de bord</Link>
+                      <Link href="/provider/services" className="navbar-profile-item">Mes services</Link>
+                      <Link href="/provider/location" className="navbar-profile-item">Localisation</Link>
+                      <Link href="/provider/availability" className="navbar-profile-item">Disponibilités</Link>
+                      <Link href="/provider/bookings" className="navbar-profile-item">Réservations</Link>
+                      <Link href="/provider/reviews" className="navbar-profile-item">Avis & notes</Link>
+                      <Link href="/provider/settings" className="navbar-profile-item">Paramètres</Link>
+                    </div>
+                    <div className="border-t border-[rgb(var(--border))] py-1">
+                      <button onClick={handleLogout} className="navbar-profile-logout">Déconnexion</button>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="navbar-actions">
-                <div className="relative" ref={notificationsRef}>
-                  <button onClick={() => setNotificationsOpen(!notificationsOpen)} className="navbar-icon-btn">
-                    <BellIcon />
-                    <span className="navbar-notif-dot"></span>
-                  </button>
-                  {notificationsOpen && (
-                    <div className="navbar-dropdown">
-                      <div className="navbar-dropdown-header"><h3 className="navbar-dropdown-title">Notifications</h3></div>
-                      <div className="navbar-dropdown-empty">Aucune nouvelle notification</div>
-                      <Link href="/provider/notifications" className="navbar-dropdown-link">Voir toutes</Link>
-                    </div>
-                  )}
-                </div>
-
-                <ThemeToggle />
-
-                <div className="relative" ref={profileRef}>
-                  <button onClick={() => setProfileOpen(!profileOpen)} className="navbar-avatar-btn">
-                    <div className="navbar-avatar navbar-avatar-green">{user.firstName?.[0]}{user.lastName?.[0]}</div>
-                  </button>
-                  {profileOpen && (
-                    <div className="navbar-dropdown navbar-dropdown-sm">
-                      <div className="navbar-dropdown-header">
-                        <p className="font-semibold text-sm">{user.firstName} {user.lastName}</p>
-                        <p className="navbar-dropdown-text">Fournisseur</p>
-                      </div>
-                      <div>
-                        {providerLinks.map((link) => (
-                          <Link key={link.href} href={link.href} className="navbar-profile-item">{link.label}</Link>
-                        ))}
-                      </div>
-                      <div className="border-t border-[rgb(var(--border))] py-1">
-                        <button onClick={handleLogout} className="navbar-profile-logout">Déconnexion</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="navbar-mobile-actions">
-                  <button onClick={() => setIsOpen(!isOpen)} className="navbar-icon-btn">
-                    <BurgerIcon open={isOpen} />
-                  </button>
-                </div>
+              {/* Menu burger mobile */}
+              <div className="navbar-mobile-actions">
+                <button onClick={() => setIsOpen(!isOpen)} className="navbar-icon-btn">
+                  <BurgerIcon open={isOpen} />
+                </button>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {isOpen && (
-          <div className="navbar-mobile-menu">
-            <div className="navbar-mobile-links">
-              <Link href="/provider/services" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Mes services</Link>
-              <Link href="/provider/location" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Localisation</Link>
-              <Link href="/provider/availability" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Disponibilités</Link>
-              <Link href="/provider/bookings" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Réservations</Link>
-              <Link href="/provider/reviews" onClick={() => setIsOpen(false)} className="navbar-mobile-link">Avis & notes</Link>
-              <button onClick={handleLogout} className="navbar-mobile-logout">Déconnexion</button>
-            </div>
+      {/* Menu mobile */}
+      {isOpen && (
+        <div className="navbar-mobile-menu">
+          <div className="navbar-mobile-links">
+            {providerLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setIsOpen(false)}
+                className="navbar-mobile-link"
+              >
+                {link.label}
+              </Link>
+            ))}
+            <button onClick={handleLogout} className="navbar-mobile-logout">Déconnexion</button>
           </div>
-        )}
-      </>
-    );
-  }
-
+        </div>
+      )}
+    </>
+  );
+}
   // ============================================
   // ADMIN
   // ============================================
