@@ -1,9 +1,21 @@
-// backend/src/modules/services/services.controller.ts
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, Patch } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+  Patch,
+} from '@nestjs/common';
 import { ServicesService } from './services.service';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { ServiceCategory } from '../../database/schemas/service.schema';
 import { UpdateServiceDto } from './dto/update-service.dto';
+import { UpsertLocationDto } from './dto/upsert-location.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('services')
@@ -25,17 +37,27 @@ export class ServicesController {
     @Query('limit') limit?: number,
     @Query('skip') skip?: number,
   ) {
-    return this.servicesService.findAll({ category, minPrice, maxPrice, minRating, limit, skip });
+    return this.servicesService.findAll({
+      category,
+      minPrice,
+      maxPrice,
+      minRating,
+      limit,
+      skip,
+    });
   }
 
-  // ✅ ENDPOINT NEARBY (recherche à proximité)
   @Get('nearby')
   async findNearby(
     @Query('lng') lng: string,
     @Query('lat') lat: string,
     @Query('radius') radius?: string,
   ) {
-    return this.servicesService.findNearby(parseFloat(lng), parseFloat(lat), radius ? parseFloat(radius) : 10);
+    return this.servicesService.findNearby(
+      parseFloat(lng),
+      parseFloat(lat),
+      radius ? parseFloat(radius) : 10,
+    );
   }
 
   @Get('provider')
@@ -47,6 +69,12 @@ export class ServicesController {
   @Get(':id')
   async findById(@Param('id') id: string) {
     return this.servicesService.findById(id);
+  }
+
+  @Put('location/upsert')
+  @UseGuards(JwtAuthGuard)
+  async upsertLocation(@Request() req, @Body() upsertLocationDto: UpsertLocationDto) {
+    return this.servicesService.upsertLocation(req.user._id, upsertLocationDto);
   }
 
   @Put(':id')

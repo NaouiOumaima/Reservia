@@ -3,8 +3,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Service } from '@/lib/api';
 import Image from 'next/image';
+import { Service } from '@/types';
 
 interface ServiceCardProps {
   service: Service;

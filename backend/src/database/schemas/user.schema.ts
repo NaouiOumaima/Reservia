@@ -36,6 +36,9 @@ export class User {
   @Prop({ default: true })
   isActive!: boolean;
 
+  @Prop({ default: false })
+  isBanned!: boolean;
+
   @Prop()
   lastLogin?: Date;
 
@@ -120,4 +123,5 @@ export const UserSchema = SchemaFactory.createForClass(User);
 UserSchema.index({ location: '2dsphere' });
 UserSchema.index({ email: 1 });
 UserSchema.index({ role: 1 });
+UserSchema.index({ isBanned: 1 });
 UserSchema.index({ emailVerificationToken: 1 });

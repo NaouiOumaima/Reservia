@@ -1,5 +1,5 @@
 // backend/src/modules/auth/auth.service.ts
-import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException, OnModuleInit } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -7,8 +7,8 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { User, UserDocument, UserRole } from '../../database/schemas/user.schema';
 import { EmailService } from '../email/email.service';
+import { ConfigService } from '@nestjs/config';
 
-// 🆕 Fonction utilitaire pour extraire le message d'erreur
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === 'string') return error;
@@ -16,12 +16,56 @@ function getErrorMessage(error: unknown): string {
 }
 
 @Injectable()
-export class AuthService {
+export class AuthService implements OnModuleInit {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private jwtService: JwtService,
     private emailService: EmailService,
+    private configService: ConfigService,
   ) {}
+
+  // 🔧 INITIALISATION - Créer l'admin par défaut au démarrage
+  async onModuleInit() {
+    await this.createDefaultAdmin();
+  }
+
+  async createDefaultAdmin() {
+    try {
+      const adminEmail = this.configService.get<string>('ADMIN_EMAIL', 'admin@test.com');
+      const adminPassword = this.configService.get<string>('ADMIN_PASSWORD', '12345678');
+
+      // Vérifier si l'admin existe déjà
+      const existingAdmin = await this.userModel.findOne({ email: adminEmail });
+      
+      if (!existingAdmin) {
+        console.log('🔧 Creating default admin user in database...');
+        
+        const hashedPassword = await bcrypt.hash(adminPassword, 12);
+        
+        const admin = new this.userModel({
+          email: adminEmail,
+          password: hashedPassword,
+          firstName: 'Admin',
+          lastName: 'System',
+          role: UserRole.ADMIN,
+          isBanned: false,
+          isActive: true,
+          isEmailVerified: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+        
+        await admin.save();
+        console.log('✅ Default admin created successfully in database!');
+        console.log(`📧 Email: ${adminEmail}`);
+        console.log(`🔑 Password: ${adminPassword}`);
+      } else {
+        console.log('✅ Admin user already exists in database');
+      }
+    } catch (error) {
+      console.error('❌ Error creating default admin:', error);
+    }
+  }
 
   async register(data: {
     email: string;
@@ -81,7 +125,6 @@ export class AuthService {
       await user.save();
       console.log('✅ User created:', user._id);
 
-      // ENVOYER L'EMAIL DE VÉRIFICATION
       try {
         await this.emailService.sendVerificationEmail(
           data.email,
@@ -128,7 +171,6 @@ export class AuthService {
 
     await user.save();
 
-    // Envoyer email de confirmation
     try {
       await this.emailService.sendVerificationSuccessEmail(
         user.email,
@@ -190,29 +232,36 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
+    // Chercher l'utilisateur dans la base de données
     const user = await this.userModel.findOne({ email });
+    
     if (!user) {
       throw new UnauthorizedException('Email ou mot de passe incorrect');
     }
 
-    if (!user.isEmailVerified) {
-      throw new UnauthorizedException('Veuillez confirmer votre email avant de vous connecter');
-    }
-
+    // Vérifier le mot de passe
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Email ou mot de passe incorrect');
     }
 
+    // Vérifier si le compte est actif
     if (!user.isActive) {
       throw new UnauthorizedException('Votre compte a été désactivé');
+    }
+
+    // Pour les clients, vérifier l'email
+    if (user.role === UserRole.CLIENT && !user.isEmailVerified) {
+      throw new UnauthorizedException('Veuillez confirmer votre email');
     }
 
     user.lastLogin = new Date();
     await user.save();
 
     const tokens = this.generateTokens(user._id.toString(), user.email, user.role);
-    await this.userModel.findByIdAndUpdate(user._id, { refreshToken: tokens.refreshToken });
+    await this.userModel.findByIdAndUpdate(user._id, {
+      refreshToken: tokens.refreshToken,
+    });
 
     return {
       user: this.sanitizeUser(user),
@@ -246,8 +295,8 @@ export class AuthService {
   private generateTokens(userId: string, email: string, role: string) {
     const payload = { sub: userId, email, role };
     return {
-      accessToken: this.jwtService.sign(payload, { expiresIn: '15m' }),
-      refreshToken: this.jwtService.sign(payload, { expiresIn: '7d' }),
+      accessToken: this.jwtService.sign(payload, { expiresIn: '7d' }),
+      refreshToken: this.jwtService.sign(payload, { expiresIn: '30d' }),
     };
   }
 

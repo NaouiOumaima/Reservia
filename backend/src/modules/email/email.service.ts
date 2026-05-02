@@ -169,4 +169,91 @@ export class EmailService {
       console.error('❌ Erreur envoi email succès:', error);
     }
   }
+
+  async sendReservationConfirmation(
+    email: string,
+    serviceName: string,
+    date: string,
+    time: string,
+    firstName: string,
+  ) {
+    const fromEmail = this.configService.get<string>('smtp.from');
+    const loginUrl = this.configService.get<string>('smtp.frontendUrl') || 'http://localhost:3000';
+
+    const formattedDate = new Date(date).toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Confirmation de réservation - Reservia</title>
+        <style>
+          .container { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; }
+          .header { background: #3b82f6; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { padding: 30px; background: #f9fafb; }
+          .details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
+          .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
+          .detail-label { font-weight: bold; color: #6b7280; }
+          .detail-value { color: #1f2937; }
+          .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>✅ Réservation Confirmée</h1>
+          </div>
+          <div class="content">
+            <h2>Bonjour ${firstName},</h2>
+            <p>Votre réservation a été confirmée avec succès !</p>
+            
+            <div class="details">
+              <div class="detail-row">
+                <span class="detail-label">Service</span>
+                <span class="detail-value">${serviceName}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Date</span>
+                <span class="detail-value">${formattedDate}</span>
+              </div>
+              ${time ? `
+              <div class="detail-row">
+                <span class="detail-label">Heure</span>
+                <span class="detail-value">${time}</span>
+              </div>
+              ` : ''}
+            </div>
+            
+            <p>Merci d'utiliser <strong>Reservia</strong> !</p>
+            <p style="font-size: 12px; color: #6b7280;">
+              Pour modifier ou annuler votre réservation, connectez-vous à votre compte.
+            </p>
+          </div>
+          <div class="footer">
+            <p>© 2025 Reservia - Tous droits réservés</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    try {
+      await this.transporter.sendMail({
+        from: `"Reservia" <${fromEmail}>`,
+        to: email,
+        subject: `✅ Réservation confirmée - ${serviceName}`,
+        html,
+      });
+      console.log('✅ Email de confirmation de réservation envoyé à:', email);
+    } catch (error) {
+      console.error('❌ Erreur envoi email réservation:', error);
+      throw error;
+    }
+  }
 }

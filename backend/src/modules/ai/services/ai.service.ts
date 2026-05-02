@@ -7,16 +7,18 @@ import { Reservation, ReservationDocument } from '../../../database/schemas/rese
 import { ChatbotRequestDto, ChatbotResponseDto } from '../dto/ai.dto';
 import { NlpService } from './nlp.service';
 import { RecommendationService } from './recommendation.service';
+import { EmailService } from '../../email/email.service';
+import { Language, LOCALIZED_RESPONSES } from './constants/language.constants';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UTILITIES
+// ─────────────────────────────────────────────────────────────────────────────
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === 'string') return error;
   return 'Unknown error occurred';
 }
-
-// ─────────────────────────────────────────────────────────────
-//  NORMALISATION (identique à nlp.service pour cohérence)
-// ─────────────────────────────────────────────────────────────
 
 function normalize(text: string): string {
   return text
@@ -27,72 +29,26 @@ function normalize(text: string): string {
     .trim();
 }
 
-function levenshtein(a: string, b: string): number {
-  const m = a.length, n = b.length;
-  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
-    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
-  );
-  for (let i = 1; i <= m; i++)
-    for (let j = 1; j <= n; j++)
-      dp[i][j] = a[i - 1] === b[j - 1]
-        ? dp[i - 1][j - 1]
-        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
-  return dp[m][n];
+/**
+ * Returns a localized string from LOCALIZED_RESPONSES.
+ * If the value is an array, a random element is returned.
+ */
+function t(key: string, lang: Language): string {
+  const entry = LOCALIZED_RESPONSES[key];
+  if (!entry) return '';
+  const value = entry[lang] ?? entry['fr'] ?? '';
+  if (Array.isArray(value)) return value[Math.floor(Math.random() * value.length)];
+  return value as string;
 }
 
-function fuzzyIncludes(text: string, keyword: string): boolean {
-  const words = text.split(/\s+/);
-  const maxDist = keyword.length <= 4 ? 1 : 2;
-  return words.some(w => levenshtein(w, normalize(keyword)) <= maxDist);
-}
-
-// ─────────────────────────────────────────────────────────────
-//  MOTS-CLÉS D'INTENTION (version allégée pour le router)
-//  La version complète est dans NlpService — ici on garde
-//  juste ce dont ai.service a besoin pour son fallback
-// ─────────────────────────────────────────────────────────────
-
-const SEARCH_KW = [
-  'cherche','recherche','trouve','trouver','ou','proche','pres','available',
-  'find','search','near','show','list','where','give me',
-  'fama','fayn','win','wen','nchof','nchouf','najjem','qrib','grib','hawali',
-  'ابحث','فين','وين','نشوف','قريب',
-];
-
-const BOOKING_KW = [
-  'reserver','reservation','reserv','resrevation','book','rdv','rendezvous',
-  'commander','veux','voudrais','aimerai','besoin','table','chambre','want',
-  'hejez','hejiz','nhejez','nheb','nhabb','mawid','mawad','tabla',
-  'احجز','حجز','موعد','نحب','طاولة',
-];
-
-const CANCEL_KW = [
-  'annuler','annule','annulation','supprimer','cancel','delete','remove',
-  'batel','btal','ma njiich','ma jich','mish ji','waqef',
-  'الغ','إلغاء','بطل','ما نجيش',
-];
-
-const HELP_KW = [
-  'aide','comment','quoi','expliquer','info','guide','help','how','what',
-  '3aweni','chno','chnowa','kifech','kifash','kifesh','kefash','wesh',
-  'ساعدني','كيفاش','شنوا','كيف',
-];
-
-function matchesKeywords(text: string, keywords: string[]): boolean {
-  const norm = normalize(text);
-  return keywords.some(kw => {
-    const nk = normalize(kw);
-    return norm.includes(nk) || fuzzyIncludes(norm, nk);
-  });
-}
-
-// ─────────────────────────────────────────────────────────────
-//  INTERFACES
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// CONVERSATION CONTEXT
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface ConversationContext {
   sessionId: string;
   userId?: string;
+  detectedLang: Language;
   lastIntent: string;
   lastEntities: any;
   step: 'idle' | 'searching' | 'booking' | 'cancelling' | 'help';
@@ -101,9 +57,9 @@ interface ConversationContext {
   timestamp: Date;
 }
 
-// ─────────────────────────────────────────────────────────────
-//  AI SERVICE
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// AI SERVICE
+// ─────────────────────────────────────────────────────────────────────────────
 
 @Injectable()
 export class AiService {
@@ -114,64 +70,72 @@ export class AiService {
   constructor(
     @InjectModel(Service.name) private serviceModel: Model<ServiceDocument>,
     @InjectModel(Reservation.name) private reservationModel: Model<ReservationDocument>,
+    @InjectModel('User') private userModel: Model<any>,
     private nlpService: NlpService,
     private recommendationService: RecommendationService,
+    private emailService: EmailService,
   ) {}
 
-  // ── POINT D'ENTRÉE PRINCIPAL ───────────────────────────────
-
+  // ── MAIN ENTRY POINT ──────────────────────────────────────────────────────
   async chatbot(request: ChatbotRequestDto): Promise<ChatbotResponseDto> {
     try {
-      // Rate limiting
+      // 1. Analyze intent and detect language
+      const intentAnalysis = await this.nlpService.analyzeIntent(request.query);
+      const entities = intentAnalysis.entities;
+      const lang: Language = (entities.detectedLang as Language) || 'fr';
+
+      this.logger.log(
+        `[Chatbot] lang=${lang} | intent=${intentAnalysis.intent} | ` +
+        `query="${request.query.substring(0, 60)}"`
+      );
+
+      // 2. Rate limiting
       if (request.userId && !this.checkRateLimit(request.userId)) {
-        return {
-          reply: '⏳ Vous avez envoyé trop de messages. Attendez quelques secondes. / Stenna chwaya !',
-          intent: 'rate_limited',
-          entities: {},
-        };
+        return { reply: t('rate_limited', lang), intent: 'rate_limited', entities: {} };
       }
 
+      // 3. Session context
       const sessionId = request.sessionId || this.generateSessionId();
       const context = this.getContext(sessionId);
       context.userId = request.userId;
+      context.detectedLang = lang; // update language in context
 
-      // Analyse NLP (gère toutes les langues et variantes)
-      const intentAnalysis = await this.nlpService.analyzeIntent(request.query);
-      const entities = intentAnalysis.entities;
-
-      // Router : NLP d'abord, fallback keyword ensuite
-      let response: ChatbotResponseDto;
+      // 4. Intent routing
       const intent = intentAnalysis.intent !== 'unknown'
         ? intentAnalysis.intent
         : this.fallbackIntentDetection(request.query);
 
+      let response: ChatbotResponseDto;
+
       switch (intent) {
         case 'search':
-          response = await this.handleSearchIntent(request.query, request.location, entities);
+          response = await this.handleSearchIntent(
+            request.query, request.location, entities, lang
+          );
           break;
         case 'booking':
-          response = await this.handleBookingIntent(request.query, request.userId, context);
+          response = await this.handleBookingIntent(request.userId, context, entities, lang);
           break;
         case 'cancel':
-          response = await this.handleCancelIntent(request.userId, context);
+          response = await this.handleCancelIntent(request.userId, context, lang);
           break;
         case 'help':
-          response = await this.handleHelpIntent();
+          response = { reply: t('help', lang), intent: 'help', entities: {} };
           break;
         case 'greeting':
-          response = await this.handleGreetingIntent();
+          response = { reply: t('greeting', lang), intent: 'greeting', entities: {} };
           break;
         case 'goodbye':
-          response = this.handleGoodbyeIntent();
+          response = { reply: t('goodbye', lang), intent: 'goodbye', entities: {} };
           break;
         case 'feedback':
-          response = this.handleFeedbackIntent();
+          response = { reply: t('feedback', lang), intent: 'feedback', entities: {} };
           break;
         default:
-          response = await this.handleUnknownIntent(request.query);
+          response = { reply: t('unknown', lang), intent: 'unknown', entities: {} };
       }
 
-      // Mise à jour du contexte
+      // 5. Update context
       context.lastIntent = response.intent;
       context.lastEntities = entities;
       context.messageHistory.push(
@@ -182,44 +146,47 @@ export class AiService {
       this.contexts.set(sessionId, context);
       this.cleanupOldContexts();
 
-      return response;
+      return { ...response, sessionId };
     } catch (error) {
-      this.logger.error(`Chatbot error: ${getErrorMessage(error)}`);
-      return {
-        reply: "😔 Désolé, une erreur s'est produite. Réessayez ! / Désolé, hawi merra okhra.",
-        intent: 'error',
-        entities: {},
-      };
+      this.logger.error(`[Chatbot] Error: ${getErrorMessage(error)}`);
+      return { reply: t('error', 'fr'), intent: 'error', entities: {} };
     }
   }
 
-  // ── DÉTECTION DE SECOURS (keywords simples) ────────────────
-
+  // ── FALLBACK INTENT DETECTION (keyword shortcut) ──────────────────────────
   private fallbackIntentDetection(query: string): string {
-    if (matchesKeywords(query, SEARCH_KW))  return 'search';
-    if (matchesKeywords(query, BOOKING_KW)) return 'booking';
-    if (matchesKeywords(query, CANCEL_KW))  return 'cancel';
-    if (matchesKeywords(query, HELP_KW))    return 'help';
+    const norm = normalize(query);
+    const checks: [RegExp, string][] = [
+      [/cherche|trouve|nchof|find|search|ابحث|nchouf/, 'search'],
+      [/reserver|book|hejez|nhejez|احجز|reservation/, 'booking'],
+      [/annuler|cancel|batel|nbatel|الغ|lheg/, 'cancel'],
+      [/aide|help|3aweni|mosa3da|ساعدني|مساعدة/, 'help'],
+      [/bonjour|hello|salam|ahla|مرحبا|السلام/, 'greeting'],
+      [/au revoir|bye|beslema|yalla|مع السلامة/, 'goodbye'],
+      [/avis|feedback|ra2y|تقييم|review/, 'feedback'],
+    ];
+    for (const [pattern, intent] of checks) {
+      if (pattern.test(norm)) return intent;
+    }
     return 'unknown';
   }
 
-  // ── HANDLERS ──────────────────────────────────────────────
-
+  // ── HANDLE SEARCH ─────────────────────────────────────────────────────────
   private async handleSearchIntent(
     query: string,
-    location?: { lat: number; lng: number },
-    entities?: any,
+    location: { lat: number; lng: number } | undefined,
+    entities: any,
+    lang: Language,
   ): Promise<ChatbotResponseDto> {
     try {
       const searchQuery: any = { isActive: true };
       if (entities?.category) searchQuery.category = entities.category;
-      if (entities?.price)    searchQuery.basePrice = { $lte: entities.price };
+      if (entities?.price) searchQuery.basePrice = { $lte: entities.price };
 
       let services: any[] = [];
-
-      // Géoloc si disponible (ou si l'utilisateur demande "près de moi")
       const useGeo = location?.lat && location?.lng;
 
+      // Geo search first
       if (useGeo) {
         const radius = entities?.radius || 10;
         services = await this.serviceModel
@@ -227,86 +194,63 @@ export class AiService {
             ...searchQuery,
             location: {
               $near: {
-                $geometry: { type: 'Point', coordinates: [location.lng, location.lat] },
+                $geometry: { type: 'Point', coordinates: [location!.lng, location!.lat] },
                 $maxDistance: radius * 1000,
               },
             },
           })
-          .limit(5)
+          .limit(6)
           .exec();
       }
 
-      // Si pas de géoloc ou pas de résultat → recherche classique
+      // Fallback: text / city search
       if (!useGeo || services.length === 0) {
-        // Filtre par ville si extraite
         if (entities?.locationName) {
-          searchQuery['location.city'] = {
-            $regex: entities.locationName,
-            $options: 'i',
-          };
+          searchQuery['location.city'] = { $regex: entities.locationName, $options: 'i' };
         }
-        services = await this.serviceModel.find(searchQuery).limit(5).exec();
+        services = await this.serviceModel.find(searchQuery).limit(6).exec();
       }
 
       if (services.length === 0) {
-        return {
-          reply: "😕 Aucun service trouvé pour votre recherche.\n" +
-                 "Essayez d'autres mots-clés ou une autre ville.\n" +
-                 "Ma lqitlekch — jreb krara okhra !",
-          intent: 'search',
-          entities: entities || {},
-        };
+        return { reply: t('search_no_results', lang), intent: 'search', entities: entities || {} };
       }
 
       return {
-        reply: this.formatSearchResults(services),
+        reply: this.formatSearchResults(services, lang),
         intent: 'search',
         entities: entities || {},
         data: { services },
       };
     } catch (error) {
-      this.logger.error(`Search error: ${getErrorMessage(error)}`);
-      return { reply: "Erreur lors de la recherche. Réessayez.", intent: 'error', entities: {} };
+      this.logger.error(`[Search] Error: ${getErrorMessage(error)}`);
+      return { reply: t('search_error', lang), intent: 'error', entities: {} };
     }
   }
 
+  // ── HANDLE BOOKING ────────────────────────────────────────────────────────
   private async handleBookingIntent(
-    query: string,
-    userId?: string,
-    context?: ConversationContext,
+    userId: string | undefined,
+    context: ConversationContext,
+    entities: any,
+    lang: Language,
   ): Promise<ChatbotResponseDto> {
     if (!userId) {
-      return {
-        reply: "🔐 Connectez-vous pour faire une réservation.\n" +
-               "Please log in to book. / Lazem trodd dakhouli!",
-        intent: 'booking',
-        entities: {},
-      };
+      return { reply: t('booking_no_login', lang), intent: 'booking', entities: {} };
     }
-
-    if (context?.step === 'booking' && context?.tempData) {
-      return this.confirmBooking(context.tempData, userId);
+    if (context.step === 'booking' && context.tempData) {
+      return this.confirmBooking(context.tempData, userId, lang);
     }
-
-    return {
-      reply: "📅 Je vais vous aider à réserver !\n\n" +
-             "Quel type de service cherchez-vous ?\n" +
-             "(restaurant, hôtel, spa, salon, salle de sport...)",
-      intent: 'booking',
-      entities: {},
-    };
+    return { reply: t('booking_help', lang), intent: 'booking', entities: {} };
   }
 
+  // ── HANDLE CANCEL ─────────────────────────────────────────────────────────
   private async handleCancelIntent(
-    userId?: string,
-    context?: ConversationContext,
+    userId: string | undefined,
+    context: ConversationContext,
+    lang: Language,
   ): Promise<ChatbotResponseDto> {
     if (!userId) {
-      return {
-        reply: "🔐 Connectez-vous pour annuler une réservation.",
-        intent: 'cancel',
-        entities: {},
-      };
+      return { reply: t('cancel_no_login', lang), intent: 'cancel', entities: {} };
     }
 
     const reservations = await this.reservationModel
@@ -316,144 +260,105 @@ export class AiService {
       .exec();
 
     if (reservations.length === 0) {
-      return {
-        reply: "✅ Vous n'avez aucune réservation active à annuler.\n" +
-               "Ma3ndekch hejz mawjoud.",
-        intent: 'cancel',
-        entities: {},
-      };
+      return { reply: t('cancel_no_reservations', lang), intent: 'cancel', entities: {} };
     }
 
+    const locale = lang === 'fr' ? 'fr-FR' : 'en-US';
     const list = reservations
-      .map((r, i) => `${i + 1}. ${(r.serviceId as any).name} — ${new Date(r.startTime).toLocaleString('fr-FR')}`)
+      .map((r, i) => {
+        const name = (r.serviceId as any)?.name ?? '?';
+        const date = new Date(r.startTime).toLocaleString(locale);
+        return `${i + 1}. ${name} — ${date}`;
+      })
       .join('\n');
 
-    if (context) {
-      context.tempData = { reservations };
-      context.step = 'cancelling';
-    }
+    const cancelQuestion: Record<Language, string> = {
+      fr: `❌ Vos réservations actives :\n\n${list}\n\nDites-moi le numéro à annuler.`,
+      en: `❌ Your active reservations:\n\n${list}\n\nTell me which number to cancel.`,
+      tn: `❌ Hejzek el mawjoudin:\n\n${list}\n\nA3tini rqem li teb9a tbattel.`,
+      ar: `❌ حجوزاتك النشطة:\n\n${list}\n\nأعطني الرقم الذي تريد إلغاءه.`,
+    };
+
+    context.tempData = { reservations };
+    context.step = 'cancelling';
 
     return {
-      reply: `❌ Vos réservations actives :\n\n${list}\n\nDites-moi le numéro à annuler.`,
+      reply: cancelQuestion[lang] ?? cancelQuestion.fr,
       intent: 'cancel',
       entities: { reservations },
     };
   }
 
-  private async handleHelpIntent(): Promise<ChatbotResponseDto> {
-    return {
-      reply:
-        '🤖 **Je comprends le français, l\'anglais et la darija (عربي + latin)**\n\n' +
-        '**Exemples de ce que vous pouvez dire :**\n\n' +
-        '🔍 **Chercher** :\n' +
-        '  • "Je cherche un restaurant à Sousse"\n' +
-        '  • "find a spa near me"\n' +
-        '  • "nchof restaurant qrib meni"\n' +
-        '  • "فما مطعم في سوسة؟"\n\n' +
-        '📅 **Réserver** :\n' +
-        '  • "Je veux réserver une table"\n' +
-        '  • "book a hotel in Tunis"\n' +
-        '  • "nhejez restaurant"\n' +
-        '  • "نحجز فندق"\n\n' +
-        '❌ **Annuler** :\n' +
-        '  • "annuler ma réservation"\n' +
-        '  • "batel el hejz mte3i"\n\n' +
-        '⭐ **Avis** : "donner mon avis sur le service"\n\n' +
-        '💡 Pas besoin d\'écrire parfaitement — je comprends quand même !',
-      intent: 'help',
-      entities: {},
-    };
+  // ── CONFIRM BOOKING ───────────────────────────────────────────────────────
+  private async confirmBooking(
+    tempData: any,
+    userId: string,
+    lang: Language,
+  ): Promise<ChatbotResponseDto> {
+    try {
+      const user = await this.userModel?.findById(userId).select('email firstName').exec();
+      if (user?.email) {
+        await this.emailService.sendReservationConfirmation(
+          user.email,
+          tempData.serviceName || 'Service',
+          tempData.date || new Date().toISOString(),
+          tempData.time || '',
+          user.firstName,
+        );
+      }
+      return { reply: t('confirm_booking', lang), intent: 'booking_complete', entities: {} };
+    } catch (error) {
+      this.logger.error(`[ConfirmBooking] Error: ${getErrorMessage(error)}`);
+      const fallback: Record<Language, string> = {
+        fr: '✅ Réservation confirmée ! (Email non envoyé)',
+        en: '✅ Reservation confirmed! (Email not sent)',
+        tn: '✅ Hejzek mzabt! (Email mach mchouch)',
+        ar: '✅ تم تأكيد الحجز! (لم يتم إرسال البريد)',
+      };
+      return { reply: fallback[lang] ?? fallback.fr, intent: 'booking_complete', entities: {} };
+    }
   }
 
-  private async handleGreetingIntent(): Promise<ChatbotResponseDto> {
-    const greetings = [
-      '👋 Bonjour ! Comment puis-je vous aider ?\n_(Ahla ! Kifeh nel3awnek ?)_',
-      '👋 Hello! How can I help you today?\n_(Bonjour ! Je suis là pour vous aider.)_',
-      '👋 أهلاً وسهلاً! كيفاش نعاونك اليوم؟\n_(Bonjour ! Je parle aussi français et anglais.)_',
-      '👋 Ahla ! Ana mawjoud ta3awnek.\nBienvenue ! Je suis votre assistant.',
-    ];
-    return {
-      reply: greetings[Math.floor(Math.random() * greetings.length)],
-      intent: 'greeting',
-      entities: {},
+  // ── FORMAT SEARCH RESULTS ─────────────────────────────────────────────────
+  private formatSearchResults(services: ServiceDocument[], lang: Language): string {
+    const titles: Record<Language, string> = {
+      fr: 'résultat(s) trouvé(s)',
+      en: 'result(s) found',
+      tn: 'natayej lqitom',
+      ar: 'نتيجة/نتائج وجدتها',
     };
-  }
-
-  private handleGoodbyeIntent(): ChatbotResponseDto {
-    const msgs = [
-      '👋 Au revoir ! Bonne journée !',
-      '👋 Beslema! Yalla bkhir 🌟',
-      '👋 مع السلامة! نتمنالك يوم سعيد',
-    ];
-    return {
-      reply: msgs[Math.floor(Math.random() * msgs.length)],
-      intent: 'goodbye',
-      entities: {},
+    const askStr: Record<Language, string> = {
+      fr: '\n\n💬 Voulez-vous réserver l\'un de ces services ?',
+      en: '\n\n💬 Would you like to book one of these services?',
+      tn: '\n\n💬 T7eb te7ej fi wa7da mel khedmat hethi?',
+      ar: '\n\n💬 هل تريد حجز إحدى هذه الخدمات؟',
     };
-  }
-
-  private handleFeedbackIntent(): ChatbotResponseDto {
-    return {
-      reply: '⭐ Merci de vouloir partager votre avis !\n' +
-             'Pour quel service voulez-vous laisser un commentaire ?',
-      intent: 'feedback',
-      entities: {},
+    const reviewStr: Record<Language, string> = {
+      fr: 'avis', en: 'reviews', tn: 'ta3li9at', ar: 'تقييمات',
     };
-  }
 
-  private async handleUnknownIntent(query: string): Promise<ChatbotResponseDto> {
-    return {
-      reply:
-        "🤔 Je n'ai pas bien compris votre demande.\n\n" +
-        "Ma fhemtekch mezian — essayez de dire :\n\n" +
-        "🔍 **Chercher** un service\n" +
-        "📅 **Réserver** un rendez-vous\n" +
-        "❌ **Annuler** une réservation\n" +
-        "❓ **Aide** pour plus d'infos\n\n" +
-        "_Tapez **aide** / **help** / **kifech** pour voir les exemples._",
-      intent: 'unknown',
-      entities: {},
-    };
-  }
-
-  private async confirmBooking(tempData: any, userId: string): Promise<ChatbotResponseDto> {
-    return {
-      reply: '✅ Réservation confirmée ! Un email de confirmation vous a été envoyé.\n' +
-             'Hejzek mzabt ! Email mcha 3andek.',
-      intent: 'booking_complete',
-      entities: {},
-    };
-  }
-
-  // ── FORMATAGE DES RÉSULTATS ────────────────────────────────
-
-  private formatSearchResults(services: ServiceDocument[]): string {
-    let reply = `🎯 **${services.length} résultat(s) trouvé(s) :**\n\n`;
+    let reply = `🎯 **${services.length} ${titles[lang] ?? titles.fr} :**\n\n`;
 
     services.forEach((s: any, i) => {
       reply += `**${i + 1}. ${s.name}**\n`;
       if (s.location?.address) reply += `   📍 ${s.location.address}\n`;
       if (s.location?.city)    reply += `   🏙️ ${s.location.city}\n`;
-      reply += `   ⭐ ${s.avgRating || 0}/5 (${s.reviewCount || 0} avis)\n`;
+      reply += `   ⭐ ${s.avgRating ?? 0}/5 (${s.reviewCount ?? 0} ${reviewStr[lang] ?? 'avis'})\n`;
       reply += `   💰 ${s.basePrice} DT\n`;
-      if (s.duration)          reply += `   🕐 ${s.duration} min\n`;
+      if (s.duration) reply += `   🕐 ${s.duration} min\n`;
       reply += '\n';
     });
 
-    reply += '💬 Voulez-vous réserver l\'un de ces services ?';
+    reply += askStr[lang] ?? askStr.fr;
     return reply;
   }
 
-  // ── UTILITAIRES ───────────────────────────────────────────
-
+  // ── RECOMMENDATIONS ───────────────────────────────────────────────────────
   async getRecommendations(userId: string, limit = 10): Promise<any[]> {
     return this.recommendationService.getPersonalizedRecommendations(userId, limit);
   }
 
-  async handleStreamingResponse(request: ChatbotRequestDto): Promise<any> {
-    return this.chatbot(request);
-  }
-
+  // ── UTILITIES ─────────────────────────────────────────────────────────────
   private generateSessionId(): string {
     return `session_${Date.now()}_${Math.random().toString(36).substring(7)}`;
   }
@@ -462,6 +367,7 @@ export class AiService {
     if (!this.contexts.has(sessionId)) {
       this.contexts.set(sessionId, {
         sessionId,
+        detectedLang: 'fr',
         lastIntent: 'idle',
         lastEntities: {},
         step: 'idle',
@@ -473,7 +379,7 @@ export class AiService {
     return this.contexts.get(sessionId)!;
   }
 
-  private checkRateLimit(userId: string, limit = 15, windowMs = 60000): boolean {
+  private checkRateLimit(userId: string, limit = 20, windowMs = 60_000): boolean {
     const now = Date.now();
     const reqs = (this.rateLimits.get(userId) || []).filter(t => now - t < windowMs);
     if (reqs.length >= limit) return false;
@@ -483,7 +389,7 @@ export class AiService {
   }
 
   private cleanupOldContexts(): void {
-    const maxAge = 30 * 60 * 1000;
+    const maxAge = 30 * 60 * 1000; // 30 min
     const now = Date.now();
     for (const [id, ctx] of this.contexts.entries()) {
       if (now - ctx.timestamp.getTime() > maxAge) this.contexts.delete(id);

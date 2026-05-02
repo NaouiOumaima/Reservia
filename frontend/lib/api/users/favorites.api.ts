@@ -3,16 +3,16 @@ import { Service } from '@/types';
 
 export const favoritesApi = {
   getFavorites: async (): Promise<Service[]> => {
-    const response = await apiClient.get('/api/users/favorites');
+    const response = await apiClient.get('/users/favorites');
     return response.data;
   },
 
   add: async (serviceId: string): Promise<void> => {
-    await apiClient.post('/api/users/favorites', { serviceId });
+    await apiClient.post('/users/favorites', { serviceId });
   },
 
   remove: async (serviceId: string): Promise<void> => {
-    await apiClient.delete(`/api/users/favorites/${serviceId}`);
+    await apiClient.delete(`/users/favorites/${serviceId}`);
   },
 
   isFavorite: async (serviceId: string): Promise<boolean> => {

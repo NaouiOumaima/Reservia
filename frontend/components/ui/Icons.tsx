@@ -443,3 +443,117 @@ export function ClockIcon({ className = "w-6 h-6", size }: IconProps) {
     </svg>
   );
 }
+// components/ui/Icons.tsx
+// Ajoutez ces fonctions après les autres icônes
+
+// ============================================
+// ICÔNES POUR NAVBAR
+// ============================================
+
+export function BellIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...defaultProps(className, size)}>
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  );
+}
+
+export function BurgerIcon({ open, className = "w-6 h-6", size }: IconProps & { open?: boolean }) {
+  return (
+    <svg {...defaultProps(className, size)}>
+      {open ? (
+        <path d="M6 18L18 6M6 6l12 12" />
+      ) : (
+        <>
+          <path d="M4 6h16" />
+          <path d="M4 12h16" />
+          <path d="M4 18h16" />
+        </>
+      )}
+    </svg>
+  );
+}
+// Ajouter à la fin de Icons.tsx
+
+export function HomeIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...defaultProps(className, size)}>
+      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H14v-6h-4v6H4a1 1 0 0 1-1-1V9.5z" />
+    </svg>
+  );
+}
+
+export function CompassIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...defaultProps(className, size)}>
+      <circle cx="12" cy="12" r="10" />
+      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+    </svg>
+  );
+}
+
+export function InfoIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...defaultProps(className, size)}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 16v-4M12 8h.01" strokeWidth={2.5} />
+    </svg>
+  );
+}
+
+export function HeartIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...defaultProps(className, size)}>
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+    </svg>
+  );
+}
+
+export function GridIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...defaultProps(className, size)}>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+  );
+}
+
+export function MonitorIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...defaultProps(className, size)}>
+      <rect x="2" y="3" width="20" height="14" rx="2" />
+      <path d="M8 21h8M12 17v4" />
+    </svg>
+  );
+}
+
+export function FlagIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...defaultProps(className, size)}>
+      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+      <line x1="4" y1="22" x2="4" y2="15" />
+    </svg>
+  );
+}
+
+export function FileTextIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...defaultProps(className, size)}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+    </svg>
+  );
+}
+
+export function AlertTriangleIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...defaultProps(className, size)}>
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+      <path d="M12 9v4M12 17h.01" strokeWidth={2.5} />
+    </svg>
+  );
+}
+

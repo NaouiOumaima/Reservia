@@ -5,6 +5,7 @@ export type UserRole = 'client' | 'provider' | 'admin';
 /* =========================
    USER
 ========================= */
+
 export interface User {
   _id: string;
   email: string;
@@ -13,9 +14,15 @@ export interface User {
   role: UserRole;
   phone?: string;
   avatar?: string;
+  profileImage?: string;
   preferences?: UserPreferences;
-  createdAt: Date;
-  updatedAt: Date;
+  isBanned?: boolean;
+  isEmailVerified?: boolean;
+  isActive?: boolean;
+  lastLogin?: Date;
+
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface UserPreferences {

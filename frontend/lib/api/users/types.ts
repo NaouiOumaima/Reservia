@@ -1,3 +1,4 @@
+// frontend/lib/api/users/types.ts
 export interface User {
   _id: string;
   email: string;
@@ -5,9 +6,14 @@ export interface User {
   lastName: string;
   role: 'client' | 'provider' | 'admin';
   phone?: string;
+  profileImage?: string;
   avatar?: string;
+  isBanned?: boolean;
+  isEmailVerified?: boolean;
+  isActive?: boolean;
+  lastLogin?: Date;
+  createdAt?: Date;
   preferences?: UserPreferences;
-  createdAt: Date;
 }
 
 export interface UserPreferences {

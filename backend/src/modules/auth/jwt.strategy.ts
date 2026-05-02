@@ -1,5 +1,4 @@
-// src/modules/auth/jwt.strategy.ts
-
+// backend/src/modules/auth/jwt.strategy.ts
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
@@ -14,7 +13,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private configService: ConfigService,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
   ) {
-    const secret = configService.get<string>('jwt.secret') || 'superSecretKey123!';
+    const secret = configService.get<string>('JWT_SECRET') || 'bilel-ammar-26052001-2025-reservation-secret-key';
+    console.log('JWT Strategy initialized with secret:', secret ? 'Secret present' : 'Secret missing');
+    
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -23,6 +24,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
+    console.log('JWT Payload received:', payload);
+    
     const user = await this.userModel.findById(payload.sub).exec();
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Utilisateur non trouvé ou inactif');

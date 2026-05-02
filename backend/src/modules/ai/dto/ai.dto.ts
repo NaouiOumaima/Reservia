@@ -41,6 +41,7 @@ export class ChatbotResponseDto {
   entities: any;
   suggestedActions?: string[];
   data?: any;
+  sessionId?: string;
 }
 
 export class IntentRequestDto {

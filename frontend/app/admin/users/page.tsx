@@ -1,162 +1,325 @@
-// app/admin/users/page.tsx
-
+// frontend/app/admin/users/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
-import { User } from '@/types';
+import { usersApi } from '@/lib/api';
+import { User } from '@/lib/api/users/types';
+import { useAuth } from '@/providers/AuthProvider';
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'client' | 'provider' | 'admin'>('all');
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'all' | 'client' | 'provider'>('all');
   const [search, setSearch] = useState('');
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const { user: currentUser } = useAuth();
 
   useEffect(() => {
-    // Simulated data - replace with API call
-    setLoading(false);
-  }, []);
+    loadUsers();
+  }, [filter]);
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const filterRole = filter !== 'all' ? filter : undefined;
+      let fetchedUsers = await usersApi.getAllUsers(filterRole);
+      
+      if (currentUser?._id) {
+        fetchedUsers = fetchedUsers.filter(user => user._id !== currentUser._id);
+      }
+      
+      setUsers(fetchedUsers || []);
+    } catch (err: any) {
+      console.error('Error loading users:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Erreur lors du chargement des utilisateurs';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBanUser = async (userId: string) => {
+    if (userId === currentUser?._id) {
+      alert('Vous ne pouvez pas bannir votre propre compte !');
+      return;
+    }
+
+    if (!confirm('Êtes-vous sûr de vouloir bannir cet utilisateur ?')) return;
+
+    try {
+      setUpdatingUserId(userId);
+      const updatedUser = await usersApi.banUser(userId);
+      setUsers(users.map(u => u._id === userId ? updatedUser : u));
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Erreur lors du bannissement';
+      alert(errorMessage);
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
+
+  const handleUnbanUser = async (userId: string) => {
+    if (userId === currentUser?._id) {
+      alert('Opération non autorisée sur votre propre compte !');
+      return;
+    }
+
+    if (!confirm('Êtes-vous sûr de vouloir réactiver cet utilisateur ?')) return;
+
+    try {
+      setUpdatingUserId(userId);
+      const updatedUser = await usersApi.unbanUser(userId);
+      setUsers(users.map(u => u._id === userId ? updatedUser : u));
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
+
+  const handleChangeRole = async (userId: string, newRole: string) => {
+    if (userId === currentUser?._id) {
+      alert('Vous ne pouvez pas modifier votre propre rôle !');
+      return;
+    }
+
+    try {
+      setUpdatingUserId(userId);
+      const updatedUser = await usersApi.updateUserRole(userId, newRole);
+      setUsers(users.map(u => u._id === userId ? updatedUser : u));
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
+
+  const getInitials = (firstName?: string, lastName?: string) => {
+    const first = firstName?.[0] || '';
+    const last = lastName?.[0] || '';
+    return (first + last).toUpperCase();
+  };
+
+  const formatDate = (date?: Date) => {
+    if (!date) return 'N/A';
+    try {
+      return new Date(date).toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+    } catch {
+      return 'Date invalide';
+    }
+  };
 
   const filteredUsers = users.filter((user) => {
-    if (filter !== 'all' && user.role !== filter) return false;
-    if (search && !`${user.firstName} ${user.lastName} ${user.email}`.toLowerCase().includes(search.toLowerCase())) {
-      return false;
+    if (search) {
+      const searchLower = search.toLowerCase();
+      const fullName = `${user.firstName} ${user.lastName} ${user.email}`.toLowerCase();
+      return fullName.includes(searchLower);
     }
     return true;
   });
 
-  const banUser = (userId: string) => {
-    if (confirm('Êtes-vous sûr de vouloir bannir cet utilisateur ?')) {
-      setUsers(users.map(u => u._id === userId ? { ...u, isBanned: true } : u));
-    }
+  const stats = {
+    total: users.length,
+    clients: users.filter(u => u.role === 'client').length,
+    providers: users.filter(u => u.role === 'provider').length,
+    banned: users.filter(u => u.isBanned).length,
+    active: users.filter(u => !u.isBanned).length,
   };
 
-  const changeRole = (userId: string, newRole: User['role']) => {
-    setUsers(users.map(u => u._id === userId ? { ...u, role: newRole } : u));
-  };
+  if (loading && users.length === 0) {
+    return (
+      <div className="admin-users-loading">
+        <div className="text-center">
+          <div className="spinner"></div>
+          <p className="mt-4 text-muted">Chargement des utilisateurs...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="admin-users-page">
+      <div className="admin-users-container">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white">
-            Gestion des utilisateurs
-          </h1>
-          <p className="text-gray-400 mt-1">
-            Gérer les comptes (bannir, changer rôles)
+        <div className="admin-users-header">
+          <h1 className="admin-users-title">Gestion des utilisateurs</h1>
+          <p className="admin-users-subtitle">
+            Gérez les comptes clients et fournisseurs
           </p>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0">
-          <div className="flex space-x-2">
-            {(['all', 'client', 'provider', 'admin'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  filter === f
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                }`}
-              >
-                {f === 'all' ? 'Tous' : f === 'client' ? 'Clients' : f === 'provider' ? 'Fournisseurs' : 'Admins'}
-              </button>
-            ))}
+        {/* Error Alert */}
+        {error && (
+          <div className="alert alert-error mb-6">
+            <span>⚠️</span>
+            <p className="flex-1">{error}</p>
+            <button onClick={loadUsers} className="btn btn-sm btn-primary">
+              Réessayer
+            </button>
           </div>
-          <input
-            type="text"
-            placeholder="Rechercher..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400"
-          />
+        )}
+
+        {/* Stats Cards */}
+        <div className="admin-users-stats">
+          <div className="admin-users-stat-card">
+            <div className="admin-users-stat-value primary">{stats.total}</div>
+            <div className="admin-users-stat-label">Total</div>
+          </div>
+          <div className="admin-users-stat-card">
+            <div className="admin-users-stat-value blue">{stats.clients}</div>
+            <div className="admin-users-stat-label">Clients</div>
+          </div>
+          <div className="admin-users-stat-card">
+            <div className="admin-users-stat-value green">{stats.providers}</div>
+            <div className="admin-users-stat-label">Fournisseurs</div>
+          </div>
+          <div className="admin-users-stat-card">
+            <div className="admin-users-stat-value green">{stats.active}</div>
+            <div className="admin-users-stat-label">Actifs</div>
+          </div>
+          <div className="admin-users-stat-card">
+            <div className="admin-users-stat-value red">{stats.banned}</div>
+            <div className="admin-users-stat-label">Bannis</div>
+          </div>
         </div>
 
-        {/* Users Table */}
-        <div className="bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-          ) : filteredUsers.length === 0 ? (
-            <div className="p-12 text-center">
-              <p className="text-gray-400">Aucun utilisateur trouvé</p>
+        {/* Filters */}
+        <div className="admin-users-filters">
+          <div className="admin-users-filter-buttons">
+            <button
+              onClick={() => setFilter('all')}
+              className={`admin-users-filter-btn ${filter === 'all' ? 'active' : ''}`}
+            >
+              Tous
+            </button>
+            <button
+              onClick={() => setFilter('client')}
+              className={`admin-users-filter-btn ${filter === 'client' ? 'active' : ''}`}
+            >
+              Clients
+            </button>
+            <button
+              onClick={() => setFilter('provider')}
+              className={`admin-users-filter-btn ${filter === 'provider' ? 'active' : ''}`}
+            >
+              Fournisseurs
+            </button>
+          </div>
+          <div className="admin-users-search">
+            <span className="admin-users-search-icon">🔍</span>
+            <input
+              type="text"
+              placeholder="Rechercher..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="admin-users-search-input"
+            />
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="admin-users-table-container">
+          {filteredUsers.length === 0 ? (
+            <div className="admin-users-empty">
+              <div className="admin-users-empty-icon">👥</div>
+              <div className="admin-users-empty-title">Aucun utilisateur</div>
+              <div className="admin-users-empty-text">
+                {search ? 'Aucun résultat pour cette recherche' : 'Aucun utilisateur à afficher'}
+              </div>
             </div>
           ) : (
-            <table className="w-full">
-              <thead className="bg-gray-700">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    Utilisateur
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    Rôle
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    Inscrit le
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-700">
-                {filteredUsers.map((user) => (
-                  <tr key={user._id} className="hover:bg-gray-700/50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium">
-                          {user.firstName?.[0]}{user.lastName?.[0]}
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-white">
-                            {user.firstName} {user.lastName}
+            <div className="overflow-x-auto">
+              <table className="admin-users-table">
+                <thead>
+                  <tr>
+                    <th>Utilisateur</th>
+                    <th>Rôle</th>
+                    <th>Email</th>
+                    <th>Statut</th>
+                    <th>Inscrit le</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((user) => (
+                    <tr key={user._id}>
+                      <td data-label="Utilisateur">
+                        <div className="admin-users-user-cell">
+                          <div className={`admin-users-avatar ${user.role === 'admin' ? 'admin-users-avatar-default' : ''}`}>
+                            {getInitials(user.firstName, user.lastName)}
+                          </div>
+                          <div>
+                            <div className="admin-users-user-name">
+                              {user.firstName} {user.lastName}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        user.role === 'admin' ? 'bg-red-900 text-red-200' :
-                        user.role === 'provider' ? 'bg-green-900 text-green-200' :
-                        'bg-blue-900 text-blue-200'
-                      }`}>
-                        {user.role === 'admin' ? 'Admin' : user.role === 'provider' ? 'Fournisseur' : 'Client'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                      {user.email}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                      {user.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR') : 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex space-x-2">
-                        <select
-                          value={user.role}
-                          onChange={(e) => changeRole(user._id, e.target.value as User['role'])}
-                          className="px-2 py-1 bg-gray-700 text-white rounded text-xs"
-                        >
-                          <option value="client">Client</option>
-                          <option value="provider">Fournisseur</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                        <button
-                          onClick={() => banUser(user._id)}
-                          className="px-2 py-1 bg-red-900 text-red-200 rounded text-xs hover:bg-red-800"
-                        >
-                          Bannir
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </td>
+                      <td data-label="Rôle">
+                        <span className={`admin-users-role-badge ${
+                          user.role === 'admin' ? 'admin-users-role-admin' :
+                          user.role === 'provider' ? 'admin-users-role-provider' :
+                          'admin-users-role-client'
+                        }`}>
+                          {user.role === 'admin' ? 'Admin' : user.role === 'provider' ? 'Fournisseur' : 'Client'}
+                        </span>
+                      </td>
+                      <td data-label="Email">
+                        <span className="text-sm text-muted">{user.email}</span>
+                      </td>
+                      <td data-label="Statut">
+                        <span className={`admin-users-status-badge ${
+                          user.isBanned ? 'admin-users-status-banned' : 'admin-users-status-active'
+                        }`}>
+                          <span className={`admin-users-status-dot ${user.isBanned ? 'banned' : 'active'}`}></span>
+                          {user.isBanned ? 'Banni' : 'Actif'}
+                        </span>
+                      </td>
+                      <td data-label="Inscrit le">
+                        <span className="text-sm text-muted">{formatDate(user.createdAt)}</span>
+                      </td>
+                      <td data-label="Actions">
+                        {user._id !== currentUser?._id ? (
+                          <div className="admin-users-actions">
+                            <select
+                              value={user.role}
+                              onChange={(e) => handleChangeRole(user._id, e.target.value)}
+                              disabled={updatingUserId === user._id}
+                              className="admin-users-select"
+                            >
+                              <option value="client">Client</option>
+                              <option value="provider">Fournisseur</option>
+                              <option value="admin">Admin</option>
+                            </select>
+                            {user.isBanned ? (
+                              <button
+                                onClick={() => handleUnbanUser(user._id)}
+                                disabled={updatingUserId === user._id}
+                                className="admin-users-unban-btn"
+                              >
+                                Réactiver
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleBanUser(user._id)}
+                                disabled={updatingUserId === user._id}
+                                className="admin-users-ban-btn"
+                              >
+                                Bannir
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="admin-users-protected">🔒 Protégé</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

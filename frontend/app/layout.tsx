@@ -8,11 +8,15 @@ import { AuthProvider } from '@/providers/AuthProvider';
 import './globals.css';
 import Chatbot from '@/features/chatbot/Chatbot';
 
+
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Reservia - Plateforme de réservation multi-services',
   description: 'Trouvez, comparez et réservez des services locaux en quelques clics',
+  icons: {
+    icon: '/logo.ico',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -3,7 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthModule } from './modules/auth/auth.module';
-// import { UsersModule } from './modules/users/users.module';
+import { UsersModule } from './modules/users/users.module';
   import { ServicesModule } from './modules/services/services.module';
 // import { ReservationsModule } from './modules/reservations/reservations.module';
 // import { ReviewsModule } from './modules/reviews/reviews.module';
@@ -13,6 +13,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { AiModule } from './modules/ai/ai.module';
 // import { WebsocketModule } from './modules/websocket/websocket.module';
 import configuration from './config/configuration';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -31,9 +32,11 @@ import configuration from './config/configuration';
       inject: [ConfigService],
       global: true,
     }),
-    AuthModule,  // SEUL MODULE ACTIF POUR L'INSTANT
+    AuthModule,
+    UsersModule,
     ServicesModule,
     AiModule,
+        AdminModule,
   ],
   controllers: [],  // Pas de controllers pour l'instant
   providers: [],    // Pas de providers pour l'instant

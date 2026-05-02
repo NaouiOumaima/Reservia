@@ -1,30 +1,17 @@
-// frontend/lib/api/auth/login.ts
-
 import { apiClient } from '../config';
-import { 
-  getAccessToken as getStoredAccessToken, 
-  getRefreshToken as getStoredRefreshToken,
-  setAccessToken, 
-  setRefreshToken, 
-  setUser, 
+import type { User } from '@/types';
+import {
+  setAccessToken,
+  setRefreshToken,
+  setUser,
   clearAuth,
-  getUser as getStoredUser
+  getUser as getStoredUser,
+  getAccessToken as getStoredAccessToken,
 } from '@/lib/helpers/storage';
 
 export interface LoginCredentials {
   email: string;
   password: string;
-}
-
-export interface User {
-  _id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: 'client' | 'provider' | 'admin';
-  phone?: string;
-  profileImage?: string;
-  isActive: boolean;
 }
 
 export interface LoginResponse {
@@ -33,40 +20,37 @@ export interface LoginResponse {
   refreshToken: string;
 }
 
-export const login = async (credentials: LoginCredentials): Promise<LoginResponse> => {
-  try {
-    // ✅ Ajouter /api/ devant la route
-    const response = await apiClient.post<LoginResponse>('/api/auth/login', credentials);
-    const { accessToken, refreshToken, user } = response.data;
+export const login = async (
+  credentials: LoginCredentials
+): Promise<LoginResponse> => {
+  const response = await apiClient.post<LoginResponse>(
+    '/auth/login',
+    credentials
+  );
 
-    setAccessToken(accessToken);
-    setRefreshToken(refreshToken);
-    setUser(user);
+  const { user, accessToken, refreshToken } = response.data;
 
-    return response.data;
-  } catch (error: any) {
-    console.error('Login error:', error.response?.data?.message || error.message);
-    throw error;
-  }
+  setAccessToken(accessToken);
+  setRefreshToken(refreshToken);
+  setUser(user);
+
+  return response.data;
 };
 
 export const logout = async (): Promise<void> => {
-  const userId = getStoredUser()?._id;
-  if (userId) {
+  const user = getStoredUser();
+
+  if (user?._id) {
     try {
-      // ✅ Ajouter /api/ devant la route
-      await apiClient.post('/api/auth/logout', { userId });
-    } catch (error) {
-      console.error('Logout API error:', error);
+      await apiClient.post('/auth/logout', { userId: user._id });
+    } catch (e) {
+      console.error('Logout error', e);
     }
   }
+
   clearAuth();
 };
 
 export const getCurrentUser = (): User | null => {
   return getStoredUser();
-};
-
-export const isAuthenticated = (): boolean => {
-  return !!getStoredAccessToken() && !!getStoredUser();
 };

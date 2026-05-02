@@ -1,24 +1,32 @@
-// types/index.ts
+export interface Location {
+  type: 'Point';
+  coordinates: [number, number];
+  address: string;
+  city: string;
+  governorate: string;
+  postalCode?: string;
+}
+
 export interface Service {
   _id: string;
+  providerId: string;
+  providerName?: string;
   name: string;
   category: string;
   description: string;
   basePrice: number;
   discountPrice?: number;
+  price?: number;
   duration: number;
   images: string[];
   location: Location;
   avgRating: number;
   reviewCount: number;
+  rating?: number;
   smartScore: number;
   isActive: boolean;
-  providerId: string;
-  providerName?: string;
-  createdAt: Date;
-  updatedAt: Date;
-  price?: number;      // alias pour basePrice (compatibilité)
-  rating?: number;     // alias pour avgRating (compatibilité)
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Review {
@@ -31,9 +39,9 @@ export interface Review {
   comment: string;
   images?: string[];
   response?: string;
-  responseDate?: Date;
+  responseDate?: string;
   isApproved: boolean;
   isReported: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }

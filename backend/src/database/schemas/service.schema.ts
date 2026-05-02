@@ -1,8 +1,10 @@
-// backend/src/database/schemas/service.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
-export type ServiceDocument = Service & Document;
+export type ServiceDocument = Service & Document & {
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 export enum ServiceCategory {
   RESTAURANT = 'restaurant',
@@ -42,7 +44,31 @@ export class Service {
   @Prop({ type: [String], default: [] })
   images!: string[];
 
-  @Prop({ required: true, type: Object })
+  // ✅ CORRECTION - Supprimer le required à l'intérieur et le mettre au niveau du champ
+  @Prop({
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point',
+    },
+    coordinates: {
+      type: [Number],
+      required: true, // Ce required est OK car c'est pour le sous-champ
+    },
+    address: {
+      type: String,
+      required: true,
+    },
+    city: {
+      type: String,
+      required: true,
+    },
+    governorate: {
+      type: String,
+      required: true,
+    },
+    postalCode: String,
+  })
   location!: {
     type: string;
     coordinates: [number, number];
@@ -67,7 +93,6 @@ export class Service {
   @Prop({ default: true })
   isActive!: boolean;
 
-  // 🆕 AJOUTEZ CES CHAMPS MANQUANTS
   @Prop({ default: true })
   isPendingApproval!: boolean;
 

@@ -2,11 +2,35 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IntentResponseDto } from '../dto/ai.dto';
+import {
+  Language,
+  INTENT_KEYWORDS_FR,
+  INTENT_KEYWORDS_EN,
+  INTENT_KEYWORDS_TN,
+  INTENT_KEYWORDS_AR,
+  CATEGORY_KEYWORDS_FR,
+  CATEGORY_KEYWORDS_EN,
+  CATEGORY_KEYWORDS_TN,
+  CATEGORY_KEYWORDS_AR,
+  SENTIMENT_POS,
+  SENTIMENT_NEG,
+  LANG_FINGERPRINTS,
+  TUNISIAN_CITIES,
+  PRICE_PATTERNS,
+  TIME_PATTERNS,
+  NEAR_ME_PATTERNS,
+  PEOPLE_PATTERN,
+} from './constants/language.constants';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEXT UTILITIES
+// ─────────────────────────────────────────────────────────────────────────────
 
 function normalize(text: string): string {
   return text
     .toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[''`]/g, "'")
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -18,120 +42,54 @@ function levenshtein(a: string, b: string): number {
   );
   for (let i = 1; i <= m; i++)
     for (let j = 1; j <= n; j++)
-      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
   return dp[m][n];
 }
 
 function fuzzyIncludes(text: string, keyword: string): boolean {
+  if (text.includes(keyword)) return true;
   const words = text.split(/\s+/);
-  const maxDist = keyword.length <= 4 ? 1 : 2;
+  const maxDist = keyword.length <= 3 ? 0 : keyword.length <= 5 ? 1 : keyword.length <= 8 ? 2 : 3;
   return words.some(w => levenshtein(w, keyword) <= maxDist);
 }
 
-const INTENT_KEYWORDS: Record<string, string[]> = {
-  search: [
-    'cherche','recherche','trouve','trouver','chercher','ou','proche','pres','autour','alentour',
-    'disponible','existe','voir','montrer','afficher','lister','liste','quels','quelles','proposer',
-    'find','search','look','near','around','show','list','available','where','which','display',
-    'fama','fayn','win','wini','wen','wena','feyn','fein',
-    'nchof','nchouf','nchuf','chof','chouf','chuf',
-    'najjem','najem','njjem','njem',
-    'qrib','grib','qriib','griib',
-    'hawali','howali','haweli',
-    'ena','bch','besh','beche',
-    'ابحث','بحث','اجد','فين','وين','فاما','نشوف','قريب','حوالي','موجود','كيفاش','كيفه',
-  ],
-  booking: [
-    'reserver','reservation','reserv','resrevation','resservation','reserrvation','resturant',
-    'book','rdv','rendezvous','rendez-vous','commander','commande','prendre','planifier','fixer',
-    'avoir','veux','voudrai','voudrais','voudrait','aimerai','aimerais','besoin',
-    'table','chambre','place','billet','booking','appointment','schedule','order','want','need','slot',
-    'hejez','hejiz','hajez','hjez','hjiz','heji','haji','hji','nheji','nhaji','nhejiz',
-    'bch','besh','beche','nheb','nhebb','nhab','nhabb','3andi','andi','a3ndi',
-    'mawid','mawad','maw3id','maw3ad','tabla','tebla','tabela',
-    'احجز','حجز','احجوزة','حجوزة','موعد','مواعيد','حاجز','نحب','عندي','طاولة',
-  ],
-  cancel: [
-    'annuler','annule','annulation','supprimer','supprime','supression','effacer','enlever','retirer',
-    'pas venir','peut pas venir','ne viendra','abandonner','cancel','cancellation','delete','remove',
-    "can't come",'wont come',"won't come",'abort','stop',
-    'lheg','alheg','batel','btal','btil','batil',
-    'ma njiich','manjiich','ma najich','manajich','ma jich','majich','mish ji','mishji',
-    'waqef','waqaf','wekf',
-    'الغ','الغاء','بطل','حذف','ما نجيش','ما نقدرش','وقف',
-  ],
-  help: [
-    'aide','aider','aidez','comment','quoi','que','quelles','expliquer','expliquez',
-    'comprendre','savoir','info','information','instruction','guide','tuto','tutoriel','manuel',
-    'help','how','what','explain','assistance','support','understand','tell me',
-    '3aweni','3awneni','aweni','awneni',
-    'chno','chnowa','shnoa','shnowa','chneya',
-    'kifech','kifash','kifesh','kefash','kefesh','kifah','kifeh','kifhe','kif',
-    'wesh','wech','wach','fehem','fehim','nfehim','nfehem',
-    'ساعدني','عاوني','كيفاش','كيفه','شنوا','كيف','ماذا','علاش','فهم',
-  ],
-  greeting: [
-    'bonjour','bonsoir','bonne nuit','salut','coucou','hello','allo',
-    'hi','hey','good morning','good evening','good night','howdy','greetings','sup','yo',
-    'ahla','ahlen','salam','slam','slema','marhba','marhaba','marhbik','marhbek',
-    'sba7 elkhir','sbah khir','sba7khir','msa elkhir','mesa khir',
-    'labas','labes','lbes','keefak','kifak','kifek','keefek',
-    'السلام عليكم','سلام','مرحبا','اهلا','صباح الخير','مساء الخير','كيف الحال','لاباس',
-  ],
-  feedback: [
-    'avis','note','noter','evaluer','evaluation','etoile','etoiles','commentaire',
-    'commenter','recommande','recommander','feedback','opinion','critique','review','satisfaction',
-    'rate','rating','stars','comment','recommend','experience',
-    'ra2yi','ra2y','rayo','ra3y','3ajbek','3ajbak','kif lkhidma','kifeh lkhidma',
-    'تقييم','رأيي','تعليق','نجوم','كيف الخدمة',
-  ],
-  goodbye: [
-    'au revoir','aurevoir','bye','adieu','bonne journee','bonne soiree','a bientot',
-    'ciao','tchao','goodbye','see you','later','take care','cya',
-    'beslema','bislama','bisslema','b slema','baraka','braka','yalla','yalllah','yela',
-    'مع السلامة','بسلامة','وداعا',
-  ],
-};
+// ─────────────────────────────────────────────────────────────────────────────
+// MERGE HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
 
-const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  restaurant: [
-    'restaurant','resturant','restorant','restoran','resto','restau',
-    'manger','repas','dejeuner','diner','nourriture','cuisine','food',
-    'cafe','caffet','cafeteria','bistro','brasserie','pizzeria',
-    'makla','mekla','nakol','mazel','makal','tajin',
-    'مطعم','اكل','طعام','ماكل','ناكل',
-  ],
-  hotel: [
-    'hotel','hotele','hotle','auberge','residence','logement','hebergement',
-    'chambre','nuitee','lodging','stay',
-    'otil','outil','byet','mahal','ghorfa',
-    'فندق','غرفة','اقامة','مبيت',
-  ],
-  spa: [
-    'spa','massage','bien-etre','hammam','sauna','relax','relaxation','detente',
-    'soin','beauty','wellness','hmmam','rlaksation',
-    'حمام','مساج','استرخاء',
-  ],
-  gym: [
-    'gym','fitness','sport','musculation','salle','entrainement',
-    'workout','yoga','pilates','crossfit',
-    'sala sport','sportsala','tmarran','tmaren',
-    'رياضة','صالة','تمارين',
-  ],
-  salon: [
-    'coiffeur','coiffeuse','salon','barbier','barber','beaute',
-    'coupe','coiffure','hair','ongle','manucure',
-    'hajjem','hejjem','hajjam','salle beaute',
-    'حلاق','صالون','تجميل',
-  ],
-};
+function mergeKeywords(
+  dicts: Record<string, string[]>[]
+): Record<string, string[]> {
+  const merged: Record<string, string[]> = {};
+  for (const dict of dicts) {
+    for (const [key, kws] of Object.entries(dict)) {
+      if (!merged[key]) merged[key] = [];
+      merged[key].push(...kws);
+    }
+  }
+  return merged;
+}
 
-const TUNISIAN_CITIES = [
-  'tunis','sousse','sfax','monastir','nabeul','hammamet','djerba','kairouan',
-  'bizerte','gabes','gafsa','tozeur','mahdia','zaghouan','siliana','le kef',
-  'jendouba','beja','ariana','manouba','ben arous','carthage','sidi bouzid',
-  'medenine','tataouine','kebili',
-];
+// Unified lookup tables (computed once at module load)
+const ALL_INTENT_KEYWORDS = mergeKeywords([
+  INTENT_KEYWORDS_FR,
+  INTENT_KEYWORDS_EN,
+  INTENT_KEYWORDS_TN,
+  INTENT_KEYWORDS_AR,
+]);
+
+const ALL_CATEGORY_KEYWORDS = mergeKeywords([
+  CATEGORY_KEYWORDS_FR,
+  CATEGORY_KEYWORDS_EN,
+  CATEGORY_KEYWORDS_TN,
+  CATEGORY_KEYWORDS_AR,
+]);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NLP SERVICE
+// ─────────────────────────────────────────────────────────────────────────────
 
 @Injectable()
 export class NlpService {
@@ -139,18 +97,40 @@ export class NlpService {
 
   constructor(private configService: ConfigService) {}
 
+  // ── PUBLIC: analyzeIntent ─────────────────────────────────────────────────
   async analyzeIntent(rawText: string): Promise<IntentResponseDto> {
     const text = normalize(rawText);
+    const detectedLang = this.detectLanguage(rawText, text);
 
+    // Score each intent — language-aware (boost score for matching lang dict)
     let bestIntent = 'unknown';
     let bestScore = 0;
 
-    for (const [intent, keywords] of Object.entries(INTENT_KEYWORDS)) {
+    const langDicts: Record<Language, Record<string, string[]>> = {
+      fr: INTENT_KEYWORDS_FR,
+      en: INTENT_KEYWORDS_EN,
+      tn: INTENT_KEYWORDS_TN,
+      ar: INTENT_KEYWORDS_AR,
+    };
+
+    for (const [intent, keywords] of Object.entries(ALL_INTENT_KEYWORDS)) {
       let score = 0;
       for (const keyword of keywords) {
         const nk = normalize(keyword);
-        if (text.includes(nk)) { score += 3; continue; }
+        // Full match
+        if (text === nk) { score += 6; continue; }
+        // Substring match
+        if (text.includes(nk)) {
+          // Bonus if it's in the detected language dict
+          const isLangMatch = langDicts[detectedLang]?.[intent]?.some(
+            k => normalize(k) === nk
+          );
+          score += isLangMatch ? 4 : 3;
+          continue;
+        }
+        // Fuzzy for single words
         if (!nk.includes(' ') && fuzzyIncludes(text, nk)) { score += 2; continue; }
+        // N-gram for multi-word
         if (nk.includes(' ') && this.ngramMatch(text, nk)) { score += 2; }
       }
       if (score > bestScore) { bestScore = score; bestIntent = intent; }
@@ -158,85 +138,255 @@ export class NlpService {
 
     if (bestScore < 2) bestIntent = 'unknown';
 
-    const entities = await this.extractEntities(rawText, text);
-    const sentiment = this.analyzeSentiment(text);
-    const confidence = Math.min(0.95, bestScore / 10);
+    const entities = await this.extractEntities(rawText, text, detectedLang);
+    const sentiment = this.analyzeSentiment(text, detectedLang);
+    const confidence = Math.min(0.97, bestScore / 12);
+
+    this.logger.debug(
+      `[NLP] lang=${detectedLang} | intent=${bestIntent} | score=${bestScore} | conf=${confidence.toFixed(2)}`
+    );
 
     return { intent: bestIntent, confidence, entities, sentiment };
   }
 
-  private ngramMatch(text: string, phrase: string): boolean {
-    const pw = phrase.split(' '), tw = text.split(' ');
-    for (let i = 0; i <= tw.length - pw.length; i++) {
-      const chunk = tw.slice(i, i + pw.length).join(' ');
-      if (levenshtein(chunk, phrase) <= 2) return true;
-    }
-    return false;
-  }
-
-  async extractEntities(rawText: string, normalizedText?: string): Promise<any> {
+  // ── PUBLIC: extractEntities ───────────────────────────────────────────────
+  async extractEntities(
+    rawText: string,
+    normalizedText?: string,
+    lang?: Language,
+  ): Promise<any> {
     const text = normalizedText || normalize(rawText);
-    const entities: any = {};
+    const detectedLang = lang || this.detectLanguage(rawText, text);
+    const entities: any = { detectedLang };
 
-    for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-      for (const kw of keywords) {
-        const nk = normalize(kw);
-        if (text.includes(nk) || fuzzyIncludes(text, nk)) { entities.category = category; break; }
+    // 1. Category — try lang-specific first, then all
+    const catDicts: Record<Language, Record<string, string[]>> = {
+      fr: CATEGORY_KEYWORDS_FR,
+      en: CATEGORY_KEYWORDS_EN,
+      tn: CATEGORY_KEYWORDS_TN,
+      ar: CATEGORY_KEYWORDS_AR,
+    };
+
+    const primaryDict = catDicts[detectedLang];
+    outer:
+    for (const dict of [primaryDict, ALL_CATEGORY_KEYWORDS]) {
+      for (const [category, keywords] of Object.entries(dict)) {
+        for (const kw of keywords) {
+          const nk = normalize(kw);
+          if (text.includes(nk) || (!nk.includes(' ') && fuzzyIncludes(text, nk))) {
+            entities.category = category;
+            break outer;
+          }
+        }
       }
       if (entities.category) break;
     }
 
-    const priceMatch = text.match(/(\d+)\s*(?:dt|dinar|tnd|euro|€|\$)?/i);
-    if (priceMatch && parseInt(priceMatch[1]) > 0) entities.price = parseInt(priceMatch[1], 10);
-
-    const peopleMatch = text.match(/(\d+)\s*(?:personnes?|gens?|pax|nafar|نفر|اشخاص)/i);
-    if (peopleMatch) entities.guests = parseInt(peopleMatch[1], 10);
-
-    for (const city of TUNISIAN_CITIES) {
-      if (text.includes(city) || fuzzyIncludes(text, city)) { entities.locationName = city; break; }
+    // 2. Price
+    for (const pattern of PRICE_PATTERNS) {
+      const m = rawText.match(pattern);
+      if (m) {
+        const val = parseFloat((m[1] || m[0]).replace(',', '.'));
+        if (!isNaN(val) && val > 0) { entities.price = val; break; }
+      }
     }
 
-    const timePatterns = [
-      /(\d{1,2}\/\d{1,2}\/\d{4})/,
-      /(\d{1,2})\s*[h:]\s*(\d{0,2})/,
-      /demain|tomorrow|ghudwa|غدوا|غدا/i,
-      /ce soir|tonight|llila|الليلة/i,
-      /aujourd'hui|today|lyoum|اليوم/i,
-    ];
-    for (const p of timePatterns) {
-      const m = rawText.match(p);
+    // 3. Guests / people
+    const pm = rawText.match(PEOPLE_PATTERN);
+    if (pm) entities.guests = parseInt(pm[1], 10);
+
+    // 4. Location (city)
+    for (const city of TUNISIAN_CITIES) {
+      const nc = normalize(city);
+      if (text.includes(nc) || fuzzyIncludes(text, nc)) {
+        entities.locationName = city;
+        break;
+      }
+    }
+
+    // 5. Time reference
+    for (const pattern of TIME_PATTERNS) {
+      const m = rawText.match(pattern);
       if (m) { entities.timeReference = m[0]; break; }
     }
 
-    const nearPatterns = ['pres de moi','proche de moi','near me','hawali','qrib meni','grib meni','قريب مني','حوالي'];
-    entities.wantsNearby = nearPatterns.some(p => text.includes(normalize(p)));
+    // 6. Near me
+    entities.wantsNearby = NEAR_ME_PATTERNS.some(p => text.includes(normalize(p)));
 
     return entities;
   }
 
-  private analyzeSentiment(text: string): 'positive' | 'negative' | 'neutral' {
-    const pos = ['bon','super','excellent','genial','parfait','bien','content','satisfait','merci',
-                 'good','great','nice','love','bravo','mzyan','mezian','behi','bahi','مزيان','ممتاز','شكرا'];
-    const neg = ['mauvais','terrible','horrible','decu','probleme','erreur','insatisfait','dommage',
-                 'bad','awful','hate','wrong','khaib','خايب','وحش'];
+  // ── PUBLIC: detectLanguage ────────────────────────────────────────────────
+  detectLanguage(rawText: string, normalizedText?: string): Language {
+    const text = normalizedText || normalize(rawText);
+
+    // Step 1 — Arabic Unicode score (fastest signal)
+    const arabicChars = (rawText.match(/[\u0600-\u06FF]/g) || []).length;
+    const totalChars = rawText.replace(/\s/g, '').length || 1;
+    if (arabicChars / totalChars > 0.35) return 'ar';
+
+    // Step 2 — Fingerprint scoring (weighted)
+    const scores: Record<Language, number> = { tn: 0, fr: 0, en: 0, ar: 0 };
+
+    for (const [lang, words] of Object.entries(LANG_FINGERPRINTS) as [Language, string[]][]) {
+      for (const word of words) {
+        const nw = normalize(word);
+        if (text === nw) { scores[lang] += 4; continue; }
+        // Whole-word match (surrounded by spaces or boundaries)
+        const wordRe = new RegExp(`(^|\\s)${nw}(\\s|$)`);
+        if (wordRe.test(text)) { scores[lang] += 3; continue; }
+        if (text.includes(nw)) scores[lang] += 2;
+      }
+    }
+
+    // Step 3 — pick winner, with Tunisian bias for ties (most specific dialect)
+    const maxScore = Math.max(...Object.values(scores));
+    if (maxScore === 0) return 'fr'; // default
+
+    // Tunisian wins ties (most distinctive / hardest to confuse)
+    if (scores.tn === maxScore) return 'tn';
+    if (scores.ar === maxScore) return 'ar';
+    if (scores.fr === maxScore) return 'fr';
+    return 'en';
+  }
+
+  // ── PUBLIC: analyzeSentiment ──────────────────────────────────────────────
+  analyzeSentiment(
+    text: string,
+    lang?: Language,
+  ): 'positive' | 'negative' | 'neutral' {
+    // Collect from detected lang first (weighted), then all others (half weight)
+    const detectedLang = lang || 'fr';
+
     let p = 0, n = 0;
-    for (const w of pos) if (text.includes(w)) p++;
-    for (const w of neg) if (text.includes(w)) n++;
+
+    const allLangs: Language[] = ['fr', 'en', 'tn', 'ar'];
+    for (const l of allLangs) {
+      const weight = l === detectedLang ? 2 : 1;
+      for (const w of SENTIMENT_POS[l]) if (text.includes(normalize(w))) p += weight;
+      for (const w of SENTIMENT_NEG[l]) if (text.includes(normalize(w))) n += weight;
+    }
+
     if (p > n) return 'positive';
     if (n > p) return 'negative';
     return 'neutral';
   }
 
+  // ── PUBLIC: generateResponse ──────────────────────────────────────────────
   async generateResponse(intent: string, entities: any, context?: any): Promise<string> {
-    const map: Record<string, () => string> = {
-      search:   () => { let r = 'Je cherche '; if (entities.category) r += `des ${entities.category}s `; if (entities.locationName) r += `à ${entities.locationName} `; return r + ': voici les résultats.'; },
-      booking:  () => { let r = 'Je vous aide à réserver. '; if (entities.category) r += `Pour un ${entities.category}, `; return r + 'quand souhaitez-vous venir ?'; },
-      cancel:   () => context?.hasReservations ? 'Laquelle souhaitez-vous annuler ?' : "Pas de réservation active.",
-      help:     () => '🤖 Tapez **aide** pour voir les commandes disponibles.',
-      greeting: () => ['Bonjour! Kifeh nel3awnek?','Hello! How can I help?','أهلاً! كيفاش نعاونك؟'][Math.floor(Math.random()*3)],
-      feedback: () => 'Merci ! Pour quel service voulez-vous laisser un avis ?',
-      goodbye:  () => ['Au revoir!','Beslema!','مع السلامة!'][Math.floor(Math.random()*3)],
+    const lang: Language = (entities.detectedLang as Language) || 'fr';
+
+    const map: Record<string, Record<Language, () => string>> = {
+      search: {
+        fr: () => {
+          let r = 'Je recherche ';
+          if (entities.category) r += `des ${entities.category}s `;
+          if (entities.locationName) r += `à ${entities.locationName} `;
+          if (entities.wantsNearby) r += 'près de vous ';
+          return r + ': voici les résultats.';
+        },
+        en: () => {
+          let r = 'Searching ';
+          if (entities.category) r += `for ${entities.category}s `;
+          if (entities.locationName) r += `in ${entities.locationName} `;
+          if (entities.wantsNearby) r += 'near you ';
+          return r + ': here are the results.';
+        },
+        tn: () => {
+          let r = 'Nchof ';
+          if (entities.category) r += `${entities.category} `;
+          if (entities.locationName) r += `fi ${entities.locationName} `;
+          if (entities.wantsNearby) r += 'qribek ';
+          return r + ': haw el natayej.';
+        },
+        ar: () => {
+          let r = 'أبحث ';
+          if (entities.category) r += `عن ${entities.category} `;
+          if (entities.locationName) r += `في ${entities.locationName} `;
+          if (entities.wantsNearby) r += 'بالقرب منك ';
+          return r + ': إليك النتائج.';
+        },
+      },
+      booking: {
+        fr: () => {
+          let r = 'Je vous aide à réserver. ';
+          if (entities.category) r += `Pour un ${entities.category}, `;
+          if (entities.guests) r += `pour ${entities.guests} personne(s), `;
+          return r + 'quand souhaitez-vous venir ?';
+        },
+        en: () => {
+          let r = "Let me help you book. ";
+          if (entities.category) r += `For a ${entities.category}, `;
+          if (entities.guests) r += `for ${entities.guests} guest(s), `;
+          return r + 'when would you like to come?';
+        },
+        tn: () => {
+          let r = 'Naawenek tehji. ';
+          if (entities.category) r += `Bech tehji ${entities.category}, `;
+          if (entities.guests) r += `l ${entities.guests} nefar, `;
+          return r + 'waqteh teb9a tji?';
+        },
+        ar: () => {
+          let r = 'سأساعدك في الحجز. ';
+          if (entities.category) r += `لحجز ${entities.category}، `;
+          if (entities.guests) r += `لـ ${entities.guests} شخص، `;
+          return r + 'متى تريد أن تأتي؟';
+        },
+      },
+      cancel: {
+        fr: () => context?.hasReservations
+          ? 'Laquelle de vos réservations souhaitez-vous annuler ?'
+          : "Vous n'avez aucune réservation active.",
+        en: () => context?.hasReservations
+          ? 'Which reservation would you like to cancel?'
+          : 'You have no active reservations.',
+        tn: () => context?.hasReservations
+          ? 'Aneha el hjez li teb9a tbattel?'
+          : "Ma3andekch 7ejz ta3tich.",
+        ar: () => context?.hasReservations
+          ? 'أي حجز تريد أن تلغي؟'
+          : 'ليس لديك أي حجز نشط.',
+      },
+      help: {
+        fr: () => '🤖 Tapez **aide** pour voir les commandes. Je parle 🇫🇷 🇬🇧 🇹🇳 !',
+        en: () => '🤖 Type **help** to see commands. I speak 🇫🇷 🇬🇧 🇹🇳 !',
+        tn: () => '🤖 Ekteb **mosa3da** bech tchouf el commandes. Nfahem Faransawi, Anglais w Tunisi!',
+        ar: () => '🤖 اكتب **مساعدة** لرؤية الأوامر. أتحدث الفرنسية والإنجليزية والعربية!',
+      },
+      greeting: {
+        fr: () => 'Bonjour ! Kifeh nel3awnek ? 😊',
+        en: () => 'Hello! How can I help you today? 😊',
+        tn: () => 'Ahla! Kifeh nel3awnek? 😊',
+        ar: () => 'مرحبا! كيف أساعدك؟ 😊',
+      },
+      feedback: {
+        fr: () => 'Merci pour votre retour ! Pour quel service souhaitez-vous laisser un avis ?',
+        en: () => 'Thanks for your feedback! Which service would you like to review?',
+        tn: () => 'Shokran 3la ra2yek! 3leh khidma tehb ta3ti ra2yek?',
+        ar: () => 'شكراً على رأيك! لأي خدمة تريد تقييم؟',
+      },
+      goodbye: {
+        fr: () => 'Au revoir ! Bonne journée ! 👋',
+        en: () => 'Goodbye! Have a great day! 👋',
+        tn: () => 'Beslema! Nhar sa3id! 👋',
+        ar: () => 'مع السلامة! يوم سعيد! 👋',
+      },
     };
-    return (map[intent] ?? map.help)();
+
+    const intentMap = map[intent];
+    if (!intentMap) return map.help[lang]();
+    return intentMap[lang]?.() ?? intentMap['fr']?.() ?? '';
+  }
+
+  // ── PRIVATE: n-gram fuzzy match ───────────────────────────────────────────
+  private ngramMatch(text: string, phrase: string): boolean {
+    const pw = phrase.split(' ');
+    const tw = text.split(' ');
+    if (tw.length < pw.length) return false;
+    for (let i = 0; i <= tw.length - pw.length; i++) {
+      const chunk = tw.slice(i, i + pw.length).join(' ');
+      if (levenshtein(chunk, phrase) <= Math.min(2, Math.floor(phrase.length / 5))) return true;
+    }
+    return false;
   }
 }
