@@ -1,66 +1,157 @@
+// app/provider/dashboard/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useAuth } from '@/providers/AuthProvider';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import Link from 'next/link';
-import { servicesApi } from '@/lib/api/services';
-import { reservationsApi } from '@/lib/api/reservations';
-import { ServicesIcon, CalendarIcon, StarIcon, LocationIcon } from '@/components/ui/Icons';
+import {
+  ServicesIcon,
+  BookingIcon,
+  LocationIcon,
+  ClockIcon,
+  ReviewIcon,
+  TrendingUpIcon,
+} from '@/components/ui/Icons';
 
-export default function ProviderDashboardPage() {
-  const [stats, setStats] = useState({
-    totalServices: 0,
-    pendingBookings: 0,
-    confirmedBookings: 0,
-    totalRevenue: 0,
-    averageRating: 0,
-  });
-  const [loading, setLoading] = useState(true);
+export default function ProviderDashboard() {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const services = await servicesApi.getByProvider();
-        const reservations = await reservationsApi.getProviderReservations();
-        
-        setStats({
-          totalServices: services.length,
-          pendingBookings: reservations.filter(r => r.status === 'pending').length,
-          confirmedBookings: reservations.filter(r => r.status === 'confirmed').length,
-          totalRevenue: reservations.filter(r => r.status === 'completed').reduce((sum, r) => sum + r.price, 0),
-          averageRating: 4.5, // À remplacer par API
-        });
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStats();
-  }, []);
+    if (!isLoading && (!user || user.role !== 'provider')) {
+      router.push('/');
+    }
+  }, [user, isLoading, router]);
 
-  if (loading) return <div className="flex justify-center py-12"><div className="spinner" /></div>;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[rgb(var(--background))]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[rgb(var(--primary))]"></div>
+      </div>
+    );
+  }
+
+  if (!user || user.role !== 'provider') {
+    return null;
+  }
+
+  // Données fictives
+  const stats = [
+    { label: 'Services actifs', value: '12', icon: <ServicesIcon className="w-6 h-6" />, change: '+2' },
+    { label: 'Réservations ce mois', value: '48', icon: <BookingIcon className="w-6 h-6" />, change: '+15%' },
+    { label: 'Note moyenne', value: '4.8', icon: <ReviewIcon className="w-6 h-6" />, change: '+0.3' },
+    { label: 'Taux d\'occupation', value: '85%', icon: <TrendingUpIcon className="w-6 h-6" />, change: '+12%' },
+  ];
+
+  const recentBookings = [
+    { id: 1, client: 'Marie D.', service: 'Coupe femme', date: '2024-05-15', time: '14:00', status: 'confirmé' },
+    { id: 2, client: 'Thomas L.', service: 'Massage', date: '2024-05-15', time: '16:30', status: 'en attente' },
+    { id: 3, client: 'Sophie M.', service: 'Manucure', date: '2024-05-16', time: '10:00', status: 'confirmé' },
+  ];
 
   return (
-    <div className="min-h-screen bg-surface">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="card p-6 mb-8">
-          <h1 className="text-2xl font-bold">Tableau de bord</h1>
-          <p className="text-muted mt-2">Bienvenue sur votre espace fournisseur</p>
+    <div className="min-h-screen bg-[rgb(var(--background))]">
+      <div className="container-app py-8">
+        {/* En-tête */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-display text-[rgb(var(--foreground))] mb-2">
+            Tableau de bord
+          </h1>
+          <p className="text-[rgb(var(--foreground-muted))]">
+            Bienvenue {user.firstName} ! Voici un aperçu de votre activité.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-          <div className="card text-center"><ServicesIcon className="w-8 h-8 text-primary mx-auto mb-2" /><p className="text-2xl font-bold">{stats.totalServices}</p><p className="text-sm">Services</p></div>
-          <div className="card text-center"><CalendarIcon className="w-8 h-8 text-warning mx-auto mb-2" /><p className="text-2xl font-bold">{stats.pendingBookings}</p><p className="text-sm">En attente</p></div>
-          <div className="card text-center"><CalendarIcon className="w-8 h-8 text-success mx-auto mb-2" /><p className="text-2xl font-bold">{stats.confirmedBookings}</p><p className="text-sm">Confirmées</p></div>
-          <div className="card text-center"><ServicesIcon className="w-8 h-8 text-primary mx-auto mb-2" /><p className="text-2xl font-bold">{stats.totalRevenue} DT</p><p className="text-sm">Revenus</p></div>
-          <div className="card text-center"><StarIcon className="w-8 h-8 text-warning mx-auto mb-2" /><p className="text-2xl font-bold">{stats.averageRating.toFixed(1)}</p><p className="text-sm">Note moyenne</p></div>
+        {/* Statistiques */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {stats.map((stat) => (
+            <div key={stat.label} className="card p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-full bg-[rgba(var(--primary),0.1)] flex items-center justify-center text-[rgb(var(--primary))]">
+                  {stat.icon}
+                </div>
+                <span className="text-sm font-semibold text-green-600 bg-green-100 px-2 py-1 rounded">
+                  {stat.change}
+                </span>
+              </div>
+              <p className="text-2xl font-display text-[rgb(var(--foreground))] mb-1">{stat.value}</p>
+              <p className="text-sm text-[rgb(var(--foreground-muted))]">{stat.label}</p>
+            </div>
+          ))}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Link href="/provider/services" className="card text-center"><ServicesIcon className="w-10 h-10 text-primary mx-auto mb-3" /><h3 className="font-semibold">Mes services</h3><p className="text-sm text-muted">Gérer</p></Link>
-          <Link href="/provider/location" className="card text-center"><LocationIcon className="w-10 h-10 text-primary mx-auto mb-3" /><h3 className="font-semibold">Localisation</h3><p className="text-sm text-muted">Ma position</p></Link>
-          <Link href="/provider/availability" className="card text-center"><CalendarIcon className="w-10 h-10 text-primary mx-auto mb-3" /><h3 className="font-semibold">Disponibilités</h3><p className="text-sm text-muted">Créneaux</p></Link>
-          <Link href="/provider/bookings" className="card text-center"><CalendarIcon className="w-10 h-10 text-primary mx-auto mb-3" /><h3 className="font-semibold">Réservations</h3><p className="text-sm text-muted">Commandes</p></Link>
+        {/* Actions rapides */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <Link href="/provider/services" className="card hover-lift p-4 text-center group">
+            <div className="w-12 h-12 rounded-full bg-[rgba(var(--primary),0.1)] flex items-center justify-center mx-auto mb-3 text-[rgb(var(--primary))] group-hover:scale-110 transition-transform">
+              <ServicesIcon className="w-6 h-6" />
+            </div>
+            <span className="font-semibold text-[rgb(var(--foreground))]">Gérer services</span>
+          </Link>
+
+          <Link href="/provider/availability" className="card hover-lift p-4 text-center group">
+            <div className="w-12 h-12 rounded-full bg-[rgba(var(--primary),0.1)] flex items-center justify-center mx-auto mb-3 text-[rgb(var(--primary))] group-hover:scale-110 transition-transform">
+              <ClockIcon className="w-6 h-6" />
+            </div>
+            <span className="font-semibold text-[rgb(var(--foreground))]">Disponibilités</span>
+          </Link>
+
+          <Link href="/provider/location" className="card hover-lift p-4 text-center group">
+            <div className="w-12 h-12 rounded-full bg-[rgba(var(--primary),0.1)] flex items-center justify-center mx-auto mb-3 text-[rgb(var(--primary))] group-hover:scale-110 transition-transform">
+              <LocationIcon className="w-6 h-6" />
+            </div>
+            <span className="font-semibold text-[rgb(var(--foreground))]">Localisation</span>
+          </Link>
+
+          <Link href="/provider/bookings" className="card hover-lift p-4 text-center group">
+            <div className="w-12 h-12 rounded-full bg-[rgba(var(--primary),0.1)] flex items-center justify-center mx-auto mb-3 text-[rgb(var(--primary))] group-hover:scale-110 transition-transform">
+              <BookingIcon className="w-6 h-6" />
+            </div>
+            <span className="font-semibold text-[rgb(var(--foreground))]">Réservations</span>
+          </Link>
+        </div>
+
+        {/* Réservations récentes */}
+        <div className="card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-display text-[rgb(var(--foreground))]">
+              Réservations récentes
+            </h2>
+            <Link href="/provider/bookings" className="text-sm text-[rgb(var(--primary))] hover:underline">
+              Voir toutes
+            </Link>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[rgb(var(--border))]">
+                  <th className="text-left py-3 px-4 text-[rgb(var(--foreground-muted))] font-semibold">Client</th>
+                  <th className="text-left py-3 px-4 text-[rgb(var(--foreground-muted))] font-semibold">Service</th>
+                  <th className="text-left py-3 px-4 text-[rgb(var(--foreground-muted))] font-semibold">Date</th>
+                  <th className="text-left py-3 px-4 text-[rgb(var(--foreground-muted))] font-semibold">Heure</th>
+                  <th className="text-left py-3 px-4 text-[rgb(var(--foreground-muted))] font-semibold">Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentBookings.map((booking) => (
+                  <tr key={booking.id} className="border-b border-[rgb(var(--border))] hover:bg-[rgba(var(--primary),0.05)] transition-colors">
+                    <td className="py-3 px-4 text-[rgb(var(--foreground))]">{booking.client}</td>
+                    <td className="py-3 px-4 text-[rgb(var(--foreground))]">{booking.service}</td>
+                    <td className="py-3 px-4 text-[rgb(var(--foreground-muted))]">{booking.date}</td>
+                    <td className="py-3 px-4 text-[rgb(var(--foreground-muted))]">{booking.time}</td>
+                    <td className="py-3 px-4">
+                      <span className={`badge ${
+                        booking.status === 'confirmé' ? 'badge-success' : 'badge-warning'
+                      }`}>
+                        {booking.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

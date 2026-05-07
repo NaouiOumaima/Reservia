@@ -1,4 +1,10 @@
+// app/page.tsx
+'use client';
+
 import Link from 'next/link';
+import { useAuth } from '@/providers/AuthProvider';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import {
   BedIcon,
   PlateEatingIcon,
@@ -63,12 +69,48 @@ const STATS = [
 // ─────────────────────────────────────────────────────────────
 
 export default function HomePage() {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+
+  // Redirection basée sur le rôle de l'utilisateur
+  useEffect(() => {
+    if (!isLoading && user) {
+      if (user.role === 'client') {
+        router.push('/client/dashboard');
+      } else if (user.role === 'provider') {
+        router.push('/provider/dashboard');
+      } else if (user.role === 'admin') {
+        router.push('/admin/dashboard');
+      }
+    }
+  }, [user, isLoading, router]);
+
   const testimonials = [
     { name: 'Marie D.', initials: 'MD', comment: 'Plateforme géniale, j\'ai trouvé un coiffeur en 5 minutes !' },
     { name: 'Thomas L.', initials: 'TL', comment: 'Réservation simple et rapide, je recommande vivement !' },
     { name: 'Sophie M.', initials: 'SM', comment: 'Les meilleurs services locaux sont sur Reservia. Très pratique !' },
   ];
 
+  // Afficher un loader pendant le chargement
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[rgb(var(--background))]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[rgb(var(--primary))]"></div>
+      </div>
+    );
+  }
+
+  // Si l'utilisateur est connecté, on redirige (le useEffect s'en charge)
+  // Pendant la redirection, afficher un loader
+  if (user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[rgb(var(--background))]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[rgb(var(--primary))]"></div>
+      </div>
+    );
+  }
+
+  // Page d'accueil pour les visiteurs non connectés
   return (
     <div className="min-h-screen bg-[rgb(var(--background))]">
 

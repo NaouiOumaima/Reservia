@@ -6,9 +6,10 @@ export interface AdminStats {
     total: number;
     clients: number;
     providers: number;
-    newThisMonth: number;
-    growthRate: number;
+    admins: number;
+    newThisPeriod: number;
     activeLast30Days: number;
+    growthRate: number;
   };
   services: {
     total: number;
@@ -22,44 +23,36 @@ export interface AdminStats {
     cancelled: number;
     pending: number;
   };
-  charts: {
-    usersByMonth: { month: string; clients: number; providers: number }[];
-    categoriesByUsage: { category: string; count: number; percentage: number }[];
-    topCategories: { category: string; bookings: number }[];
-    reservationsByStatus: { status: string; count: number; color: string }[];
+  reviews: {
+    total: number;
+    averageRating: number;
   };
-  geolocation: {
-    byGovernorate: {
-      governorate: string;
-      clients: number;
-      providers: number;
-      services: number;
-      bookings: number;
-      percentage: number;
-    }[];
+  charts: {
+    usersByMonth: { month: string; clients: number; providers: number; total: number }[];
+    servicesByMonth: { month: string; count: number }[];
+    reservationsByMonth: { month: string; count: number }[];
+    reservationsByDayOfWeek: { day: string; count: number; percentage: number }[];
+    reservationsByHour: { hour: number; count: number }[];
+    categoriesDistribution: { category: string; count: number; percentage: number; color: string }[];
+    topCategories: { category: string; bookings: number }[];
+    governorateStats: { governorate: string; clients: number; providers: number; services: number; bookings: number; percentage: number }[];
+  };
+  engagement: {
+    clientRetention: number;
+    providerActivity: number;
+    conversionRate: number;
+    satisfactionScore: number;
+    repeatCustomers: number;
   };
   trending: {
     topProviders: { id: string; name: string; bookings: number; rating: number }[];
     topServices: { id: string; name: string; category: string; bookings: number }[];
   };
-  engagement: {
-    clientRetentionRate: number;
-    providerActivityRate: number;
-    avgResponseTime: number;
-    satisfactionScore: number;
-  };
 }
 
 export const adminApi = {
   getStats: async (timeRange: 'week' | 'month' | 'year' = 'month'): Promise<AdminStats> => {
-    try {
-      const response = await apiClient.get('/admin/stats', {
-        params: { timeRange }
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching admin stats:', error);
-      throw error;
-    }
+    const response = await apiClient.get('/admin/stats', { params: { timeRange } });
+    return response.data;
   },
 };

@@ -1,68 +1,356 @@
-// app/admin/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { adminApi, AdminStats } from '@/lib/api/admin/index';
-import { TUNISIAN_GOVERNORATES } from '@/lib/api/constants/governorates';
-import { 
-  UsersIcon, 
-  BookingIcon, 
-  ServicesIcon, 
-  ReviewIcon,
-  StarIcon,
-  MapIcon
-} from '@/components/ui/Icons';
+import { adminApi, AdminStats } from '@/lib/api/admin/admin.api';
 
+// Chart.js imports
+import {
+  Chart,
+  LineElement,
+  BarElement,
+  ArcElement,
+  PointElement,
+  RadarController,
+  LineController,
+  BarController,
+  DoughnutController,
+  CategoryScale,
+  LinearScale,
+  RadialLinearScale,
+  Tooltip,
+  Legend,
+  Filler,
+} from 'chart.js';
+
+Chart.register(
+  LineElement, BarElement, ArcElement, PointElement,
+  RadarController, LineController, BarController, DoughnutController,
+  CategoryScale, LinearScale, RadialLinearScale,
+  Tooltip, Legend, Filler,
+);
+
+const fmt = (n: number) => n?.toLocaleString('fr-TN') ?? '0';
+
+function useChart(
+  ref: React.RefObject<HTMLCanvasElement | null>,
+  build: () => Chart | null,
+  deps: unknown[],
+) {
+  const instance = useRef<Chart | null>(null);
+  useEffect(() => {
+    instance.current?.destroy();
+    instance.current = null;
+    if (ref.current) instance.current = build();
+    return () => { instance.current?.destroy(); };
+  }, deps);
+}
+
+const COLORS = {
+  blue: '#378ADD',
+  green: '#1D9E75',
+  purple: '#7F77DD',
+  amber: '#EF9F27',
+  pink: '#D4537E',
+  red: '#E24B4A',
+  gray: '#888780',
+};
+
+const CHART_DEFAULTS = {
+  font: { family: "'Outfit', 'Inter', sans-serif", size: 11 },
+  color: 'rgba(100,100,100,0.7)',
+  grid: 'rgba(120,120,120,0.1)',
+};
+
+// Chart Components
+function UsersLineChart({ data }: { data: AdminStats['charts']['usersByMonth'] }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useChart(ref, () => {
+    if (!ref.current || !data?.length) return null;
+    return new Chart(ref.current, {
+      type: 'line',
+      data: {
+        labels: data.map(d => d.month),
+        datasets: [
+          {
+            label: 'Clients', data: data.map(d => d.clients),
+            borderColor: COLORS.blue, backgroundColor: 'rgba(55,138,221,0.08)',
+            tension: 0.4, fill: true, borderWidth: 2, pointRadius: 3, pointBackgroundColor: COLORS.blue,
+          },
+          {
+            label: 'Prestataires', data: data.map(d => d.providers),
+            borderColor: COLORS.green, backgroundColor: 'transparent',
+            tension: 0.4, borderWidth: 2, borderDash: [4, 3], pointRadius: 3, pointBackgroundColor: COLORS.green,
+          },
+          {
+            label: 'Total', data: data.map(d => d.total),
+            borderColor: COLORS.purple, backgroundColor: 'transparent',
+            tension: 0.4, borderWidth: 1.5, borderDash: [2, 4], pointRadius: 0,
+          },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: CHART_DEFAULTS.grid }, ticks: { color: CHART_DEFAULTS.color, font: CHART_DEFAULTS.font } },
+          y: { grid: { color: CHART_DEFAULTS.grid }, ticks: { color: CHART_DEFAULTS.color, font: CHART_DEFAULTS.font }, beginAtZero: false },
+        },
+      },
+    });
+  }, [data]);
+  return <canvas ref={ref} className="w-full h-full" />;
+}
+
+function ReservationsBarChart({ data }: { data: AdminStats['charts']['reservationsByMonth'] }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useChart(ref, () => {
+    if (!ref.current || !data?.length) return null;
+    const max = Math.max(...data.map(d => d.count));
+    return new Chart(ref.current, {
+      type: 'bar',
+      data: {
+        labels: data.map(d => d.month),
+        datasets: [{
+          label: 'Réservations',
+          data: data.map(d => d.count),
+          backgroundColor: data.map(d => d.count === max ? '#042C53' : 'rgba(55,138,221,0.22)'),
+          borderRadius: 5,
+          borderSkipped: false,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: CHART_DEFAULTS.color, font: CHART_DEFAULTS.font } },
+          y: { grid: { color: CHART_DEFAULTS.grid }, ticks: { color: CHART_DEFAULTS.color, font: CHART_DEFAULTS.font } },
+        },
+      },
+    });
+  }, [data]);
+  return <canvas ref={ref} className="w-full h-full" />;
+}
+
+function StatusDoughnut({ data }: { data: AdminStats['reservations'] }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useChart(ref, () => {
+    if (!ref.current) return null;
+    return new Chart(ref.current, {
+      type: 'doughnut',
+      data: {
+        labels: ['Complétées', 'En attente', 'Annulées'],
+        datasets: [{
+          data: [data.completed, data.pending, data.cancelled],
+          backgroundColor: [COLORS.green, COLORS.amber, COLORS.red],
+          borderWidth: 0,
+          hoverOffset: 4,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '72%',
+        plugins: { legend: { display: false } },
+      },
+    });
+  }, [data]);
+  return <canvas ref={ref} className="w-full h-full" />;
+}
+
+function WeekdayRadar({ data }: { data: AdminStats['charts']['reservationsByDayOfWeek'] }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useChart(ref, () => {
+    if (!ref.current || !data?.length) return null;
+    return new Chart(ref.current, {
+      type: 'radar',
+      data: {
+        labels: data.map(d => d.day.substring(0, 3)),
+        datasets: [{
+          data: data.map(d => d.count),
+          backgroundColor: 'rgba(127,119,221,0.15)',
+          borderColor: COLORS.purple,
+          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: COLORS.purple,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          r: {
+            grid: { color: CHART_DEFAULTS.grid },
+            angleLines: { color: CHART_DEFAULTS.grid },
+            ticks: { display: false },
+            pointLabels: { color: CHART_DEFAULTS.color, font: CHART_DEFAULTS.font },
+          },
+        },
+      },
+    });
+  }, [data]);
+  return <canvas ref={ref} className="w-full h-full" />;
+}
+
+function HourlyLineChart({ data }: { data: AdminStats['charts']['reservationsByHour'] }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useChart(ref, () => {
+    if (!ref.current || !data?.length) return null;
+    const filtered = data.filter(d => d.count > 0 || (d.hour >= 6 && d.hour <= 22));
+    return new Chart(ref.current, {
+      type: 'line',
+      data: {
+        labels: filtered.map(d => `${d.hour}h`),
+        datasets: [{
+          data: filtered.map(d => d.count),
+          borderColor: COLORS.pink,
+          backgroundColor: 'rgba(212,83,126,0.08)',
+          tension: 0.4, fill: true, borderWidth: 2, pointRadius: 2, pointBackgroundColor: COLORS.pink,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: CHART_DEFAULTS.color, font: CHART_DEFAULTS.font, maxRotation: 0 } },
+          y: { grid: { color: CHART_DEFAULTS.grid }, ticks: { color: CHART_DEFAULTS.color, font: CHART_DEFAULTS.font } },
+        },
+      },
+    });
+  }, [data]);
+  return <canvas ref={ref} className="w-full h-full" />;
+}
+
+function EngagementRadar({ data }: { data: AdminStats['engagement'] }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useChart(ref, () => {
+    if (!ref.current) return null;
+    return new Chart(ref.current, {
+      type: 'radar',
+      data: {
+        labels: ['Fidélisation', 'Activité', 'Conversion', 'Satisfaction', 'Récurrence'],
+        datasets: [{
+          data: [
+            data.clientRetention,
+            data.providerActivity,
+            data.conversionRate,
+            data.satisfactionScore * 20,
+            data.repeatCustomers,
+          ],
+          backgroundColor: 'rgba(29,158,117,0.15)',
+          borderColor: COLORS.green,
+          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: COLORS.green,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          r: {
+            min: 0, max: 100,
+            grid: { color: CHART_DEFAULTS.grid },
+            angleLines: { color: CHART_DEFAULTS.grid },
+            ticks: { display: false },
+            pointLabels: { color: CHART_DEFAULTS.color, font: { size: 10 } },
+          },
+        },
+      },
+    });
+  }, [data]);
+  return <canvas ref={ref} className="w-full h-full" />;
+}
+
+function CategoriesPie({ data }: { data: AdminStats['charts']['categoriesDistribution'] }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useChart(ref, () => {
+    if (!ref.current || !data?.length) return null;
+    return new Chart(ref.current, {
+      type: 'doughnut',
+      data: {
+        labels: data.map(d => d.category),
+        datasets: [{
+          data: data.map(d => d.count),
+          backgroundColor: data.map(d => d.color),
+          borderWidth: 0,
+          hoverOffset: 4,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '60%',
+        plugins: { legend: { display: false } },
+      },
+    });
+  }, [data]);
+  return <canvas ref={ref} className="w-full h-full" />;
+}
+
+function ChartLegend({ items }: { items: { color: string; label: string }[] }) {
+  return (
+    <div className="admin-chart-legend">
+      {items.map(i => (
+        <span key={i.label} className="admin-chart-legend-item">
+          <span className="admin-chart-legend-dot" style={{ background: i.color }} />
+          {i.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function GovernorateList({ data }: { data: AdminStats['charts']['governorateStats'] }) {
+  const top = data?.slice(0, 12) ?? [];
+  const maxBookings = top[0]?.bookings ?? 1;
+  return (
+    <div className="admin-governorate-list">
+      {top.length === 0 && <div className="admin-empty-state">Aucune donnée</div>}
+      {top.map(g => (
+        <div key={g.governorate} className="admin-governorate-item">
+          <span className="admin-governorate-name">{g.governorate}</span>
+          <div className="admin-governorate-bar">
+            <div
+              className="admin-governorate-fill"
+              style={{ width: `${Math.round((g.bookings / maxBookings) * 100)}%` }}
+            />
+          </div>
+          <span className="admin-governorate-percent">{g.percentage}%</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Main Component
 export default function AdminDashboard() {
   const { user } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedGovernorate, setSelectedGovernorate] = useState<string>('all');
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'year'>('month');
 
   useEffect(() => {
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-    if (user.role !== 'admin') {
-      router.push('/');
-      return;
-    }
+    if (!user) { router.push('/login'); return; }
+    if (user.role !== 'admin') { router.push('/'); return; }
   }, [user, router]);
 
   useEffect(() => {
-    if (user?.role === 'admin') {
-      fetchStats();
-    }
+    if (user?.role !== 'admin') return;
+    setLoading(true);
+    adminApi.getStats(timeRange)
+      .then(setStats)
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, [user, timeRange]);
 
-  const fetchStats = async () => {
-    setLoading(true);
-    try {
-      const data = await adminApi.getStats(timeRange);
-      setStats(data);
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!user || user.role !== 'admin') {
-    return null;
-  }
+  if (!user || user.role !== 'admin') return null;
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-surface">
-        <div className="text-center">
-          <div className="spinner mx-auto"></div>
-          <p className="mt-4 text-muted">Chargement des statistiques...</p>
+      <div className="admin-loading">
+        <div className="admin-loading-content">
+          <div className="spinner" />
+          <p className="text-muted">Chargement des statistiques...</p>
         </div>
       </div>
     );
@@ -70,25 +358,33 @@ export default function AdminDashboard() {
 
   if (!stats) return null;
 
+  const u = stats.users;
+  const r = stats.reservations;
+  const s = stats.services;
+  const rv = stats.reviews;
+  const e = stats.engagement;
+  const c = stats.charts;
+  const t = stats.trending;
+
+  const successRate = r.total > 0 ? Math.round((r.completed / r.total) * 100) : 0;
+
   return (
-    <div className="min-h-screen bg-surface">
-      <div className="container-app py-8">
+    <div className="admin-dashboard-page">
+      <div className="admin-dashboard-container">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div className="admin-dashboard-header">
           <div>
-            <h1 className="gradient-text text-3xl font-bold">
-              Tableau de bord
-            </h1>
-            <p className="mt-2 text-muted">
-              Bienvenue, {user.firstName} {user.lastName}
+            <h1 className="admin-dashboard-title">Tableau de bord</h1>
+            <p className="admin-dashboard-subtitle">
+              {user.firstName} {user.lastName} · administration
             </p>
           </div>
-          <div className="flex gap-2">
-            {(['week', 'month', 'year'] as const).map((range) => (
+          <div className="admin-dashboard-timerange">
+            {(['week', 'month', 'year'] as const).map(range => (
               <button
                 key={range}
                 onClick={() => setTimeRange(range)}
-                className={`time-range-btn ${timeRange === range ? 'active' : ''}`}
+                className={`admin-timerange-btn ${timeRange === range ? 'active' : ''}`}
               >
                 {range === 'week' ? 'Semaine' : range === 'month' ? 'Mois' : 'Année'}
               </button>
@@ -96,319 +392,283 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* KPIs Principaux */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="stat-card">
-            <UsersIcon className="w-8 h-8 mx-auto mb-2 text-primary" />
-            <div className="stat-card-value text-primary">{stats.users.total.toLocaleString()}</div>
-            <div className="stat-card-label">Total utilisateurs</div>
-            <div className="flex justify-center gap-3 mt-2 text-xs">
-              <span className="text-accent">👤 {stats.users.clients.toLocaleString()}</span>
-              <span className="text-success">🏢 {stats.users.providers.toLocaleString()}</span>
+        {/* KPI Row */}
+        <div className="admin-kpi-grid">
+          <div className="admin-kpi-card">
+            <p className="admin-kpi-label">Utilisateurs</p>
+            <p className="admin-kpi-value">{fmt(u.total)}</p>
+            <span className="admin-kpi-badge admin-kpi-badge-up">+{u.growthRate}%</span>
+            <div className="admin-kpi-accent" style={{ background: COLORS.blue }} />
+          </div>
+          <div className="admin-kpi-card">
+            <p className="admin-kpi-label">Réservations</p>
+            <p className="admin-kpi-value">{fmt(r.total)}</p>
+            <span className="admin-kpi-badge admin-kpi-badge-info">{successRate}% succès</span>
+            <div className="admin-kpi-accent" style={{ background: COLORS.green }} />
+          </div>
+          <div className="admin-kpi-card">
+            <p className="admin-kpi-label">Services actifs</p>
+            <p className="admin-kpi-value">{fmt(s.active)}</p>
+            {s.pending > 0 && <span className="admin-kpi-badge admin-kpi-badge-warn">{s.pending} en attente</span>}
+            <div className="admin-kpi-accent" style={{ background: COLORS.amber }} />
+          </div>
+          <div className="admin-kpi-card">
+            <p className="admin-kpi-label">Note moyenne</p>
+            <p className="admin-kpi-value">{rv.averageRating}/5</p>
+            <span className="admin-kpi-badge admin-kpi-badge-info">{fmt(rv.total)} avis</span>
+            <div className="admin-kpi-accent" style={{ background: COLORS.purple }} />
+          </div>
+          <div className="admin-kpi-card">
+            <p className="admin-kpi-label">Conversion</p>
+            <p className="admin-kpi-value">{e.conversionRate}%</p>
+            <span className="admin-kpi-badge admin-kpi-badge-up">{e.providerActivity}% actifs</span>
+            <div className="admin-kpi-accent" style={{ background: COLORS.pink }} />
+          </div>
+        </div>
+
+        {/* Row 1: Users line + Status doughnut */}
+        <div className="admin-grid-2cols">
+          <div className="admin-section-card">
+            <div className="admin-section-header">
+              <h3 className="admin-section-title">Évolution des utilisateurs</h3>
+              <span className="admin-section-badge">6 derniers mois</span>
             </div>
-            <div className="stat-card-info text-success">
-              ↑ {stats.users.growthRate}% vs mois dernier
+            <ChartLegend items={[
+              { color: COLORS.blue, label: 'Clients' },
+              { color: COLORS.green, label: 'Prestataires' },
+              { color: COLORS.purple, label: 'Total' },
+            ]} />
+            <div className="admin-chart-container">
+              <UsersLineChart data={c.usersByMonth} />
             </div>
           </div>
 
-          <div className="stat-card">
-            <BookingIcon className="w-8 h-8 mx-auto mb-2 text-accent" />
-            <div className="stat-card-value text-accent">{stats.reservations.total.toLocaleString()}</div>
-            <div className="stat-card-label">Réservations totales</div>
-            <div className="flex justify-center gap-2 mt-2 text-xs">
-              <span className="text-success">✅ {stats.reservations.completed.toLocaleString()}</span>
-              <span className="text-error">❌ {stats.reservations.cancelled.toLocaleString()}</span>
-              <span className="text-warning">⏳ {stats.reservations.pending.toLocaleString()}</span>
+          <div className="admin-section-card">
+            <div className="admin-section-header">
+              <h3 className="admin-section-title">Statuts réservations</h3>
             </div>
-          </div>
-
-          <div className="stat-card">
-            <ServicesIcon className="w-8 h-8 mx-auto mb-2 text-success" />
-            <div className="stat-card-value text-success">{stats.services.total.toLocaleString()}</div>
-            <div className="stat-card-label">Services proposés</div>
-            {stats.services.pending > 0 && (
-              <div className="stat-card-info text-warning">
-                ⏳ {stats.services.pending} en validation
+            <div className="admin-chart-sm">
+              <StatusDoughnut data={r} />
+            </div>
+            <div className="admin-status-grid">
+              <div className="admin-status-item">
+                <p className="admin-status-value" style={{ color: COLORS.green }}>{fmt(r.completed)}</p>
+                <p className="admin-status-label">Complétées</p>
               </div>
-            )}
-          </div>
-
-          <div className="stat-card">
-            <ReviewIcon className="w-8 h-8 mx-auto mb-2 text-warning" />
-            <div className="stat-card-value text-warning">{stats.engagement.satisfactionScore}/5</div>
-            <div className="stat-card-label">Satisfaction client</div>
-            <div className="stat-card-info">
-              ⭐ Basé sur {stats.reservations.completed.toLocaleString()} avis
+              <div className="admin-status-item">
+                <p className="admin-status-value" style={{ color: COLORS.amber }}>{fmt(r.pending)}</p>
+                <p className="admin-status-label">En attente</p>
+              </div>
+              <div className="admin-status-item">
+                <p className="admin-status-value" style={{ color: COLORS.red }}>{fmt(r.cancelled)}</p>
+                <p className="admin-status-label">Annulées</p>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Évolution des utilisateurs */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="card">
-            <h3 className="font-semibold text-lg mb-4">
-              📈 Évolution des utilisateurs
-            </h3>
-            <div className="space-y-3">
-              {stats.charts.usersByMonth.map((item, idx) => {
-                const maxValue = Math.max(...stats.charts.usersByMonth.flatMap(m => [m.clients, m.providers]));
-                return (
-                  <div key={idx}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>{item.month}</span>
-                      <div className="flex gap-4">
-                        <span className="text-accent">👤 {item.clients.toLocaleString()}</span>
-                        <span className="text-success">🏢 {item.providers.toLocaleString()}</span>
-                      </div>
-                    </div>
-                    <div className="flex gap-1 h-8">
-                      <div 
-                        className="bg-accent rounded transition-all"
-                        style={{ width: `${Math.max(5, (item.clients / maxValue) * 100)}%` }}
-                      />
-                      <div 
-                        className="bg-success rounded transition-all"
-                        style={{ width: `${Math.max(5, (item.providers / maxValue) * 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+        {/* Row 2: Reservations bar + Weekday radar */}
+        <div className="admin-grid-2cols">
+          <div className="admin-section-card">
+            <div className="admin-section-header">
+              <h3 className="admin-section-title">Réservations par mois</h3>
+              <span className="admin-section-badge">Histogramme</span>
+            </div>
+            <div className="admin-chart-md">
+              <ReservationsBarChart data={c.reservationsByMonth} />
             </div>
           </div>
 
-          {/* Catégories populaires */}
-          <div className="card">
-            <h3 className="font-semibold text-lg mb-4">
-              🏷️ Catégories les plus demandées
-            </h3>
-            <div className="space-y-4">
-              {stats.charts.topCategories.map((category, idx) => {
-                const maxBookings = stats.charts.topCategories[0]?.bookings || 1;
-                return (
-                  <div key={idx}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="font-medium">{category.category}</span>
-                      <span>📅 {category.bookings.toLocaleString()} réservations</span>
-                    </div>
-                    <div className="progress-bar">
-                      <div 
-                        className="progress-bar-fill"
-                        style={{ width: `${(category.bookings / maxBookings) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+          <div className="admin-section-card">
+            <div className="admin-section-header">
+              <h3 className="admin-section-title">Pic d'activité hebdomadaire</h3>
+              <span className="admin-section-badge">Radar</span>
+            </div>
+            <div className="admin-chart-md">
+              <WeekdayRadar data={c.reservationsByDayOfWeek} />
             </div>
           </div>
         </div>
 
-        {/* Répartition des statuts & Catégories par usage */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="card">
-            <h3 className="font-semibold text-lg mb-4">
-              📊 Statut des réservations
-            </h3>
-            <div className="space-y-3">
-              {stats.charts.reservationsByStatus.map((status, idx) => {
-                const total = stats.reservations.total;
-                return (
-                  <div key={idx}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>{status.status}</span>
-                      <span>{status.count.toLocaleString()} ({total > 0 ? Math.round((status.count / total) * 100) : 0}%)</span>
-                    </div>
-                    <div className="progress-bar">
-                      <div 
-                        className="progress-bar-fill"
-                        style={{ 
-                          width: `${total > 0 ? (status.count / total) * 100 : 0}%`,
-                          backgroundColor: status.color
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+        {/* Row 3: Hourly + Engagement radar */}
+        <div className="admin-grid-2cols">
+          <div className="admin-section-card">
+            <div className="admin-section-header">
+              <h3 className="admin-section-title">Activité par heure</h3>
+              <span className="admin-section-badge">Courbe 24h</span>
+            </div>
+            <div className="admin-chart-md">
+              <HourlyLineChart data={c.reservationsByHour} />
             </div>
           </div>
 
-          {/* Catégories par usage */}
-          <div className="card">
-            <h3 className="font-semibold text-lg mb-4">
-              🎯 Répartition par catégorie de services
-            </h3>
-            <div className="space-y-3">
-              {stats.charts.categoriesByUsage.map((cat, idx) => (
-                <div key={idx}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>{cat.category}</span>
-                    <span>{cat.percentage}%</span>
-                  </div>
-                  <div className="progress-bar">
-                    <div 
-                      className="progress-bar-fill"
-                      style={{ width: `${cat.percentage}%` }}
-                    />
-                  </div>
+          <div className="admin-section-card">
+            <div className="admin-section-header">
+              <h3 className="admin-section-title">Indicateurs d'engagement</h3>
+              <span className="admin-section-badge">Radar</span>
+            </div>
+            <div className="admin-chart-md">
+              <EngagementRadar data={e} />
+            </div>
+          </div>
+        </div>
+
+        {/* Row 4: Categories + Top providers + Top services */}
+        <div className="admin-grid-3cols">
+          {/* Categories */}
+          <div className="admin-section-card">
+            <div className="admin-section-header">
+              <h3 className="admin-section-title">Répartition des catégories</h3>
+            </div>
+            <div className="admin-chart-sm">
+              <CategoriesPie data={c.categoriesDistribution} />
+            </div>
+            <div className="space-y-1 mt-2">
+              {c.categoriesDistribution?.slice(0, 5).map(cat => (
+                <div key={cat.category} className="flex items-center justify-between text-[11px]">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-sm" style={{ background: cat.color }} />
+                    <span className="text-foreground truncate max-w-[120px]">{cat.category}</span>
+                  </span>
+                  <span className="text-muted font-mono">{cat.percentage}%</span>
                 </div>
               ))}
             </div>
           </div>
-        </div>
 
-        {/* Top Prestataires & Services */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="card">
-            <h3 className="font-semibold text-lg mb-4">
-              🏆 Top 3 Prestataires
-            </h3>
-            <div className="space-y-3">
-              {stats.trending.topProviders.map((provider, idx) => (
-                <div key={provider.id} className="ranking-item">
-                  <div className={`ranking-number ${idx === 0 ? 'gold' : idx === 1 ? 'silver' : 'bronze'}`}>
-                    {idx + 1}
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">{provider.name}</p>
-                    <div className="flex gap-3 text-xs text-muted">
-                      <span>⭐ {provider.rating}/5</span>
-                      <span>📅 {provider.bookings.toLocaleString()} réservations</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {stats.trending.topProviders.length === 0 && (
-                <p className="text-center text-sm text-muted">
-                  Aucun prestataire pour le moment
-                </p>
-              )}
+          {/* Top providers */}
+          <div className="admin-section-card">
+            <div className="admin-section-header">
+              <h3 className="admin-section-title">Top prestataires</h3>
             </div>
-          </div>
-
-          <div className="card">
-            <h3 className="font-semibold text-lg mb-4">
-              🔥 Services les plus réservés
-            </h3>
-            <div className="space-y-3">
-              {stats.trending.topServices.map((service, idx) => (
-                <div key={service.id} className="ranking-item">
-                  <div className="ranking-number default">
-                    {idx + 1}
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">{service.name}</p>
-                    <p className="text-xs text-muted">{service.category}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold">📅 {service.bookings.toLocaleString()}</p>
-                    <p className="text-xs text-muted">réservations</p>
-                  </div>
-                </div>
-              ))}
-              {stats.trending.topServices.length === 0 && (
-                <p className="text-center text-sm text-muted">
-                  Aucun service pour le moment
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Statistiques par gouvernorat */}
-        <div className="card mb-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
-            <h3 className="font-semibold text-lg">
-              🗺️ Activité par gouvernorat
-            </h3>
-            <select 
-              className="input mt-2 md:mt-0 w-full md:w-auto"
-              value={selectedGovernorate}
-              onChange={(e) => setSelectedGovernorate(e.target.value)}
-            >
-              <option value="all">Tous les gouvernorats</option>
-              {TUNISIAN_GOVERNORATES.map(gov => (
-                <option key={gov} value={gov}>{gov}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="overflow-x-auto">
-            <table className="table-app">
-              <thead>
-                <tr>
-                  <th>Gouvernorat</th>
-                  <th className="text-center">Clients</th>
-                  <th className="text-center">Prestataires</th>
-                  <th className="text-center">Services</th>
-                  <th className="text-center">Réservations</th>
-                  <th className="text-center">%</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(selectedGovernorate === 'all' 
-                  ? stats.geolocation.byGovernorate 
-                  : stats.geolocation.byGovernorate.filter(g => g.governorate === selectedGovernorate)
-                ).map((gov) => (
-                  <tr key={gov.governorate}>
-                    <td className="font-medium">{gov.governorate}</td>
-                    <td className="text-center">{gov.clients.toLocaleString()}</td>
-                    <td className="text-center">{gov.providers.toLocaleString()}</td>
-                    <td className="text-center">{gov.services.toLocaleString()}</td>
-                    <td className="text-center">{gov.bookings.toLocaleString()}</td>
-                    <td className="text-center">
-                      <div className="inline-flex items-center gap-2">
-                        <span>{gov.percentage}%</span>
-                        <div className="progress-bar w-16">
-                          <div 
-                            className="progress-bar-fill"
-                            style={{ width: `${gov.percentage}%` }}
-                          />
+            <div className="space-y-0.5">
+              {t.topProviders?.length === 0 && <div className="admin-empty-state">Aucune donnée</div>}
+              {t.topProviders?.map((p, i) => {
+                const pct = t.topProviders[0]?.bookings > 0 
+                  ? Math.round((p.bookings / t.topProviders[0].bookings) * 100) 
+                  : 0;
+                return (
+                  <div key={p.id} className="admin-rank-bar">
+                    <span className="admin-rank-number">{String(i + 1).padStart(2, '0')}</span>
+                    <div className="admin-rank-content">
+                      <div className="admin-rank-header">
+                        <div>
+                          <span className="admin-rank-name">{p.name}</span>
+                          <span className="admin-rank-sub">⭐ {p.rating}</span>
                         </div>
+                        <span className="admin-rank-value">{fmt(p.bookings)}</span>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <div className="admin-rank-progress">
+                        <div className="admin-rank-progress-fill" style={{ width: `${pct}%`, background: [COLORS.amber, '#C0DD97', COLORS.gray][i] || COLORS.gray }} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Top services */}
+          <div className="admin-section-card">
+            <div className="admin-section-header">
+              <h3 className="admin-section-title">Services les plus réservés</h3>
+            </div>
+            <div className="space-y-0.5">
+              {t.topServices?.length === 0 && <div className="admin-empty-state">Aucune donnée</div>}
+              {t.topServices?.map((sv, i) => {
+                const pct = t.topServices[0]?.bookings > 0 
+                  ? Math.round((sv.bookings / t.topServices[0].bookings) * 100) 
+                  : 0;
+                return (
+                  <div key={sv.id} className="admin-rank-bar">
+                    <span className="admin-rank-number">{String(i + 1).padStart(2, '0')}</span>
+                    <div className="admin-rank-content">
+                      <div className="admin-rank-header">
+                        <div>
+                          <span className="admin-rank-name">{sv.name}</span>
+                          <span className="admin-rank-sub">{sv.category}</span>
+                        </div>
+                        <span className="admin-rank-value">{fmt(sv.bookings)}</span>
+                      </div>
+                      <div className="admin-rank-progress">
+                        <div className="admin-rank-progress-fill" style={{ width: `${pct}%`, background: COLORS.blue }} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        {/* Indicateurs d'engagement */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="stat-card">
-            <span className="text-2xl mb-2">📊</span>
-            <div className="stat-card-value text-primary">{stats.engagement.clientRetentionRate}%</div>
-            <div className="stat-card-label">Fidélisation clients</div>
+        {/* Row 5: Top categories + Governorates */}
+        <div className="admin-grid-2cols">
+          <div className="admin-section-card">
+            <div className="admin-section-header">
+              <h3 className="admin-section-title">Catégories les plus demandées</h3>
+            </div>
+            <div className="space-y-0.5">
+              {c.topCategories?.map((cat, i) => {
+                const pct = c.topCategories[0]?.bookings > 0 
+                  ? Math.round((cat.bookings / c.topCategories[0].bookings) * 100) 
+                  : 0;
+                return (
+                  <div key={cat.category} className="admin-rank-bar">
+                    <span className="admin-rank-number">{String(i + 1).padStart(2, '0')}</span>
+                    <div className="admin-rank-content">
+                      <div className="admin-rank-header">
+                        <span className="admin-rank-name">{cat.category}</span>
+                        <span className="admin-rank-value">{fmt(cat.bookings)}</span>
+                      </div>
+                      <div className="admin-rank-progress">
+                        <div className="admin-rank-progress-fill" style={{ width: `${pct}%`, background: COLORS.purple }} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <div className="stat-card">
-            <span className="text-2xl mb-2">⚡</span>
-            <div className="stat-card-value text-success">{stats.engagement.providerActivityRate}%</div>
-            <div className="stat-card-label">Prestataires actifs</div>
-          </div>
-          <div className="stat-card">
-            <span className="text-2xl mb-2">⏱️</span>
-            <div className="stat-card-value text-accent">{stats.engagement.avgResponseTime}h</div>
-            <div className="stat-card-label">Temps de réponse moyen</div>
-          </div>
-          <div className="stat-card">
-            <span className="text-2xl mb-2">⭐</span>
-            <div className="stat-card-value text-warning">{stats.engagement.satisfactionScore}/5</div>
-            <div className="stat-card-label">Note moyenne globale</div>
+
+          <div className="admin-section-card">
+            <div className="admin-section-header">
+              <h3 className="admin-section-title">Activité par gouvernorat</h3>
+              <span className="admin-section-badge">Top 12</span>
+            </div>
+            <GovernorateList data={c.governorateStats} />
           </div>
         </div>
 
-        {/* Actions rapides */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Link href="/admin/users" className="btn btn-primary text-center">
-            👥 Gérer les utilisateurs
+        {/* Engagement mini cards */}
+        <div className="admin-engagement-grid">
+          <div className="admin-engagement-card">
+            <p className="admin-engagement-value" style={{ color: COLORS.blue }}>{e.clientRetention}%</p>
+            <p className="admin-engagement-label">Fidélisation clients</p>
+          </div>
+          <div className="admin-engagement-card">
+            <p className="admin-engagement-value" style={{ color: COLORS.green }}>{e.providerActivity}%</p>
+            <p className="admin-engagement-label">Prestataires actifs</p>
+          </div>
+          <div className="admin-engagement-card">
+            <p className="admin-engagement-value" style={{ color: COLORS.amber }}>{e.repeatCustomers}%</p>
+            <p className="admin-engagement-label">Clients récurrents</p>
+          </div>
+          <div className="admin-engagement-card">
+            <p className="admin-engagement-value" style={{ color: COLORS.purple }}>{e.satisfactionScore}/5</p>
+            <p className="admin-engagement-label">Satisfaction globale</p>
+          </div>
+        </div>
+
+        {/* Quick actions */}
+        <div className="admin-quick-actions">
+          <Link href="/admin/users" className="admin-quick-action-btn admin-quick-action-outline">
+            Gérer les utilisateurs
           </Link>
-          <Link href="/admin/pending-services" className="btn btn-accent text-center">
-            ✓ Valider les services
+          <Link href="/admin/pending-services" className="admin-quick-action-btn admin-quick-action-primary">
+            Valider les services {s.pending > 0 && `(${s.pending})`}
           </Link>
-          <Link href="/admin/reported-reviews" className="btn btn-warning text-center">
-            ⭐ Modérer les avis
+          <Link href="/admin/reported-reviews" className="admin-quick-action-btn admin-quick-action-outline">
+            Modérer les avis
           </Link>
         </div>
       </div>

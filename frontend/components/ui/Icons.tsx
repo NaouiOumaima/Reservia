@@ -556,4 +556,11 @@ export function AlertTriangleIcon({ className = "w-6 h-6", size }: IconProps) {
     </svg>
   );
 }
-
+export function TrendingUpIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...defaultProps(className, size)}>
+      <path d="M3 17l6-6 4 4 7-7" />
+      <path d="M14 4h7v7" />
+    </svg>
+  );
+}

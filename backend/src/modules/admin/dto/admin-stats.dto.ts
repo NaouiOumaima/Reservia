@@ -19,9 +19,16 @@ export class AdminStatsResponse {
     completed: number;
     cancelled: number;
     pending: number;
+    completedRate: number;
+  };
+  reviews: {
+    total: number;
+    averageRating: number;
   };
   charts: {
     usersByMonth: { month: string; clients: number; providers: number }[];
+    reservationsByMonth: { month: string; count: number }[];
+    servicesByMonth: { month: string; count: number }[];
     categoriesByUsage: { category: string; count: number; percentage: number }[];
     topCategories: { category: string; bookings: number }[];
     reservationsByStatus: { status: string; count: number; color: string }[];

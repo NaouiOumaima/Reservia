@@ -15,7 +15,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && user) {
-      router.replace('/dashboard');
+      if (user.role === 'admin') {
+        router.replace('/admin/dashboard');
+      } else if (user.role === 'provider') {
+        router.replace('/provider/dashboard');
+      } else {
+        router.replace('/client/dashboard');
+      }
     }
   }, [authLoading, isAuthenticated, user, router]);
 

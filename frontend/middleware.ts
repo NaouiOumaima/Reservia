@@ -2,48 +2,43 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Routes publiques
 const publicRoutes = [
-  '/', 
-  '/login', 
-  '/register', 
-  '/about', 
-  '/search', 
+  '/',
+  '/login',
+  '/register',
+  '/register/callback', // ✅ Route Google OAuth callback
+  '/about',
+  '/search',
   '/verify-email',
-  '/client/carte',  // Pour tester la carte
+  '/client/carte',
 ];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  
-  // Laisser passer les API
-  if (pathname.startsWith('/api/')) {
+
+  if (pathname.startsWith('/api/') || pathname.startsWith('/_next') || pathname.includes('favicon')) {
     return NextResponse.next();
   }
-  
-  // Laisser passer les assets
-  if (pathname.startsWith('/_next') || pathname.includes('favicon')) {
-    return NextResponse.next();
-  }
-  
-  // Vérifier si la route est publique
-  const isPublicRoute = publicRoutes.some(route => 
-    pathname === route || pathname.startsWith(`${route}/`)
+
+  const isPublicRoute = publicRoutes.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
   );
-  
+
   if (isPublicRoute) {
     return NextResponse.next();
   }
-  
-  // Vérifier l'authentification via le cookie
-  const token = request.cookies.get('accessToken')?.value;
-  
+
+  // ✅ Lire le token depuis le cookie (set par le callback Google ou le login)
+  const token =
+    request.cookies.get('accessToken')?.value ||
+    request.cookies.get('token')?.value;
+
   if (!token) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(loginUrl);
   }
-  
+
   return NextResponse.next();
 }
 

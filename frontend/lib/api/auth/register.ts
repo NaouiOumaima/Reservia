@@ -2,7 +2,7 @@
 
 import { apiClient } from '../config';
 import { setAccessToken, setRefreshToken, setUser } from '../../helpers/storage';
-import type { User, LoginResponse } from './login';
+import type {  LoginResponse } from './login';
 
 export interface RegisterData {
   email: string;

@@ -3942,3 +3942,539 @@
     transform: translateY(0);
   }
 }
+/* ============================================
+   ADMIN DASHBOARD - STATS & CHARTS
+   ============================================ */
+
+/* Dashboard layout */
+.admin-dashboard-page {
+  min-height: 100vh;
+  background-color: rgb(var(--background));
+}
+
+.admin-dashboard-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+  .admin-dashboard-container {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .admin-dashboard-container {
+    padding: 0 2rem;
+  }
+}
+
+/* Header styles */
+.admin-dashboard-header {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgb(var(--border));
+}
+
+@media (min-width: 640px) {
+  .admin-dashboard-header {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+.admin-dashboard-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: rgb(var(--foreground));
+}
+
+@media (min-width: 768px) {
+  .admin-dashboard-title {
+    font-size: 1.875rem;
+  }
+}
+
+.admin-dashboard-subtitle {
+  font-size: 0.875rem;
+  color: rgb(var(--foreground-muted));
+  margin-top: 0.25rem;
+  font-family: monospace;
+}
+
+/* Time range buttons */
+.admin-dashboard-timerange {
+  display: flex;
+  gap: 0.25rem;
+  background-color: rgb(var(--surface-raised));
+  border-radius: 0.5rem;
+  padding: 0.25rem;
+}
+
+.admin-timerange-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  background: transparent;
+  color: rgb(var(--foreground-muted));
+  cursor: pointer;
+  border: none;
+}
+
+.admin-timerange-btn:hover {
+  color: rgb(var(--foreground));
+}
+
+.admin-timerange-btn.active {
+  background-color: rgb(var(--surface));
+  color: rgb(var(--foreground));
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgb(var(--border));
+}
+
+/* KPI Grid */
+.admin-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .admin-kpi-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .admin-kpi-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+/* KPI Card */
+.admin-kpi-card {
+  position: relative;
+  overflow: hidden;
+  background-color: rgb(var(--surface));
+  border: 1px solid rgb(var(--border));
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  transition: box-shadow var(--transition-smooth), transform var(--transition-smooth);
+}
+
+.admin-kpi-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.admin-kpi-label {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgb(var(--foreground-muted));
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.admin-kpi-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-family: monospace;
+  letter-spacing: -0.02em;
+  color: rgb(var(--foreground));
+}
+
+.admin-kpi-badge {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+}
+
+.admin-kpi-badge-up {
+  background-color: rgba(var(--success), 0.12);
+  color: rgb(var(--success));
+}
+
+.admin-kpi-badge-warn {
+  background-color: rgba(var(--warning), 0.15);
+  color: rgb(var(--warning));
+}
+
+.admin-kpi-badge-info {
+  background-color: rgba(var(--primary), 0.12);
+  color: rgb(var(--primary));
+}
+
+.admin-kpi-accent {
+  position: absolute;
+  bottom: -0.5rem;
+  right: -0.5rem;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  opacity: 0.15;
+}
+
+/* Section Card */
+.admin-section-card {
+  background-color: rgb(var(--surface));
+  border: 1px solid rgb(var(--border));
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  transition: box-shadow var(--transition-smooth);
+}
+
+.admin-section-card:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.admin-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.admin-section-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgb(var(--foreground));
+}
+
+.admin-section-badge {
+  font-size: 0.625rem;
+  color: rgb(var(--foreground-muted));
+  background-color: rgb(var(--surface-raised));
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+}
+
+/* Chart containers */
+.admin-chart-container {
+  height: 13rem;
+}
+
+.admin-chart-sm {
+  height: 9rem;
+}
+
+.admin-chart-md {
+  height: 11rem;
+}
+
+/* Chart Legend */
+.admin-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.admin-chart-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.6875rem;
+  color: rgb(var(--foreground-muted));
+}
+
+.admin-chart-legend-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 0.125rem;
+  display: inline-block;
+}
+
+/* Status cards grid */
+.admin-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.admin-status-item {
+  text-align: center;
+}
+
+.admin-status-value {
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.admin-status-label {
+  font-size: 0.625rem;
+  color: rgb(var(--foreground-muted));
+}
+
+/* Rank Bar */
+.admin-rank-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+.admin-rank-number {
+  font-size: 0.625rem;
+  font-family: monospace;
+  color: rgb(var(--foreground-muted));
+  min-width: 1.125rem;
+  padding-top: 0.125rem;
+}
+
+.admin-rank-content {
+  flex: 1;
+}
+
+.admin-rank-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.125rem;
+}
+
+.admin-rank-name {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(var(--foreground));
+}
+
+.admin-rank-sub {
+  margin-left: 0.25rem;
+  font-size: 0.625rem;
+  color: rgb(var(--foreground-muted));
+}
+
+.admin-rank-value {
+  font-size: 0.6875rem;
+  font-family: monospace;
+  color: rgb(var(--foreground-muted));
+}
+
+.admin-rank-progress {
+  height: 0.25rem;
+  background-color: rgb(var(--border));
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.admin-rank-progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.7s ease;
+}
+
+/* Governorate list */
+.admin-governorate-list {
+  max-height: 16rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.admin-governorate-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.admin-governorate-name {
+  font-size: 0.6875rem;
+  color: rgb(var(--foreground));
+  min-width: 5rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-governorate-bar {
+  flex: 1;
+  height: 0.375rem;
+  background-color: rgb(var(--border));
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.admin-governorate-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.7s ease;
+  background-color: #378ADD;
+}
+
+.admin-governorate-percent {
+  font-size: 0.625rem;
+  font-family: monospace;
+  color: rgb(var(--foreground-muted));
+  min-width: 2rem;
+  text-align: right;
+}
+
+/* Engagement mini cards */
+.admin-engagement-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .admin-engagement-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.admin-engagement-card {
+  background-color: rgb(var(--surface-raised));
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  text-align: center;
+}
+
+.admin-engagement-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.admin-engagement-label {
+  font-size: 0.625rem;
+  color: rgb(var(--foreground-muted));
+  margin-top: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Quick actions buttons */
+.admin-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.admin-quick-action-btn {
+  flex: 1;
+  min-width: 10rem;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.625rem 1rem;
+  border-radius: var(--radius-lg);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.admin-quick-action-outline {
+  background-color: rgb(var(--surface));
+  border: 1px solid rgb(var(--border));
+  color: rgb(var(--foreground));
+}
+
+.admin-quick-action-outline:hover {
+  background-color: rgb(var(--surface-raised));
+}
+
+.admin-quick-action-primary {
+  background-color: #042C53;
+  color: #B5D4F4;
+}
+
+.admin-quick-action-primary:hover {
+  background-color: #0C447C;
+}
+
+/* Empty state */
+.admin-empty-state {
+  text-align: center;
+  padding: 1.5rem;
+  color: rgb(var(--foreground-muted));
+  font-size: 0.75rem;
+}
+
+/* Loading spinner */
+.admin-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgb(var(--background));
+}
+
+.admin-loading-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Grid layouts */
+.admin-grid-2cols {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .admin-grid-2cols {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.admin-grid-3cols {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .admin-grid-3cols {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.admin-span-2 {
+  grid-column: span 1;
+}
+
+@media (min-width: 1024px) {
+  .admin-span-2 {
+    grid-column: span 2;
+  }
+}
+
+/* Scrollbar for governorate list */
+.admin-governorate-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.admin-governorate-list::-webkit-scrollbar-track {
+  background: rgb(var(--surface-raised));
+  border-radius: 2px;
+}
+
+.admin-governorate-list::-webkit-scrollbar-thumb {
+  background: rgba(var(--foreground-muted), 0.3);
+  border-radius: 2px;
+}
+
+.admin-governorate-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--foreground-muted), 0.5);
+}

@@ -1,4 +1,3 @@
-// backend/src/database/schemas/user.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
@@ -15,7 +14,8 @@ export class User {
   @Prop({ required: true, unique: true })
   email!: string;
 
-  @Prop({ required: true })
+  // ✅ required: false — les comptes Google n'ont pas de mot de passe
+  @Prop({ required: false, default: '' })
   password!: string;
 
   @Prop({ required: true })
@@ -42,7 +42,6 @@ export class User {
   @Prop()
   lastLogin?: Date;
 
-  // ========== CHAMPS POUR CONFIRMATION D'EMAIL ==========
   @Prop({ default: false })
   isEmailVerified!: boolean;
 
@@ -52,10 +51,16 @@ export class User {
   @Prop()
   emailVerificationExpires?: Date;
 
-  @Prop({ default: 'pending' })
-  providerStatus!: string; // pending, active, suspended, rejected
+  @Prop({ default: 'active' })
+  providerStatus!: string;
 
-  // Client preferences
+  // ✅ Champs Google OAuth
+  @Prop({ default: null })
+  googleId: string | null;
+
+  @Prop({ default: null })
+  picture: string | null;
+
   @Prop({ type: Object })
   preferences?: {
     favoriteCategories?: string[];
@@ -65,22 +70,13 @@ export class User {
     preferredHours?: string;
   };
 
-  // Provider profile
   @Prop({ type: Object })
   providerProfile?: {
     businessName: string;
     siret?: string;
     description: string;
     images: string[];
-    openingHours: {
-      monday: { isOpen: boolean; openTime?: string; closeTime?: string };
-      tuesday: { isOpen: boolean; openTime?: string; closeTime?: string };
-      wednesday: { isOpen: boolean; openTime?: string; closeTime?: string };
-      thursday: { isOpen: boolean; openTime?: string; closeTime?: string };
-      friday: { isOpen: boolean; openTime?: string; closeTime?: string };
-      saturday: { isOpen: boolean; openTime?: string; closeTime?: string };
-      sunday: { isOpen: boolean; openTime?: string; closeTime?: string };
-    };
+    openingHours: Record<string, any>;
     settings: {
       slotDuration: number;
       cancellationDeadline: number;
@@ -106,7 +102,6 @@ export class User {
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Reservation' }] })
   reservations?: Types.ObjectId[];
 
-  // ========== AUTHENTIFICATION ==========
   @Prop({ default: null })
   refreshToken: string | null;
 
@@ -119,9 +114,7 @@ export class User {
 
 export const UserSchema = SchemaFactory.createForClass(User);
 
-// Indexes
 UserSchema.index({ location: '2dsphere' });
 UserSchema.index({ email: 1 });
 UserSchema.index({ role: 1 });
 UserSchema.index({ isBanned: 1 });
-UserSchema.index({ emailVerificationToken: 1 });
