@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   login as loginApi,
@@ -19,6 +19,7 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   refreshAuth: () => void;
+  updateUser: (updatedUser: User) => void;  // ✅ Ajouté
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,8 +39,6 @@ function deleteCookie(name: string) {
   document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 }
 
-// ✅ Lecture synchrone au moment de l'initialisation du state
-// Pas de useEffect → pas de flash "visiteur" avant que user soit chargé
 function getInitialUser(): User | null {
   if (typeof window === 'undefined') return null;
   try {
@@ -52,7 +51,7 @@ function getInitialUser(): User | null {
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(getInitialUser);
-  const [isLoading, setIsLoading] = useState(false); // false dès le début
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   // Sync multi-onglets
@@ -75,6 +74,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(null);
     }
   };
+
+  // ✅ Fonction pour mettre à jour l'utilisateur dans le state et localStorage
+  const updateUser = useCallback((updatedUser: User) => {
+    setUser(updatedUser);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+    }
+  }, []);
 
   const login = async (credentials: LoginCredentials) => {
     const res = await loginApi(credentials);
@@ -108,8 +115,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <AuthContext.Provider value={{
-      user, isLoading, isAuthenticated: !!user,
-      login, register, logout, refreshAuth,
+      user,
+      isLoading,
+      isAuthenticated: !!user,
+      login,
+      register,
+      logout,
+      refreshAuth,
+      updateUser,  // ✅ Ajouté
     }}>
       {children}
     </AuthContext.Provider>

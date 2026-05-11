@@ -7,6 +7,7 @@ import { DashboardController } from './dashboard.controller';
 import { Reservation, ReservationSchema } from '../../database/schemas/reservation.schema';
 import { Service, ServiceSchema } from '../../database/schemas/service.schema';
 import { Review, ReviewSchema } from '../../database/schemas/review.schema';
+import { User, UserSchema } from '../../database/schemas/user.schema';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { Review, ReviewSchema } from '../../database/schemas/review.schema';
       { name: Reservation.name, schema: ReservationSchema },
       { name: Service.name, schema: ServiceSchema },
       { name: Review.name, schema: ReviewSchema },
+      { name: User.name, schema: UserSchema },
     ]),
   ],
   controllers: [DashboardController],

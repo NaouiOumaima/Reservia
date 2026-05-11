@@ -14,6 +14,8 @@ import { AiModule } from './modules/ai/ai.module';
 // import { WebsocketModule } from './modules/websocket/websocket.module';
 import configuration from './config/configuration';
 import { AdminModule } from './modules/admin/admin.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { ReviewsModule } from './modules/reviews/reviews.module';
 
 @Module({
   imports: [
@@ -37,6 +39,8 @@ import { AdminModule } from './modules/admin/admin.module';
     ServicesModule,
     AiModule,
         AdminModule,
+        DashboardModule,
+        ReviewsModule,
   ],
   controllers: [],  // Pas de controllers pour l'instant
   providers: [],    // Pas de providers pour l'instant

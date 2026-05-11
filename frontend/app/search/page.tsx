@@ -6,14 +6,21 @@ import TunisiaMap from '@/components/charts/TunisiaMap';
 import ServiceCard from '@/components/service/ServiceCard';
 import { useServices } from '@/features/services/hooks/useServices';
 import { TUNISIAN_GOVERNORATES, GOVERNORATE_COORDINATES } from '@/lib/api/constants/governorates';
-import { SearchIcon, StarIcon, LocationIcon, AllCategoriesIcon, RestaurantIcon, HotelIcon, SpaIcon, FitnessIcon } from '@/components/ui/Icons';
+import { CATEGORIES, getAllCategoryLabels } from '@/lib/api/constants/categories.';
+import { SearchIcon, StarIcon, LocationIcon, AllCategoriesIcon } from '@/components/ui/Icons';
 
-const CATEGORIES = [
-  { id: '', name: 'Toutes catégories', icon: AllCategoriesIcon },
-  { id: 'restaurant', name: 'Restaurants', icon: RestaurantIcon },
-  { id: 'hotel', name: 'Hôtels', icon: HotelIcon },
-  { id: 'spa', name: 'Beauté & Bien-être', icon: SpaIcon },
-  { id: 'gym', name: 'Salles de sport', icon: FitnessIcon },
+// Mapping pour les catégories avec icônes et noms d'affichage
+const CATEGORIES_WITH_DISPLAY = [
+  { 
+    id: '', 
+    name: 'Toutes catégories', 
+    icon: AllCategoriesIcon 
+  },
+  ...CATEGORIES.map(cat => ({
+    id: cat.label,
+    name: cat.frenchLabel,
+    icon: () => cat.icon,
+  })),
 ];
 
 export default function SearchPage() {
@@ -84,8 +91,8 @@ export default function SearchPage() {
           {/* Catégories */}
           <div className="search-categories">
             <div className="search-categories-wrapper">
-              {CATEGORIES.map((cat) => {
-                const IconComponent = cat.icon;
+              {CATEGORIES_WITH_DISPLAY.map((cat) => {
+                const IconComponent = typeof cat.icon === 'function' ? cat.icon : cat.icon;
                 return (
                   <button
                     key={cat.id}
@@ -160,7 +167,7 @@ export default function SearchPage() {
           <h1 className="search-results-title">{selectedGovernorate}</h1>
           <p className="search-results-subtitle">
             {selectedCategory 
-              ? CATEGORIES.find(c => c.id === selectedCategory)?.name 
+              ? CATEGORIES_WITH_DISPLAY.find(c => c.id === selectedCategory)?.name 
               : 'Tous services'}
           </p>
         </div>

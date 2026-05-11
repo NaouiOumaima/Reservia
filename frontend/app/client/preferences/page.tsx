@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from 'react';
 import { UserPreferences } from '@/types';
+import { getAllCategoryLabels } from '@/lib/api/constants/categories.';
 
 export default function ClientPreferencesPage() {
   const [preferences, setPreferences] = useState<UserPreferences>({
@@ -27,17 +28,8 @@ export default function ClientPreferencesPage() {
     setLoading(false);
   }, []);
 
-  const categories = [
-    'Hébergement',
-    'Restauration',
-    'Beauté',
-    'Fitness',
-    'Santé',
-    'Éducation',
-    'Loisirs',
-    'Services',
-  ];
-
+  // Utiliser les catégories depuis le fichier constants
+  const categories = getAllCategoryLabels();
   const days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 
   const handleCategoryToggle = (category: string) => {

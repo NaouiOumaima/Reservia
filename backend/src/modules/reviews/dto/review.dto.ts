@@ -1,35 +1,41 @@
-import { IsNotEmpty, IsNumber, IsString, IsOptional, Min, Max } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, IsOptional, Min, Max, IsIn } from 'class-validator';
 
 export class CreateReviewDto {
-  @IsNotEmpty()
-  serviceId: string;
+  @IsOptional()
+  @IsString()
+  serviceId?: string;
 
   @IsNotEmpty()
   @IsNumber()
-  @Min(0)
+  @Min(1)
   @Max(5)
   rating: number;
 
+  @IsNotEmpty()
+  @IsString()
+  comment: string;
+
   @IsOptional()
-  @IsString()
-  comment?: string;
-}
+  images?: string[];
 
-export class UpdateReviewDto {
-  @IsNumber()
-  @Min(0)
-  @Max(5)
-  rating?: number;
-
-  @IsString()
-  comment?: string;
+  // Type d'avis: 'service' ou 'app'
+  @IsOptional()
+  @IsIn(['service', 'app'])
+  type?: 'service' | 'app';
 }
 
 export class ReportReviewDto {
   @IsNotEmpty()
-  reviewId: string;
+  @IsIn(['spam', 'offensive', 'fake', 'inappropriate', 'other'])
+  reason: string;
 
+  @IsOptional()
+  @IsString()
+  details?: string;
+}
+
+export class RespondToReviewDto {
   @IsNotEmpty()
   @IsString()
-  reason: string;
+  response: string;
 }

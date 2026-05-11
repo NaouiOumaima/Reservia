@@ -1,6 +1,5 @@
 // app/about/page.tsx
 
-import Link from 'next/link';
 import {
   UsersIcon,
   ServicesIcon,
@@ -21,18 +20,18 @@ import {
 const VALUES = [
   {
     icon: <TargetIcon className="w-8 h-8" />,
-    title: 'Innovation',
-    desc: 'Nous utilisons l\'IA pour vous offrir une expérience de réservation unique et personnalisée.',
+    title: 'Gratuité',
+    desc: 'Profitez d’une plateforme 100 % gratuite pour toutes vos réservations, sans frais cachés.',
   },
   {
     icon: <UsersIcon className="w-8 h-8" />,
     title: 'Proximité',
-    desc: 'Nous mettons en relation les utilisateurs avec les meilleurs services locaux.',
+    desc: 'Découvrez les meilleurs services locaux partout en Tunisie, avec des avis et notes réels.',
   },
   {
     icon: <ShieldIcon className="w-8 h-8" />,
-    title: 'Confiance',
-    desc: 'Avis vérifiés, paiement sécurisé et support réactif pour votre tranquillité.',
+    title: 'Transparence',
+    desc: 'Tarifs clairs, descriptions précises et prestations facilement comparables.',
   },
 ];
 
@@ -48,37 +47,19 @@ const COMPARISON = [
 const FAQ = [
   {
     q: 'Comment réserver un service ?',
-    a: 'Recherchez le service souhaité, comparez les offres, choisissez votre créneau et confirmez la réservation. Vous recevrez une confirmation immédiate.',
+    a: 'Utilisez la barre de recherche, sélectionnez votre catégorie, comparez les options et réservez le créneau qui vous convient.',
   },
   {
-    q: 'Puis-je annuler gratuitement ?',
-    a: 'Oui, l\'annulation est gratuite jusqu\'à 2 heures avant le rendez-vous. Consultez les conditions spécifiques de chaque prestataire.',
+    q: 'Puis-je modifier ma réservation ?',
+    a: 'Oui, certaines réservations peuvent être modifiées directement depuis votre compte. Vérifiez les conditions du prestataire.',
   },
   {
     q: 'Comment devenir fournisseur ?',
-    a: 'Inscrivez-vous en tant que fournisseur, créez votre fiche établissement, ajoutez vos services et commencez à recevoir des réservations.',
+    a: 'Créez un compte fournisseur, ajoutez vos services, définissez vos disponibilités et commencez à recevoir des demandes.',
   },
   {
-    q: 'Que faire en cas de problème ?',
-    a: 'Contactez notre support 24/7 par email à support@reservia.com ou par téléphone au +216 XX XXX XXX.',
-  },
-];
-
-const TEAM = [
-  {
-    name: 'Mohamed Ali',
-    role: 'CEO & Fondateur',
-    initials: 'MA',
-  },
-  {
-    name: 'Sarra Benali',
-    role: 'CTO',
-    initials: 'SB',
-  },
-  {
-    name: 'Omar Mansouri',
-    role: 'Lead Developer',
-    initials: 'OM',
+    q: 'Comment contacter le support ?',
+    a: 'Utilisez le formulaire de contact dans l’application ou envoyez-nous un message à support@reservia.com.',
   },
 ];
 
@@ -115,9 +96,9 @@ export default function AboutPage() {
             </h1>
 
             {/* Sous-titre */}
-            <p className="text-lg text-[rgb(var(--foreground-muted))] max-w-2xl mx-auto leading-relaxed">
-              Notre mission : simplifier la réservation de services locaux grâce à l&apos;intelligence artificielle
-              et offrir une expérience fluide à nos utilisateurs.
+                    <p className="text-lg text-[rgb(var(--foreground-muted))] max-w-2xl mx-auto leading-relaxed">
+              Reservia est la première plateforme tunisienne de réservation multi-services, 100 % gratuite. Réservez tous vos
+              services locaux depuis un seul espace simple, clair et sans frais cachés.
             </p>
           </div>
         </div>
@@ -133,19 +114,19 @@ export default function AboutPage() {
               <div>
                 <div className="inline-flex items-center gap-2 mb-4">
                   <CalendarIcon className="w-5 h-5 text-[rgb(var(--primary))]" />
-                  <span className="text-sm font-medium text-[rgb(var(--primary))]">Depuis 2024</span>
+                  <span className="text-sm font-medium text-[rgb(var(--primary))]">Depuis 2026</span>
                 </div>
                 <h2 className="font-display text-2xl md:text-3xl text-[rgb(var(--foreground))] mb-4">
-                  Une idée simple :<br />
-                  <span className="gradient-text">unifier les réservations</span>
+                  La première plateforme tunisienne :<br />
+                  <span className="gradient-text">réservation multi-services gratuite</span>
                 </h2>
                 <p className="text-[rgb(var(--foreground-muted))] mb-4 leading-relaxed">
-                  Reservia est né d&apos;un constat simple : trop de plateformes, trop de temps perdu.
-                  Nous avons créé un guichet unique intelligent pour tous vos besoins de réservation.
+                  En 2026, Reservia se lance comme la nouveauté tunisienne qui concrétise ce concept : une réservation
+                  multi-services moderne, simple et totalement gratuite pour tous les utilisateurs.
                 </p>
                 <p className="text-[rgb(var(--foreground-muted))] leading-relaxed">
-                  Aujourd&apos;hui, Reservia connecte des milliers d&apos;utilisateurs aux meilleurs services locaux,
-                  grâce à une technologie de pointe et une équipe passionnée.
+                  Nous connectons les habitants et les visiteurs avec des prestataires locaux de confiance,
+                  en offrant une expérience claire, rapide et accessible depuis leur smartphone ou ordinateur.
                 </p>
               </div>
               <div className="relative">
@@ -274,36 +255,6 @@ export default function AboutPage() {
       </section>
 
       {/* ══════════════════════════════════════════════
-          L'ÉQUIPE
-      ══════════════════════════════════════════════ */}
-      <section className="section bg-[rgb(var(--surface))]">
-        <div className="container-app">
-          <div className="text-center mb-12">
-            <h2 className="font-display text-[rgb(var(--foreground))]">L&apos;équipe</h2>
-            <p className="text-[rgb(var(--foreground-muted))] mt-3">
-              Des passionnés à votre service
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
-            {TEAM.map((member, index) => (
-              <div
-                key={member.name}
-                className="card text-center animate-fadeInUp"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl font-bold text-white">{member.initials}</span>
-                </div>
-                <h3 className="font-semibold text-[rgb(var(--foreground))]">{member.name}</h3>
-                <p className="text-sm text-[rgb(var(--foreground-muted))]">{member.role}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════
           CONTACT
       ══════════════════════════════════════════════ */}
       <section className="section">
@@ -333,7 +284,7 @@ export default function AboutPage() {
                   href="tel:+21612345678"
                   className="inline-flex items-center gap-2 px-6 py-3 bg-white/20 text-white rounded-full font-semibold hover:bg-white/30 transition-all"
                 >
-                  +216 XX XXX XXX
+                  +216 28 428 453
                 </a>
               </div>
             </div>
