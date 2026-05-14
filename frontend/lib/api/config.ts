@@ -23,16 +23,29 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Intercepteur pour gérer les erreurs 401
+// ✅ Intercepteur modifié pour gérer les 401 sans boucle
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {
+        // ✅ Vérifier qu'on n'est pas déjà sur /login pour éviter la boucle
+        const isOnLoginPage = window.location.pathname === '/login';
+        
+        // Nettoyer les tokens
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
-        window.location.href = '/login';
+        
+        // ✅ Supprimer aussi les cookies
+        document.cookie = 'accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        
+        // ✅ Rediriger seulement si pas déjà sur login
+        if (!isOnLoginPage) {
+          // Utiliser replace au lieu de href pour éviter la boucle
+          window.location.replace('/login?session=expired');
+        }
       }
     }
     return Promise.reject(error);

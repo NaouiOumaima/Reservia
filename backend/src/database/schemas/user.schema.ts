@@ -1,3 +1,4 @@
+// backend/src/database/schemas/user.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
@@ -29,6 +30,10 @@ export class User {
 
   @Prop()
   phone?: string;
+
+  // ✅ AJOUTER LE CHAMP BIO
+  @Prop({ type: String, default: '' })
+  bio?: string;
 
   @Prop()
   profileImage?: string;
@@ -118,3 +123,4 @@ UserSchema.index({ location: '2dsphere' });
 UserSchema.index({ email: 1 });
 UserSchema.index({ role: 1 });
 UserSchema.index({ isBanned: 1 });
+UserSchema.index({ bio: 1 }); // ✅ Index optionnel pour recherche

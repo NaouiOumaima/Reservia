@@ -6,7 +6,7 @@ const publicRoutes = [
   '/',
   '/login',
   '/register',
-  '/register/callback', // ✅ Route Google OAuth callback
+  '/register/callback',
   '/about',
   '/search',
   '/verify-email',
@@ -28,7 +28,6 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // ✅ Lire le token depuis le cookie (set par le callback Google ou le login)
   const token =
     request.cookies.get('accessToken')?.value ||
     request.cookies.get('token')?.value;

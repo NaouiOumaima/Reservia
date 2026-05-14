@@ -1,4 +1,5 @@
-import { Injectable, InternalServerErrorException, BadRequestException } from '@nestjs/common';
+// backend/src/modules/users/users.service.ts
+import { Injectable, InternalServerErrorException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User, UserDocument } from '../../database/schemas/user.schema';
@@ -11,23 +12,6 @@ export class UsersService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
   ) {}
 
-  async findAll(role?: string, excludeSuperAdmin: boolean = true): Promise<any[]> {
-    try {
-      const query: any = role ? { role } : {};
-      
-      if (excludeSuperAdmin) {
-        query.email = { $ne: 'admin@test.com' };
-      }
-      
-      const users = await this.userModel.find(query).lean().exec();
-      
-      return users.map(user => this.sanitizeUser(user));
-    } catch (error) {
-      console.error('Error in findAll:', error);
-      throw new InternalServerErrorException('Failed to fetch users');
-    }
-  }
-
   async findById(id: string): Promise<any | null> {
     try {
       const user = await this.userModel.findById(id).lean().exec();
@@ -35,15 +19,6 @@ export class UsersService {
       return this.sanitizeUser(user);
     } catch (error) {
       console.error('Error in findById:', error);
-      throw new InternalServerErrorException('Failed to fetch user');
-    }
-  }
-
-  async findByIdWithPassword(id: string): Promise<UserDocument | null> {
-    try {
-      return await this.userModel.findById(id).exec();
-    } catch (error) {
-      console.error('Error in findByIdWithPassword:', error);
       throw new InternalServerErrorException('Failed to fetch user');
     }
   }
@@ -59,8 +34,11 @@ export class UsersService {
 
   async updateProfile(userId: string, updateData: UpdateProfileDto): Promise<any | null> {
     try {
+      // ✅ Supprimer l'email si présent (protection supplémentaire)
+      const { email, role, password, ...safeData } = updateData as any;
+      
       const user = await this.userModel
-        .findByIdAndUpdate(userId, updateData, { new: true, runValidators: true })
+        .findByIdAndUpdate(userId, safeData, { new: true, runValidators: true })
         .lean()
         .exec();
       
@@ -72,13 +50,52 @@ export class UsersService {
     }
   }
 
-  async updatePassword(userId: string, newPassword: string): Promise<void> {
+  async updateAvatar(userId: string, avatarUrl: string): Promise<any | null> {
     try {
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      const user = await this.userModel
+        .findByIdAndUpdate(userId, { profileImage: avatarUrl }, { new: true })
+        .lean()
+        .exec();
+      
+      if (!user) return null;
+      return this.sanitizeUser(user);
+    } catch (error) {
+      console.error('Error in updateAvatar:', error);
+      throw new InternalServerErrorException('Failed to update avatar');
+    }
+  }
+
+  async updatePassword(userId: string, hashedPassword: string): Promise<void> {
+    try {
       await this.userModel.findByIdAndUpdate(userId, { password: hashedPassword }).exec();
     } catch (error) {
       console.error('Error in updatePassword:', error);
       throw new InternalServerErrorException('Failed to update password');
+    }
+  }
+
+  async findByIdWithPassword(id: string): Promise<UserDocument | null> {
+    try {
+      return await this.userModel.findById(id).exec();
+    } catch (error) {
+      console.error('Error in findByIdWithPassword:', error);
+      throw new InternalServerErrorException('Failed to fetch user');
+    }
+  }
+
+  async findAll(role?: string, excludeSuperAdmin: boolean = true): Promise<any[]> {
+    try {
+      const query: any = role ? { role } : {};
+      
+      if (excludeSuperAdmin) {
+        query.email = { $ne: 'admin@test.com' };
+      }
+      
+      const users = await this.userModel.find(query).lean().exec();
+      return users.map(user => this.sanitizeUser(user));
+    } catch (error) {
+      console.error('Error in findAll:', error);
+      throw new InternalServerErrorException('Failed to fetch users');
     }
   }
 
@@ -143,7 +160,7 @@ export class UsersService {
   }
 
   private sanitizeUser(user: any): any {
-    const { password, refreshToken, emailVerificationToken, ...safeUser } = user;
+    const { password, refreshToken, emailVerificationToken, resetPasswordToken, ...safeUser } = user;
     return safeUser;
   }
 }

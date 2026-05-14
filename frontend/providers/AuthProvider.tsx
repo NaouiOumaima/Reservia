@@ -1,3 +1,4 @@
+// frontend/providers/AuthProvider.tsx
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
@@ -19,7 +20,7 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   refreshAuth: () => void;
-  updateUser: (updatedUser: User) => void;  // ✅ Ajouté
+  updateUser: (updatedUser: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,6 +38,15 @@ function setCookie(name: string, value: string, days = 7) {
 
 function deleteCookie(name: string) {
   document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+}
+
+// ✅ NOUVEAU : Fonction pour nettoyer tous les tokens
+function clearAllTokens() {
+  localStorage.removeItem('user');
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  deleteCookie('accessToken');
+  deleteCookie('token');
 }
 
 function getInitialUser(): User | null {
@@ -75,7 +85,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // ✅ Fonction pour mettre à jour l'utilisateur dans le state et localStorage
   const updateUser = useCallback((updatedUser: User) => {
     setUser(updatedUser);
     if (typeof window !== 'undefined') {
@@ -84,33 +93,53 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const login = async (credentials: LoginCredentials) => {
-    const res = await loginApi(credentials);
-    setUser(res.user);
-    localStorage.setItem('user', JSON.stringify(res.user));
-    localStorage.setItem('accessToken', res.accessToken);
-    localStorage.setItem('refreshToken', res.refreshToken);
-    setCookie('accessToken', res.accessToken, 7);
-  };
-
-  const register = async (data: RegisterData) => {
-    const res = await registerApi(data);
-    setUser(res.user);
-    if (res.accessToken) {
+    try {
+      const res = await loginApi(credentials);
+      setUser(res.user);
       localStorage.setItem('user', JSON.stringify(res.user));
       localStorage.setItem('accessToken', res.accessToken);
       localStorage.setItem('refreshToken', res.refreshToken);
       setCookie('accessToken', res.accessToken, 7);
+    } catch (error: any) {
+      // ✅ Si erreur 401, nettoyer les tokens
+      if (error?.response?.status === 401) {
+        clearAllTokens();
+        setUser(null);
+      }
+      throw error;
+    }
+  };
+
+  const register = async (data: RegisterData) => {
+    try {
+      const res = await registerApi(data);
+      setUser(res.user);
+      if (res.accessToken) {
+        localStorage.setItem('user', JSON.stringify(res.user));
+        localStorage.setItem('accessToken', res.accessToken);
+        localStorage.setItem('refreshToken', res.refreshToken);
+        setCookie('accessToken', res.accessToken, 7);
+      }
+    } catch (error: any) {
+      // ✅ Si erreur 401, nettoyer les tokens
+      if (error?.response?.status === 401) {
+        clearAllTokens();
+        setUser(null);
+      }
+      throw error;
     }
   };
 
   const logout = async () => {
-    await logoutApi();
-    setUser(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    deleteCookie('accessToken');
-    router.push('/login');
+    try {
+      await logoutApi();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      clearAllTokens();
+      setUser(null);
+      router.push('/login');
+    }
   };
 
   return (
@@ -122,7 +151,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       register,
       logout,
       refreshAuth,
-      updateUser,  // ✅ Ajouté
+      updateUser,
     }}>
       {children}
     </AuthContext.Provider>

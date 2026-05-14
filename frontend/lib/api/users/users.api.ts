@@ -1,7 +1,6 @@
+// frontend/lib/api/users/users.api.ts
 import { apiClient } from '../config';
 import { ChangePasswordData, UpdateProfileData, User, UserPreferences } from './types';
-
-
 
 export const usersApi = {
   // ── Profile ─────────────────────────────────────────────────────────────
@@ -25,14 +24,14 @@ export const usersApi = {
     return response.data;
   },
 
-uploadAvatar: async (file: File): Promise<{ avatarUrl: string }> => {
-  const formData = new FormData();
-  formData.append('avatar', file);
-  const response = await apiClient.post('/users/avatar', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-  return response.data;
-},
+  uploadAvatar: async (file: File): Promise<{ avatarUrl: string }> => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const response = await apiClient.post('/users/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
 
   // ── Admin ────────────────────────────────────────────────────────────────
   getAllUsers: async (role?: string): Promise<User[]> => {
@@ -72,5 +71,4 @@ uploadAvatar: async (file: File): Promise<{ avatarUrl: string }> => {
     const response = await apiClient.patch(`/users/${userId}/unban`);
     return response.data;
   },
-  
 };

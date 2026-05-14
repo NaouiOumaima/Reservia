@@ -1,19 +1,18 @@
 // backend/src/modules/users/users.controller.ts
-
 import {
   Controller,
   Get,
+  Put,
   Patch,
+  Post,
+  Delete,
+  Body,
   Param,
   Query,
-  Body,
   UseGuards,
+  Request,
   BadRequestException,
   InternalServerErrorException,
-  Put,
-  Request,
-  UnauthorizedException,
-  Post,
   UseInterceptors,
   UploadedFile,
 } from '@nestjs/common';
@@ -23,8 +22,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UpdateProfileDto, ChangePasswordDto } from './dto/update-profile.dto';
 import { avatarUploadConfig } from './upload.config';
 import * as bcrypt from 'bcrypt';
-import * as fs from 'fs';
-import * as path from 'path';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
@@ -32,20 +29,22 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   // ============================================
-  // PROFIL ADMIN
+  // PROFIL UTILISATEUR (tous rôles)
   // ============================================
 
   @Get('me')
   async getMyProfile(@Request() req) {
     try {
-      const userId = req.user?._id || req.user?.id;
-      
+      const userId = req.user._id || req.user.id;
       if (!userId) {
-        throw new BadRequestException('User ID not found in token');
+        throw new BadRequestException('User ID not found');
       }
       
-      const user = await this.usersService.findById(userId.toString());
-      if (!user) throw new BadRequestException('User not found');
+      const user = await this.usersService.findById(userId);
+      if (!user) {
+        throw new BadRequestException('User not found');
+      }
+      
       return user;
     } catch (error) {
       console.error('Get profile error:', error);
@@ -57,23 +56,21 @@ export class UsersController {
   @Put('me')
   async updateMyProfile(@Request() req, @Body() updateData: UpdateProfileDto) {
     try {
-      const userId = req.user?._id || req.user?.id;
-      
+      const userId = req.user._id || req.user.id;
       if (!userId) {
-        throw new BadRequestException('User ID not found in token');
+        throw new BadRequestException('User ID not found');
       }
       
-      const user = await this.usersService.findById(userId.toString());
-      if (!user) throw new BadRequestException('User not found');
-      
-      if (updateData.email && updateData.email !== user.email) {
-        const existingUser = await this.usersService.findByEmail(updateData.email);
-        if (existingUser && existingUser._id.toString() !== userId.toString()) {
-          throw new BadRequestException('Email already in use');
-        }
+      // ✅ Vérifier que l'email n'est pas envoyé
+      if ((updateData as any).email) {
+        throw new BadRequestException('Vous ne pouvez pas modifier votre adresse email');
       }
       
-      const updatedUser = await this.usersService.updateProfile(userId.toString(), updateData);
+      const updatedUser = await this.usersService.updateProfile(userId, updateData);
+      if (!updatedUser) {
+        throw new BadRequestException('User not found');
+      }
+      
       return updatedUser;
     } catch (error) {
       console.error('Update profile error:', error);
@@ -86,27 +83,22 @@ export class UsersController {
   @UseInterceptors(FileInterceptor('avatar', avatarUploadConfig))
   async uploadAvatar(@Request() req, @UploadedFile() file: Express.Multer.File) {
     try {
-      const userId = req.user?._id || req.user?.id;
-      
+      const userId = req.user._id || req.user.id;
       if (!userId) {
-        throw new BadRequestException('User ID not found in token');
+        throw new BadRequestException('User ID not found');
       }
       
       if (!file) {
         throw new BadRequestException('Aucun fichier uploadé');
       }
       
-      // Construire l'URL publique de l'avatar
       const avatarUrl = `/uploads/avatars/${file.filename}`;
-      
-      // Mettre à jour l'utilisateur avec le nouveau chemin d'avatar
-      const updatedUser = await this.usersService.updateProfile(userId.toString(), {
-        profileImage: avatarUrl,
-      });
+      const updatedUser = await this.usersService.updateAvatar(userId, avatarUrl);
       
       return {
         avatarUrl: avatarUrl,
         message: 'Avatar mis à jour avec succès',
+        user: updatedUser,
       };
     } catch (error) {
       console.error('Upload avatar error:', error);
@@ -118,42 +110,46 @@ export class UsersController {
   @Patch('me/change-password')
   async changeMyPassword(@Request() req, @Body() changePasswordDto: ChangePasswordDto) {
     try {
-      const userId = req.user?._id || req.user?.id;
-      
+      const userId = req.user._id || req.user.id;
       if (!userId) {
-        throw new BadRequestException('User ID not found in token');
+        throw new BadRequestException('User ID not found');
       }
       
       const { currentPassword, newPassword, confirmPassword } = changePasswordDto;
       
       if (newPassword !== confirmPassword) {
-        throw new BadRequestException('Les nouveaux mots de passe ne correspondent pas');
+        throw new BadRequestException('Les mots de passe ne correspondent pas');
       }
       
-      const user = await this.usersService.findByIdWithPassword(userId.toString());
-      if (!user) throw new BadRequestException('User not found');
+      if (newPassword.length < 6) {
+        throw new BadRequestException('Le mot de passe doit contenir au moins 6 caractères');
+      }
       
-      if (user.password && user.password !== '') {
+      const user = await this.usersService.findByIdWithPassword(userId);
+      if (!user) {
+        throw new BadRequestException('User not found');
+      }
+      
+      if (user.password) {
         const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
         if (!isPasswordValid) {
-          throw new UnauthorizedException('Mot de passe actuel incorrect');
+          throw new BadRequestException('Mot de passe actuel incorrect');
         }
-      } else if (user.googleId) {
-        throw new BadRequestException('Compte Google - utilisez "Mot de passe oublié"');
       }
       
-      await this.usersService.updatePassword(userId.toString(), newPassword);
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await this.usersService.updatePassword(userId, hashedPassword);
       
       return { message: 'Mot de passe modifié avec succès' };
     } catch (error) {
       console.error('Change password error:', error);
-      if (error instanceof BadRequestException || error instanceof UnauthorizedException) throw error;
+      if (error instanceof BadRequestException) throw error;
       throw new InternalServerErrorException('Failed to change password');
     }
   }
 
   // ============================================
-  // ADMIN USERS MANAGEMENT
+  // ADMIN - GESTION DES UTILISATEURS
   // ============================================
 
   @Get('stats')
@@ -168,9 +164,7 @@ export class UsersController {
   @Get()
   async findAll(@Query('role') role?: string) {
     if (role && !['client', 'provider', 'admin'].includes(role)) {
-      throw new BadRequestException(
-        'Invalid role. Must be: client, provider, or admin',
-      );
+      throw new BadRequestException('Invalid role. Must be: client, provider, or admin');
     }
     try {
       return await this.usersService.findAll(role);
@@ -198,9 +192,7 @@ export class UsersController {
   @Patch(':id/role')
   async updateRole(@Param('id') id: string, @Body('role') role: string) {
     if (!role || !['client', 'provider', 'admin'].includes(role)) {
-      throw new BadRequestException(
-        'Invalid role. Must be: client, provider, or admin',
-      );
+      throw new BadRequestException('Invalid role. Must be: client, provider, or admin');
     }
     try {
       return await this.usersService.updateRole(id, role);

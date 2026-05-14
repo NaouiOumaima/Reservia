@@ -1,8 +1,9 @@
+// frontend/app/profile/page.tsx
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/providers/AuthProvider';
-import { usersApi } from '@/lib/api/users/users.api';
+import { usersApi } from '@/lib/api/users';
 import { UpdateProfileData, ChangePasswordData, User } from '@/lib/api/users/types';
 
 import {
@@ -23,25 +24,11 @@ import {
 
 type TabType = 'profile' | 'password';
 
-// ✅ Fonction utilitaire pour obtenir l'URL complète de l'image
 const getFullImageUrl = (path: string | undefined | null): string | null => {
   if (!path) return null;
-  
-  // Si c'est déjà une URL absolue
-  if (path.startsWith('http://') || path.startsWith('https://')) {
-    return path;
-  }
-  
-  // Si c'est une data URL (base64)
-  if (path.startsWith('data:')) {
-    return path;
-  }
-  
-  // Si c'est une URL relative du backend
-  if (path.startsWith('/uploads/')) {
-    return `http://localhost:3001${path}`;
-  }
-  
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  if (path.startsWith('data:')) return path;
+  if (path.startsWith('/uploads/')) return `http://localhost:3001${path}`;
   return path;
 };
 
@@ -58,11 +45,10 @@ export default function ProfilePage() {
   const [imageError, setImageError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Profile form state
+  // Profile form state - SANS EMAIL
   const [profileForm, setProfileForm] = useState<UpdateProfileData>({
     firstName: '',
     lastName: '',
-    email: '',
     phone: '',
     bio: '',
   });
@@ -88,11 +74,11 @@ export default function ProfilePage() {
       setProfileForm({
         firstName: data.firstName || '',
         lastName: data.lastName || '',
-        email: data.email || '',
         phone: data.phone || '',
         bio: data.bio || '',
       });
     } catch (err: any) {
+      console.error('Load profile error:', err);
       setErrorMessage(err.response?.data?.message || 'Erreur lors du chargement du profil');
     } finally {
       setLoading(false);
@@ -103,12 +89,10 @@ export default function ProfilePage() {
     loadProfile();
   }, [loadProfile]);
 
-  // Fonction pour gérer l'upload d'avatar
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validation du fichier
     const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
       setErrorMessage('Format non supporté. Utilisez JPG, PNG ou WEBP.');
@@ -127,11 +111,9 @@ export default function ProfilePage() {
     try {
       const result = await usersApi.uploadAvatar(file);
       
-      // Mettre à jour le profil localement
       const updatedProfile = { ...profile, profileImage: result.avatarUrl };
       setProfile(updatedProfile as User);
       
-      // Mettre à jour le contexte auth
       if (updateUser) {
         updateUser(updatedProfile as User);
       }
@@ -139,6 +121,7 @@ export default function ProfilePage() {
       setSuccessMessage('Photo de profil mise à jour avec succès');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
+      console.error('Upload error:', err);
       setErrorMessage(err.response?.data?.message || 'Erreur lors de l\'upload');
     } finally {
       setUploadingAvatar(false);
@@ -174,6 +157,7 @@ export default function ProfilePage() {
       setEditMode(false);
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
+      console.error('Update error:', err);
       setErrorMessage(err.response?.data?.message || 'Erreur lors de la mise à jour');
     } finally {
       setSaving(false);
@@ -208,6 +192,7 @@ export default function ProfilePage() {
       });
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
+      console.error('Password error:', err);
       setErrorMessage(err.response?.data?.message || 'Erreur lors du changement de mot de passe');
     } finally {
       setSaving(false);
@@ -224,7 +209,7 @@ export default function ProfilePage() {
   const getRoleLabel = () => {
     switch (userRole) {
       case 'admin': return 'Administrateur';
-      case 'provider': return 'Fourniseur';
+      case 'provider': return 'Fournisseur';
       default: return 'Client';
     }
   };
@@ -244,7 +229,7 @@ export default function ProfilePage() {
     return (
       <div className="profile-loading">
         <div className="profile-loading-spinner"></div>
-        <p>Chargement du profil...</p>
+        <p className="text-muted">Chargement du profil...</p>
       </div>
     );
   }
@@ -254,38 +239,36 @@ export default function ProfilePage() {
       <div className="profile-container">
         {/* Header */}
         <div className="profile-header">
+          {/* Avatar */}
           <div className="profile-avatar-wrapper">
-            {showAvatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={avatarUrl!}
-                alt={`${profile?.firstName} ${profile?.lastName}`}
-                className="profile-avatar-img"
-                onError={() => {
-                  console.error('Failed to load image:', avatarUrl);
-                  setImageError(true);
-                }}
-              />
-            ) : (
-              <div className="profile-avatar">
-                {getInitials()}
-              </div>
-            )}
-            
+            <div className="profile-avatar">
+              {showAvatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={avatarUrl!}
+                  alt={`${profile?.firstName} ${profile?.lastName}`}
+                  className="profile-avatar-img"
+                  onError={() => {
+                    console.error('Failed to load image:', avatarUrl);
+                    setImageError(true);
+                  }}
+                />
+              ) : (
+                getInitials()
+              )}
+            </div>
             <input
               ref={fileInputRef}
               type="file"
               accept="image/jpeg,image/png,image/jpg,image/webp"
               onChange={handleAvatarUpload}
-              className="hidden-file-input"
-              style={{ display: 'none' }}
+              className="hidden"
             />
-            
-            <button 
-              className="profile-avatar-edit" 
-              title="Changer l'avatar"
+            <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingAvatar}
+              className="profile-avatar-edit"
+              title="Changer l'avatar"
             >
               {uploadingAvatar ? (
                 <Loader2Icon className="w-4 h-4 animate-spin" />
@@ -294,7 +277,8 @@ export default function ProfilePage() {
               )}
             </button>
           </div>
-          
+
+          {/* Info */}
           <div className="profile-header-info">
             <h1 className="profile-title">
               {profile?.firstName} {profile?.lastName}
@@ -336,7 +320,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Tabs - Seulement Informations et Sécurité */}
+        {/* Tabs */}
         <div className="profile-tabs">
           <button
             onClick={() => setActiveTab('profile')}
@@ -345,7 +329,6 @@ export default function ProfilePage() {
             <UserIcon className="w-4 h-4" />
             Informations
           </button>
-          
           <button
             onClick={() => setActiveTab('password')}
             className={`profile-tab ${activeTab === 'password' ? 'active' : ''}`}
@@ -355,23 +338,28 @@ export default function ProfilePage() {
           </button>
         </div>
 
-        {/* Tab Content */}
-        <div className="profile-content">
-          {/* Profile Tab - Commun à tous */}
-          {activeTab === 'profile' && (
+        {/* Profile Tab */}
+        {activeTab === 'profile' && (
+          <div className="profile-content">
             <div className="profile-card">
               <div className="profile-card-header">
                 <h2 className="profile-card-title">Informations personnelles</h2>
                 {!editMode ? (
-                  <button onClick={() => setEditMode(true)} className="edit-btn">
+                  <button
+                    onClick={() => setEditMode(true)}
+                    className="edit-btn"
+                  >
                     <PencilIcon className="w-4 h-4" />
                     Modifier
                   </button>
                 ) : (
-                  <button onClick={() => {
-                    setEditMode(false);
-                    loadProfile();
-                  }} className="cancel-btn">
+                  <button
+                    onClick={() => {
+                      setEditMode(false);
+                      loadProfile();
+                    }}
+                    className="cancel-btn"
+                  >
                     <XMarkIcon className="w-4 h-4" />
                     Annuler
                   </button>
@@ -380,6 +368,7 @@ export default function ProfilePage() {
 
               <form onSubmit={handleProfileSubmit}>
                 <div className="profile-form-grid">
+                  {/* Prénom */}
                   <div className="form-group">
                     <label className="form-label">Prénom</label>
                     <input
@@ -393,6 +382,7 @@ export default function ProfilePage() {
                     />
                   </div>
 
+                  {/* Nom */}
                   <div className="form-group">
                     <label className="form-label">Nom</label>
                     <input
@@ -406,19 +396,21 @@ export default function ProfilePage() {
                     />
                   </div>
 
+                  {/* Email - EN LECTURE SEULEMENT */}
                   <div className="form-group">
                     <label className="form-label">Email</label>
                     <input
                       type="email"
-                      name="email"
-                      value={profileForm.email}
-                      onChange={handleProfileChange}
-                      disabled={!editMode || saving}
+                      value={profile?.email || ''}
+                      disabled
                       className="form-input"
-                      placeholder="email@exemple.com"
                     />
+                    <p className="text-subtle text-xs mt-1">
+                      ⚠️ L'adresse email ne peut pas être modifiée
+                    </p>
                   </div>
 
+                  {/* Téléphone */}
                   <div className="form-group">
                     <label className="form-label">Téléphone</label>
                     <input
@@ -432,6 +424,7 @@ export default function ProfilePage() {
                     />
                   </div>
 
+                  {/* Bio - Pleine largeur */}
                   <div className="form-group full-width">
                     <label className="form-label">Bio</label>
                     <textarea
@@ -439,19 +432,26 @@ export default function ProfilePage() {
                       value={profileForm.bio || ''}
                       onChange={handleProfileChange}
                       disabled={!editMode || saving}
-                      className="form-textarea"
                       rows={4}
+                      className="form-textarea"
                       placeholder="Parlez-nous de vous..."
                     />
+                    <p className="text-subtle text-xs">
+                      {profileForm.bio?.length || 0}/500 caractères
+                    </p>
                   </div>
                 </div>
 
                 {editMode && (
                   <div className="form-actions">
-                    <button type="submit" disabled={saving} className="btn-primary">
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="btn-primary"
+                    >
                       {saving ? (
                         <>
-                          <div className="spinner-small"></div>
+                          <Loader2Icon className="w-4 h-4 animate-spin" />
                           Enregistrement...
                         </>
                       ) : (
@@ -465,16 +465,19 @@ export default function ProfilePage() {
                 )}
               </form>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Password Tab - Commun à tous */}
-          {activeTab === 'password' && (
+        {/* Password Tab */}
+        {activeTab === 'password' && (
+          <div className="profile-content">
             <div className="profile-card">
               <h2 className="profile-card-title">Changer le mot de passe</h2>
               
               <form onSubmit={handlePasswordSubmit}>
-                <div className="profile-form-grid">
-                  <div className="form-group full-width">
+                <div className="space-y-5">
+                  {/* Mot de passe actuel */}
+                  <div className="form-group">
                     <label className="form-label">Mot de passe actuel</label>
                     <div className="password-input-wrapper">
                       <input
@@ -497,7 +500,8 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                  <div className="form-group full-width">
+                  {/* Nouveau mot de passe */}
+                  <div className="form-group">
                     <label className="form-label">Nouveau mot de passe</label>
                     <div className="password-input-wrapper">
                       <input
@@ -520,7 +524,8 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                  <div className="form-group full-width">
+                  {/* Confirmer mot de passe */}
+                  <div className="form-group">
                     <label className="form-label">Confirmer le mot de passe</label>
                     <div className="password-input-wrapper">
                       <input
@@ -545,15 +550,19 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="password-hint">
-                  <LockIcon className="w-4 h-4" />
+                  <LockIcon className="w-3 h-3" />
                   <span>Le mot de passe doit contenir au moins 6 caractères</span>
                 </div>
 
                 <div className="form-actions">
-                  <button type="submit" disabled={saving} className="btn-primary">
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="btn-primary"
+                  >
                     {saving ? (
                       <>
-                        <div className="spinner-small"></div>
+                        <Loader2Icon className="w-4 h-4 animate-spin" />
                         Modification...
                       </>
                     ) : (
@@ -566,8 +575,8 @@ export default function ProfilePage() {
                 </div>
               </form>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

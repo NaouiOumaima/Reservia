@@ -1,4 +1,5 @@
-import { IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+// backend/src/modules/users/dto/update-profile.dto.ts
+import { IsOptional, IsString, MaxLength, MinLength, IsEmail } from 'class-validator';
 
 export class UpdateProfileDto {
   @IsOptional()
@@ -13,12 +14,12 @@ export class UpdateProfileDto {
   @MaxLength(50)
   lastName?: string;
 
-  @IsOptional()
-  @IsEmail()
-  email?: string;
+  // ✅ SUPPRIMER @IsEmail pour ne pas bloquer l'update
+  // L'email ne peut pas être modifié de toute façon
 
   @IsOptional()
   @IsString()
+  @MaxLength(20)
   phone?: string;
 
   @IsOptional()
@@ -40,5 +41,6 @@ export class ChangePasswordDto {
   newPassword: string;
 
   @IsString()
+  @MinLength(6)
   confirmPassword: string;
 }

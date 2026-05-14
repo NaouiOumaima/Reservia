@@ -34,12 +34,12 @@ export interface UserPreferences {
   preferredHours?: string;
 }
 
+// ✅ UpdateProfileData - SANS EMAIL
 export interface UpdateProfileData {
   firstName?: string;
   lastName?: string;
-  email?: string;
   phone?: string;
-  bio?: string;      // ✅ Ajouté
+  bio?: string;
   profileImage?: string;
 }
 
@@ -56,7 +56,7 @@ export interface User {
   lastName: string;
   role: 'client' | 'provider' | 'admin';
   phone?: string;
-  bio?: string;                    // ✅ Ajouté
+  bio?: string;
   profileImage?: string;
   avatar?: string;
   isBanned?: boolean;
