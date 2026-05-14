@@ -201,31 +201,84 @@ export class ServicesService {
     return this.serviceModel.findByIdAndUpdate(serviceId, { $inc: { popularity: 1 } });
   }
 
-  // Admin methods
-  async findPending(): Promise<ServiceDocument[]> {
-    return this.serviceModel
-      .find({ isActive: false, isPendingApproval: true })
-      .populate('providerId', 'firstName lastName email')
-      .exec();
-  }
+// Admin methods - Complétez celles qui manquent
 
-  async approveService(serviceId: string): Promise<ServiceDocument> {
-    return this.serviceModel.findByIdAndUpdate(
-      serviceId,
-      { isActive: true, isPendingApproval: false },
-      { new: true },
-    ).exec() as Promise<ServiceDocument>;
-  }
+// Méthode pour récupérer tous les services (admin seulement)
+async findAllAdmin(): Promise<ServiceDocument[]> {
+  // Récupérer TOUS les services sans aucun filtre
+  return this.serviceModel
+    .find()
+    .populate('providerId', 'firstName lastName email providerProfile.businessName phone')
+    .sort({ createdAt: -1 })
+    .exec();
+}
+// services.service.ts - Ajoutez ces méthodes à la fin de votre classe
 
-  async rejectService(serviceId: string, reason: string): Promise<ServiceDocument> {
-    return this.serviceModel.findByIdAndUpdate(
-      serviceId,
-      { isPendingApproval: false, rejectionReason: reason },
-      { new: true },
-    ).exec() as Promise<ServiceDocument>;
-  }
+// Admin methods
+async findPending(): Promise<ServiceDocument[]> {
+  return this.serviceModel
+    .find({ 
+      isPendingApproval: true, 
+      isActive: false 
+    })
+    .populate('providerId', 'firstName lastName email providerProfile.businessName phone')
+    .sort({ createdAt: 1 }) // Les plus anciens d'abord
+    .exec();
+}
 
-  async getPendingCount(): Promise<number> {
-    return this.serviceModel.countDocuments({ isActive: false, isPendingApproval: true });
+async approveService(serviceId: string): Promise<ServiceDocument> {
+  const service = await this.serviceModel.findByIdAndUpdate(
+    serviceId,
+    { 
+      isActive: true, 
+      isPendingApproval: false,
+      rejectionReason: null // Effacer toute raison de rejet précédente
+    },
+    { new: true },
+  ).exec();
+  
+  if (!service) {
+    throw new NotFoundException('Service non trouvé');
   }
+  
+  return service;
+}
+
+async rejectService(serviceId: string, reason: string): Promise<ServiceDocument> {
+  const service = await this.serviceModel.findByIdAndUpdate(
+    serviceId,
+    { 
+      isPendingApproval: false, 
+      isActive: false,
+      rejectionReason: reason 
+    },
+    { new: true },
+  ).exec();
+  
+  if (!service) {
+    throw new NotFoundException('Service non trouvé');
+  }
+  
+  return service;
+}
+
+async getPendingCount(): Promise<number> {
+  return this.serviceModel.countDocuments({ 
+    isPendingApproval: true, 
+    isActive: false 
+  });
+}
+
+// Optionnel: Méthode pour voir les services rejetés
+async findRejected(): Promise<ServiceDocument[]> {
+  return this.serviceModel
+    .find({ 
+      isPendingApproval: false, 
+      isActive: false, 
+      rejectionReason: { $ne: null, $exists: true } 
+    })
+    .populate('providerId', 'firstName lastName email')
+    .sort({ updatedAt: -1 })
+    .exec();
+}
 }

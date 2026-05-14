@@ -1,3 +1,4 @@
+// services.controller.ts - Version complète
 import {
   Controller,
   Get,
@@ -10,6 +11,8 @@ import {
   UseGuards,
   Request,
   Patch,
+  BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ServicesService } from './services.service';
 import { CreateServiceDto } from './dto/create-service.dto';
@@ -97,5 +100,64 @@ export class ServicesController {
   @UseGuards(JwtAuthGuard)
   async toggleActive(@Param('id') id: string, @Request() req) {
     return this.servicesService.toggleActive(id, req.user._id);
+  }
+
+  // ==================== ENDPOINTS ADMIN ====================
+
+
+  // Dans getAllServicesAdmin, ajoutez un log
+@Get('admin/all')
+@UseGuards(JwtAuthGuard)
+async getAllServicesAdmin(@Request() req) {
+  console.log('User role:', req.user?.role); // Debug
+  console.log('User object:', req.user); // Debug
+  
+  if (req.user.role !== 'admin') {
+    throw new ForbiddenException('Accès réservé aux administrateurs. Votre rôle: ' + req.user?.role);
+  }
+  return this.servicesService.findAllAdmin();
+}
+  @Get('admin/pending')
+  @UseGuards(JwtAuthGuard)
+  async getPendingServices(@Request() req) {
+    if (req.user.role !== 'admin') {
+      throw new ForbiddenException('Accès réservé aux administrateurs');
+    }
+    return this.servicesService.findPending();
+  }
+
+  @Get('admin/pending/count')
+  @UseGuards(JwtAuthGuard)
+  async getPendingCount(@Request() req) {
+    if (req.user.role !== 'admin') {
+      throw new ForbiddenException('Accès réservé aux administrateurs');
+    }
+    const count = await this.servicesService.getPendingCount();
+    return { count };
+  }
+
+  @Patch('admin/:id/approve')
+  @UseGuards(JwtAuthGuard)
+  async approveService(@Param('id') id: string, @Request() req) {
+    if (req.user.role !== 'admin') {
+      throw new ForbiddenException('Accès réservé aux administrateurs');
+    }
+    return this.servicesService.approveService(id);
+  }
+
+  @Patch('admin/:id/reject')
+  @UseGuards(JwtAuthGuard)
+  async rejectService(
+    @Param('id') id: string,
+    @Body('reason') reason: string,
+    @Request() req
+  ) {
+    if (req.user.role !== 'admin') {
+      throw new ForbiddenException('Accès réservé aux administrateurs');
+    }
+    if (!reason || reason.trim() === '') {
+      throw new BadRequestException('La raison du rejet est requise');
+    }
+    return this.servicesService.rejectService(id, reason);
   }
 }

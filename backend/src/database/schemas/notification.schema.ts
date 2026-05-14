@@ -1,5 +1,3 @@
-// src/database/schemas/notification.schema.ts
-
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
@@ -11,6 +9,7 @@ export enum NotificationType {
   RESERVATION_CANCELLED = 'reservation_cancelled',
   RESERVATION_EXPIRED = 'reservation_expired',
   PROMOTION = 'promotion',
+  ADVERTISEMENT = 'advertisement',
   SYSTEM = 'system',
 }
 
@@ -31,6 +30,9 @@ export class Notification {
   @Prop({ type: Types.ObjectId, ref: 'Reservation' })
   reservationId?: Types.ObjectId;
 
+  @Prop({ type: Types.ObjectId, ref: 'Advertisement' })
+  advertisementId?: Types.ObjectId;
+
   @Prop({ type: Object })
   data?: any;
 
@@ -39,6 +41,12 @@ export class Notification {
 
   @Prop({ type: [String], default: [] })
   channels?: string[];
+
+  @Prop()
+  imageUrl?: string;
+
+  @Prop()
+  actionUrl?: string;
 }
 
 export const NotificationSchema = SchemaFactory.createForClass(Notification);

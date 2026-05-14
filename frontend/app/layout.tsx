@@ -7,7 +7,7 @@ import ThemeProvider from '@/providers/ThemeProvider';
 import { AuthProvider } from '@/providers/AuthProvider';
 import './globals.css';
 import Chatbot from '@/features/chatbot/Chatbot';
-
+import { NotificationProvider } from './components/NotificationBell';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -25,14 +25,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={inter.className}>
         <ThemeProvider>
           <AuthProvider>
-            <div className="min-h-screen flex flex-col">
-              <Navbar />
-              <main className="flex-1 pt-0">  {/* ← Changez pt-16 en pt-0 */}
-                {children}
-              </main>
-              <Footer />
-              <Chatbot />
-            </div>
+            <NotificationProvider>  {/* ✅ Ajouter NotificationProvider */}
+              <div className="min-h-screen flex flex-col">
+                <Navbar />
+                <main className="flex-1 pt-0">
+                  {children}
+                </main>
+                <Footer />
+                <Chatbot />
+              </div>
+            </NotificationProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

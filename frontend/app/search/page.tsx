@@ -1,32 +1,49 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import TunisiaMap from '@/components/charts/TunisiaMap';
 import ServiceCard from '@/components/service/ServiceCard';
 import { useServices } from '@/features/services/hooks/useServices';
-import { TUNISIAN_GOVERNORATES, GOVERNORATE_COORDINATES } from '@/lib/api/constants/governorates';
-import { CATEGORIES, getAllCategoryLabels } from '@/lib/api/constants/categories.';
-import { SearchIcon, StarIcon, LocationIcon, AllCategoriesIcon } from '@/components/ui/Icons';
+import { GOVERNORATE_COORDINATES } from '@/lib/api/constants/governorates';
+import {
+  SearchIcon,
+  StarIcon,
+  LocationIcon,
+  AllCategoriesIcon,
+  ChevronLeftIcon,
+  RestaurantIcon,
+  HotelIcon,
+  LipstickIcon,
+  DumbbellIcon,
+  MedicalCrossIcon,
+  GraduationCapIcon,
+  EntertainmentIcon,
+  TransportIcon,
+  ServicesIcon,
+} from '@/components/ui/Icons';
 
-// Mapping pour les catégories avec icônes et noms d'affichage
+// ─── Mapping catégories → composants icônes ───────────────────────────────────
+// On passe le composant (RestaurantIcon), PAS un élément (<RestaurantIcon />).
+// L'ancien code faisait `icon: () => cat.icon` qui wrappait un élément JSX
+// dans une fonction — React le rendait comme une fonction anonyme, pas un composant,
+// ce qui causait les mauvaises icônes (torche, caisse, document...).
+
 const CATEGORIES_WITH_DISPLAY = [
-  { 
-    id: '', 
-    name: 'Toutes catégories', 
-    icon: AllCategoriesIcon 
-  },
-  ...CATEGORIES.map(cat => ({
-    id: cat.label,
-    name: cat.frenchLabel,
-    icon: () => cat.icon,
-  })),
+  { id: '',           name: 'Toutes catégories', Icon: AllCategoriesIcon },
+  { id: 'restaurant', name: 'Restauration',       Icon: RestaurantIcon    },
+  { id: 'hotel',      name: 'Hébergement',        Icon: HotelIcon         },
+  { id: 'beauté',     name: 'Beauté & Bien-être', Icon: LipstickIcon      },
+  { id: 'fitness',    name: 'Fitness',            Icon: DumbbellIcon      },
+  { id: 'medical',    name: 'Santé',              Icon: MedicalCrossIcon  },
+  { id: 'education',  name: 'Éducation',          Icon: GraduationCapIcon },
+  { id: 'loisirs',    name: 'Loisirs',            Icon: EntertainmentIcon },
+  { id: 'transport',  name: 'Transport',          Icon: TransportIcon     },
+  { id: 'autre',      name: 'Autre',              Icon: ServicesIcon      },
 ];
 
 export default function SearchPage() {
-  const router = useRouter();
   const { services, loading, error, search } = useServices();
-  
+
   const [selectedGovernorate, setSelectedGovernorate] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [filters, setFilters] = useState({
@@ -35,7 +52,6 @@ export default function SearchPage() {
     minRating: 0,
   });
 
-  // Recherche quand un gouvernorat est sélectionné ou quand les filtres changent
   useEffect(() => {
     const performSearch = async () => {
       const searchFilters: any = {
@@ -44,33 +60,25 @@ export default function SearchPage() {
         maxPrice: filters.maxPrice < 500 ? filters.maxPrice : undefined,
         minRating: filters.minRating > 0 ? filters.minRating : undefined,
       };
-      
-      if (selectedGovernorate && GOVERNORATE_COORDINATES[selectedGovernorate as keyof typeof GOVERNORATE_COORDINATES]) {
-        const coords = GOVERNORATE_COORDINATES[selectedGovernorate as keyof typeof GOVERNORATE_COORDINATES];
-        searchFilters.location = {
-          lat: coords.lat,
-          lng: coords.lng,
-          radius: 50,
-        };
+
+      if (
+        selectedGovernorate &&
+        GOVERNORATE_COORDINATES[selectedGovernorate as keyof typeof GOVERNORATE_COORDINATES]
+      ) {
+        const coords =
+          GOVERNORATE_COORDINATES[selectedGovernorate as keyof typeof GOVERNORATE_COORDINATES];
+        searchFilters.location = { lat: coords.lat, lng: coords.lng, radius: 50 };
         await search('', searchFilters);
       }
     };
-    
+
     performSearch();
   }, [selectedGovernorate, selectedCategory, filters, search]);
-
-  const handleGovernorateClick = (governorateName: string) => {
-    setSelectedGovernorate(governorateName);
-  };
 
   const handleBackToMap = () => {
     setSelectedGovernorate(null);
     setSelectedCategory('');
     setFilters({ minPrice: 0, maxPrice: 500, minRating: 0 });
-  };
-
-  const handleCategoryChange = (categoryId: string) => {
-    setSelectedCategory(categoryId);
   };
 
   const handleFilterChange = (key: keyof typeof filters, value: number) => {
@@ -82,32 +90,33 @@ export default function SearchPage() {
     setFilters({ minPrice: 0, maxPrice: 500, minRating: 0 });
   };
 
-  // Vue carte (sélection du gouvernorat)
+  // ─── Vue carte ────────────────────────────────────────────────────────────────
   if (!selectedGovernorate) {
     return (
       <div className="search-page-container">
         <div className="search-page-content">
-          
+
           {/* Catégories */}
           <div className="search-categories">
             <div className="search-categories-wrapper">
-              {CATEGORIES_WITH_DISPLAY.map((cat) => {
-                const IconComponent = typeof cat.icon === 'function' ? cat.icon : cat.icon;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => handleCategoryChange(cat.id)}
-                    className={`search-category-btn ${selectedCategory === cat.id ? 'search-category-btn-active' : 'search-category-btn-inactive'}`}
-                  >
-                    <IconComponent className="w-4 h-4" />
-                    <span>{cat.name}</span>
-                  </button>
-                );
-              })}
+              {CATEGORIES_WITH_DISPLAY.map(({ id, name, Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setSelectedCategory(id)}
+                  className={`search-category-btn ${
+                    selectedCategory === id
+                      ? 'search-category-btn-active'
+                      : 'search-category-btn-inactive'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span>{name}</span>
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Étapes 1 → 2 → 3 */}
+          {/* Étapes */}
           <div className="search-steps">
             <div className="search-step">
               <div className="search-step-number">1</div>
@@ -146,36 +155,54 @@ export default function SearchPage() {
           </div>
 
           {/* Carte Tunisie */}
-          <TunisiaMap onGovernorateClick={handleGovernorateClick} />
+          <TunisiaMap onGovernorateClick={setSelectedGovernorate} />
 
         </div>
       </div>
     );
   }
 
-  // Vue résultats
+  // ─── Vue résultats ────────────────────────────────────────────────────────────
   return (
     <div className="search-results-container">
       <div className="search-results-header">
         <div className="search-results-header-content">
           <button onClick={handleBackToMap} className="search-back-btn">
-            <svg className="search-back-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
+            <ChevronLeftIcon className="w-5 h-5" />
             Retour à la carte
           </button>
           <h1 className="search-results-title">{selectedGovernorate}</h1>
           <p className="search-results-subtitle">
-            {selectedCategory 
-              ? CATEGORIES_WITH_DISPLAY.find(c => c.id === selectedCategory)?.name 
+            {selectedCategory
+              ? CATEGORIES_WITH_DISPLAY.find(c => c.id === selectedCategory)?.name
               : 'Tous services'}
           </p>
         </div>
       </div>
 
       <div className="search-results-content">
-        
-        {/* Filtres */}
+
+        {/* Filtres catégories */}
+        <div className="search-categories search-categories--compact">
+          <div className="search-categories-wrapper">
+            {CATEGORIES_WITH_DISPLAY.map(({ id, name, Icon }) => (
+              <button
+                key={id}
+                onClick={() => setSelectedCategory(id)}
+                className={`search-category-btn ${
+                  selectedCategory === id
+                    ? 'search-category-btn-active'
+                    : 'search-category-btn-inactive'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span>{name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Filtres prix / note */}
         <div className="search-filters">
           <div className="search-filters-grid">
             <div className="search-filter-group">
@@ -185,7 +212,9 @@ export default function SearchPage() {
                 placeholder="Min"
                 className="search-filter-input"
                 value={filters.minPrice || ''}
-                onChange={(e) => handleFilterChange('minPrice', e.target.value ? Number(e.target.value) : 0)}
+                onChange={(e) =>
+                  handleFilterChange('minPrice', e.target.value ? Number(e.target.value) : 0)
+                }
               />
             </div>
             <div className="search-filter-group">
@@ -195,7 +224,9 @@ export default function SearchPage() {
                 placeholder="Max"
                 className="search-filter-input"
                 value={filters.maxPrice === 500 ? '' : filters.maxPrice}
-                onChange={(e) => handleFilterChange('maxPrice', e.target.value ? Number(e.target.value) : 500)}
+                onChange={(e) =>
+                  handleFilterChange('maxPrice', e.target.value ? Number(e.target.value) : 500)
+                }
               />
             </div>
             <div className="search-filter-group">
@@ -211,7 +242,10 @@ export default function SearchPage() {
                 <option value={3}>3+ étoiles</option>
               </select>
             </div>
-            {(selectedCategory || filters.minPrice > 0 || filters.maxPrice < 500 || filters.minRating > 0) && (
+            {(selectedCategory ||
+              filters.minPrice > 0 ||
+              filters.maxPrice < 500 ||
+              filters.minRating > 0) && (
               <div className="search-filter-group">
                 <button onClick={resetFilters} className="btn btn-ghost text-sm mt-6">
                   Réinitialiser
@@ -223,19 +257,23 @@ export default function SearchPage() {
 
         {loading ? (
           <div className="search-loading">
-            <div className="search-spinner"></div>
+            <div className="search-spinner" />
             <p className="search-loading-text">Chargement des services...</p>
           </div>
         ) : error ? (
           <div className="search-error">
             <p className="search-error-text">{error}</p>
-            <button onClick={handleBackToMap} className="search-error-btn">Retour à la carte</button>
+            <button onClick={handleBackToMap} className="search-error-btn">
+              Retour à la carte
+            </button>
           </div>
         ) : services.length === 0 ? (
           <div className="search-empty">
-            <div className="search-empty-icon">🔍</div>
+            <SearchIcon className="w-12 h-12 text-muted mx-auto mb-3" />
             <p className="search-empty-title">Aucun service trouvé dans cette région</p>
-            <button onClick={handleBackToMap} className="search-empty-btn">Explorer d'autres régions</button>
+            <button onClick={handleBackToMap} className="search-empty-btn">
+              Explorer d'autres régions
+            </button>
           </div>
         ) : (
           <>

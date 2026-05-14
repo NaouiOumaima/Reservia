@@ -6,8 +6,8 @@ import {
   DumbbellIcon,
   MedicalCrossIcon,
   GraduationCapIcon,
-  GamepadIcon,
-  TaxiIcon,
+  EntertainmentIcon,
+  TransportIcon,
   ServicesIcon,
 } from '@/components/ui/Icons';
 
@@ -79,14 +79,14 @@ export const CATEGORIES: Category[] = [
     key: CategoryKey.ENTERTAINMENT,
     label: 'loisirs',
     frenchLabel: 'Loisirs',
-    icon: <GamepadIcon className="w-10 h-10" />,
+    icon: <EntertainmentIcon className="w-10 h-10" />,
     description: 'Cinéma, jeux, loisirs et divertissements',
   },
   {
     key: CategoryKey.TRANSPORT,
     label: 'transport',
     frenchLabel: 'Transport',
-    icon: <TaxiIcon className="w-10 h-10" />,
+    icon: <TransportIcon className="w-10 h-10" />,
     description: 'Taxi, transport et services de mobilité',
   },
   {

@@ -1,3 +1,4 @@
+// frontend/components/Navbar.tsx
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -26,7 +27,9 @@ import {
   UsersIcon,
   CheckIcon,
   FlagIcon,
+  MegaphoneIcon,
 } from './Icons';
+import NotificationDropdown from '@/app/components/NotificationDropdown';
 
 interface NavbarProps {
   user?: User | null;
@@ -35,22 +38,21 @@ interface NavbarProps {
 export default function Navbar({ user: propUser }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const profileRef = useRef<HTMLDivElement>(null);
-  const notificationsRef = useRef<HTMLDivElement>(null);
+  const profileRefDesktop = useRef<HTMLDivElement>(null);
+  const profileRefMobile = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
 
+  // Gestion du clic en dehors du dropdown
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (profileRef.current && !profileRef.current.contains(e.target as Node))
+      const isDesktopClick = profileRefDesktop.current && !profileRefDesktop.current.contains(e.target as Node);
+      const isMobileClick = profileRefMobile.current && !profileRefMobile.current.contains(e.target as Node);
+      
+      if (isDesktopClick && isMobileClick) {
         setProfileOpen(false);
-      if (
-        notificationsRef.current &&
-        !notificationsRef.current.contains(e.target as Node)
-      )
-        setNotificationsOpen(false);
+      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -59,6 +61,65 @@ export default function Navbar({ user: propUser }: NavbarProps) {
   const handleLogout = async () => {
     await logout();
     router.push('/login');
+  };
+
+  // ============================================
+  // COMPOSANT DROPDOWN PROFIL (réutilisable)
+  // ============================================
+  const ProfileDropdownContent = ({ variant = 'default' }: { variant?: 'default' | 'admin' }) => {
+    if (variant === 'admin') {
+      return (
+        <div className="navbar-dropdown navbar-dropdown-sm bg-gray-800 border-gray-700">
+          <div className="navbar-dropdown-header border-gray-700">
+            <p className="font-semibold text-sm text-white">
+              {user?.firstName} {user?.lastName}
+            </p>
+            <p className="navbar-dropdown-text text-gray-400">Administrateur</p>
+          </div>
+          <div>
+            <Link
+              href="/profile"
+              className="navbar-profile-item text-gray-300 hover:bg-gray-700"
+              onClick={() => setProfileOpen(false)}
+            >
+              Profil admin
+            </Link>
+          </div>
+          <div className="border-t border-gray-700 py-1">
+            <button onClick={handleLogout} className="navbar-profile-logout text-red-400 hover:bg-gray-700">
+              Déconnexion
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="navbar-dropdown navbar-dropdown-sm">
+        <div className="navbar-dropdown-header">
+          <p className="font-semibold text-sm">
+            {user?.firstName} {user?.lastName}
+          </p>
+          <p className="navbar-dropdown-text">
+            {user?.role === 'provider' ? 'Fournisseur' : user?.email}
+          </p>
+        </div>
+        <div>
+          <Link
+            href="/profile"
+            className="navbar-profile-item"
+            onClick={() => setProfileOpen(false)}
+          >
+            Mon profil
+          </Link>
+        </div>
+        <div className="border-t border-[rgb(var(--border))] py-1">
+          <button onClick={handleLogout} className="navbar-profile-logout">
+            Déconnexion
+          </button>
+        </div>
+      </div>
+    );
   };
 
   // ============================================
@@ -197,33 +258,11 @@ export default function Navbar({ user: propUser }: NavbarProps) {
               </div>
 
               <div className="navbar-actions">
+                {/* Version Desktop */}
                 <div className="navbar-desktop-actions">
-                  <div className="relative" ref={notificationsRef}>
-                    <button
-                      onClick={() => setNotificationsOpen(!notificationsOpen)}
-                      className="navbar-icon-btn"
-                    >
-                      <BellIcon />
-                      <span className="navbar-notif-dot"></span>
-                    </button>
-                    {notificationsOpen && (
-                      <div className="navbar-dropdown">
-                        <div className="navbar-dropdown-header">
-                          <h3 className="navbar-dropdown-title">Notifications</h3>
-                        </div>
-                        <div className="navbar-dropdown-empty">
-                          Aucune nouvelle notification
-                        </div>
-                        <Link href="/client/notifications" className="navbar-dropdown-link">
-                          Voir toutes
-                        </Link>
-                      </div>
-                    )}
-                  </div>
-
+                  <NotificationDropdown />
                   <ThemeToggle />
-
-                  <div className="relative" ref={profileRef}>
+                  <div className="relative" ref={profileRefDesktop}>
                     <button
                       onClick={() => setProfileOpen(!profileOpen)}
                       className="navbar-avatar-btn"
@@ -233,60 +272,15 @@ export default function Navbar({ user: propUser }: NavbarProps) {
                         {user.lastName?.[0]}
                       </div>
                     </button>
-                    {profileOpen && (
-                      <div className="navbar-dropdown navbar-dropdown-sm">
-                        <div className="navbar-dropdown-header">
-                          <p className="font-semibold text-sm">
-                            {user.firstName} {user.lastName}
-                          </p>
-                          <p className="navbar-dropdown-text">{user.email}</p>
-                        </div>
-                        <div>
-                          <Link
-                            href="/profile"
-                            className="navbar-profile-item"
-                            onClick={() => setProfileOpen(false)}
-                          >
-                            Mon profil
-                          </Link>
-                        </div>
-                        <div className="border-t border-[rgb(var(--border))] py-1">
-                          <button onClick={handleLogout} className="navbar-profile-logout">
-                            Déconnexion
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                    {profileOpen && <ProfileDropdownContent />}
                   </div>
                 </div>
 
+                {/* Version Mobile */}
                 <div className="navbar-mobile-actions">
-                  <div className="relative" ref={notificationsRef}>
-                    <button
-                      onClick={() => setNotificationsOpen(!notificationsOpen)}
-                      className="navbar-icon-btn"
-                    >
-                      <BellIcon />
-                      <span className="navbar-notif-dot"></span>
-                    </button>
-                    {notificationsOpen && (
-                      <div className="navbar-dropdown">
-                        <div className="navbar-dropdown-header">
-                          <h3 className="navbar-dropdown-title">Notifications</h3>
-                        </div>
-                        <div className="navbar-dropdown-empty">
-                          Aucune nouvelle notification
-                        </div>
-                        <Link href="/client/notifications" className="navbar-dropdown-link">
-                          Voir toutes
-                        </Link>
-                      </div>
-                    )}
-                  </div>
-
+                  <NotificationDropdown />
                   <ThemeToggle />
-
-                  <div className="relative" ref={profileRef}>
+                  <div className="relative" ref={profileRefMobile}>
                     <button
                       onClick={() => setProfileOpen(!profileOpen)}
                       className="navbar-avatar-btn"
@@ -296,32 +290,8 @@ export default function Navbar({ user: propUser }: NavbarProps) {
                         {user.lastName?.[0]}
                       </div>
                     </button>
-                    {profileOpen && (
-                      <div className="navbar-dropdown navbar-dropdown-sm">
-                        <div className="navbar-dropdown-header">
-                          <p className="font-semibold text-sm">
-                            {user.firstName} {user.lastName}
-                          </p>
-                          <p className="navbar-dropdown-text">{user.email}</p>
-                        </div>
-                        <div>
-                          <Link
-                            href="/profile"
-                            className="navbar-profile-item"
-                            onClick={() => setProfileOpen(false)}
-                          >
-                            Mon profil
-                          </Link>
-                        </div>
-                        <div className="border-t border-[rgb(var(--border))] py-1">
-                          <button onClick={handleLogout} className="navbar-profile-logout">
-                            Déconnexion
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                    {profileOpen && <ProfileDropdownContent />}
                   </div>
-
                   <button onClick={() => setIsOpen(!isOpen)} className="navbar-icon-btn">
                     <BurgerIcon open={isOpen} />
                   </button>
@@ -331,6 +301,7 @@ export default function Navbar({ user: propUser }: NavbarProps) {
           </div>
         </div>
 
+        {/* Menu Mobile */}
         {isOpen && (
           <div className="navbar-mobile-menu">
             <div className="navbar-mobile-links">
@@ -368,6 +339,7 @@ export default function Navbar({ user: propUser }: NavbarProps) {
       { href: '/provider/availability', label: 'Disponibilités', icon: <ClockIcon className="w-4 h-4" /> },
       { href: '/provider/bookings', label: 'Réservations', icon: <BookingIcon className="w-4 h-4" /> },
       { href: '/provider/reviews', label: 'Avis & notes', icon: <ReviewIcon className="w-4 h-4" /> },
+      { href: '/provider/notifications', label: 'Créer une annonce', icon: <MegaphoneIcon className="w-4 h-4" /> },
     ];
 
     return (
@@ -392,33 +364,11 @@ export default function Navbar({ user: propUser }: NavbarProps) {
               </div>
 
               <div className="navbar-actions">
+                {/* Version Desktop */}
                 <div className="navbar-desktop-actions">
-                  <div className="relative" ref={notificationsRef}>
-                    <button
-                      onClick={() => setNotificationsOpen(!notificationsOpen)}
-                      className="navbar-icon-btn"
-                    >
-                      <BellIcon />
-                      <span className="navbar-notif-dot"></span>
-                    </button>
-                    {notificationsOpen && (
-                      <div className="navbar-dropdown">
-                        <div className="navbar-dropdown-header">
-                          <h3 className="navbar-dropdown-title">Notifications</h3>
-                        </div>
-                        <div className="navbar-dropdown-empty">
-                          Aucune nouvelle notification
-                        </div>
-                        <Link href="/provider/notifications" className="navbar-dropdown-link">
-                          Voir toutes
-                        </Link>
-                      </div>
-                    )}
-                  </div>
-
+                  <NotificationDropdown />
                   <ThemeToggle />
-
-                  <div className="relative" ref={profileRef}>
+                  <div className="relative" ref={profileRefDesktop}>
                     <button
                       onClick={() => setProfileOpen(!profileOpen)}
                       className="navbar-avatar-btn"
@@ -428,60 +378,15 @@ export default function Navbar({ user: propUser }: NavbarProps) {
                         {user.lastName?.[0]}
                       </div>
                     </button>
-                    {profileOpen && (
-                      <div className="navbar-dropdown navbar-dropdown-sm">
-                        <div className="navbar-dropdown-header">
-                          <p className="font-semibold text-sm">
-                            {user.firstName} {user.lastName}
-                          </p>
-                          <p className="navbar-dropdown-text">Fournisseur</p>
-                        </div>
-                        <div>
-                          <Link
-                            href="/profile"
-                            className="navbar-profile-item"
-                            onClick={() => setProfileOpen(false)}
-                          >
-                            Mon profil
-                          </Link>
-                        </div>
-                        <div className="border-t border-[rgb(var(--border))] py-1">
-                          <button onClick={handleLogout} className="navbar-profile-logout">
-                            Déconnexion
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                    {profileOpen && <ProfileDropdownContent />}
                   </div>
                 </div>
 
+                {/* Version Mobile */}
                 <div className="navbar-mobile-actions">
-                  <div className="relative" ref={notificationsRef}>
-                    <button
-                      onClick={() => setNotificationsOpen(!notificationsOpen)}
-                      className="navbar-icon-btn"
-                    >
-                      <BellIcon />
-                      <span className="navbar-notif-dot"></span>
-                    </button>
-                    {notificationsOpen && (
-                      <div className="navbar-dropdown">
-                        <div className="navbar-dropdown-header">
-                          <h3 className="navbar-dropdown-title">Notifications</h3>
-                        </div>
-                        <div className="navbar-dropdown-empty">
-                          Aucune nouvelle notification
-                        </div>
-                        <Link href="/provider/notifications" className="navbar-dropdown-link">
-                          Voir toutes
-                        </Link>
-                      </div>
-                    )}
-                  </div>
-
+                  <NotificationDropdown />
                   <ThemeToggle />
-
-                  <div className="relative" ref={profileRef}>
+                  <div className="relative" ref={profileRefMobile}>
                     <button
                       onClick={() => setProfileOpen(!profileOpen)}
                       className="navbar-avatar-btn"
@@ -491,32 +396,8 @@ export default function Navbar({ user: propUser }: NavbarProps) {
                         {user.lastName?.[0]}
                       </div>
                     </button>
-                    {profileOpen && (
-                      <div className="navbar-dropdown navbar-dropdown-sm">
-                        <div className="navbar-dropdown-header">
-                          <p className="font-semibold text-sm">
-                            {user.firstName} {user.lastName}
-                          </p>
-                          <p className="navbar-dropdown-text">Fournisseur</p>
-                        </div>
-                        <div>
-                          <Link
-                            href="/profile"
-                            className="navbar-profile-item"
-                            onClick={() => setProfileOpen(false)}
-                          >
-                            Mon profil
-                          </Link>
-                        </div>
-                        <div className="border-t border-[rgb(var(--border))] py-1">
-                          <button onClick={handleLogout} className="navbar-profile-logout">
-                            Déconnexion
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                    {profileOpen && <ProfileDropdownContent />}
                   </div>
-
                   <button onClick={() => setIsOpen(!isOpen)} className="navbar-icon-btn">
                     <BurgerIcon open={isOpen} />
                   </button>
@@ -526,6 +407,7 @@ export default function Navbar({ user: propUser }: NavbarProps) {
           </div>
         </div>
 
+        {/* Menu Mobile */}
         {isOpen && (
           <div className="navbar-mobile-menu">
             <div className="navbar-mobile-links">
@@ -585,33 +467,10 @@ export default function Navbar({ user: propUser }: NavbarProps) {
               </div>
 
               <div className="navbar-actions">
+                {/* Version Desktop */}
                 <div className="navbar-desktop-actions">
-                  <div className="relative" ref={notificationsRef}>
-                    <button
-                      onClick={() => setNotificationsOpen(!notificationsOpen)}
-                      className="navbar-icon-btn navbar-icon-btn-dark"
-                    >
-                      <BellIcon />
-                      <span className="navbar-notif-dot"></span>
-                    </button>
-                    {notificationsOpen && (
-                      <div className="navbar-dropdown bg-gray-800 border-gray-700">
-                        <div className="navbar-dropdown-header border-gray-700">
-                          <h3 className="navbar-dropdown-title text-white">Alertes système</h3>
-                        </div>
-                        <div className="navbar-dropdown-empty text-gray-400">
-                          Aucune alerte
-                        </div>
-                        <Link href="/admin/alerts" className="navbar-dropdown-link text-gray-300 hover:bg-gray-700 hover:text-blue-400">
-                          Voir toutes
-                        </Link>
-                      </div>
-                    )}
-                  </div>
-
                   <ThemeToggle />
-
-                  <div className="relative" ref={profileRef}>
+                  <div className="relative" ref={profileRefDesktop}>
                     <button
                       onClick={() => setProfileOpen(!profileOpen)}
                       className="navbar-avatar-btn"
@@ -621,60 +480,14 @@ export default function Navbar({ user: propUser }: NavbarProps) {
                         {user.lastName?.[0]}
                       </div>
                     </button>
-                    {profileOpen && (
-                      <div className="navbar-dropdown navbar-dropdown-sm bg-gray-800 border-gray-700">
-                        <div className="navbar-dropdown-header border-gray-700">
-                          <p className="font-semibold text-sm text-white">
-                            {user.firstName} {user.lastName}
-                          </p>
-                          <p className="navbar-dropdown-text text-gray-400">Administrateur</p>
-                        </div>
-                        <div>
-                          <Link
-                            href="/profile"
-                            className="navbar-profile-item text-gray-300 hover:bg-gray-700"
-                            onClick={() => setProfileOpen(false)}
-                          >
-                            Profil admin
-                          </Link>
-                        </div>
-                        <div className="border-t border-gray-700 py-1">
-                          <button onClick={handleLogout} className="navbar-profile-logout text-red-400 hover:bg-gray-700">
-                            Déconnexion
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                    {profileOpen && <ProfileDropdownContent variant="admin" />}
                   </div>
                 </div>
 
+                {/* Version Mobile */}
                 <div className="navbar-mobile-actions">
-                  <div className="relative" ref={notificationsRef}>
-                    <button
-                      onClick={() => setNotificationsOpen(!notificationsOpen)}
-                      className="navbar-icon-btn navbar-icon-btn-dark"
-                    >
-                      <BellIcon />
-                      <span className="navbar-notif-dot"></span>
-                    </button>
-                    {notificationsOpen && (
-                      <div className="navbar-dropdown bg-gray-800 border-gray-700">
-                        <div className="navbar-dropdown-header border-gray-700">
-                          <h3 className="navbar-dropdown-title text-white">Alertes système</h3>
-                        </div>
-                        <div className="navbar-dropdown-empty text-gray-400">
-                          Aucune alerte
-                        </div>
-                        <Link href="/admin/alerts" className="navbar-dropdown-link text-gray-300 hover:bg-gray-700 hover:text-blue-400">
-                          Voir toutes
-                        </Link>
-                      </div>
-                    )}
-                  </div>
-
                   <ThemeToggle />
-
-                  <div className="relative" ref={profileRef}>
+                  <div className="relative" ref={profileRefMobile}>
                     <button
                       onClick={() => setProfileOpen(!profileOpen)}
                       className="navbar-avatar-btn"
@@ -684,32 +497,8 @@ export default function Navbar({ user: propUser }: NavbarProps) {
                         {user.lastName?.[0]}
                       </div>
                     </button>
-                    {profileOpen && (
-                      <div className="navbar-dropdown navbar-dropdown-sm bg-gray-800 border-gray-700">
-                        <div className="navbar-dropdown-header border-gray-700">
-                          <p className="font-semibold text-sm text-white">
-                            {user.firstName} {user.lastName}
-                          </p>
-                          <p className="navbar-dropdown-text text-gray-400">Administrateur</p>
-                        </div>
-                        <div>
-                          <Link
-                            href="/profile"
-                            className="navbar-profile-item text-gray-300 hover:bg-gray-700"
-                            onClick={() => setProfileOpen(false)}
-                          >
-                            Profil admin
-                          </Link>
-                        </div>
-                        <div className="border-t border-gray-700 py-1">
-                          <button onClick={handleLogout} className="navbar-profile-logout text-red-400 hover:bg-gray-700">
-                            Déconnexion
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                    {profileOpen && <ProfileDropdownContent variant="admin" />}
                   </div>
-
                   <button onClick={() => setIsOpen(!isOpen)} className="navbar-icon-btn navbar-icon-btn-dark">
                     <BurgerIcon open={isOpen} />
                   </button>
@@ -719,6 +508,7 @@ export default function Navbar({ user: propUser }: NavbarProps) {
           </div>
         </div>
 
+        {/* Menu Mobile */}
         {isOpen && (
           <div className="navbar-mobile-menu">
             <div className="navbar-mobile-links">

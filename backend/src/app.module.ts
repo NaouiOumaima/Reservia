@@ -1,21 +1,24 @@
+// backend/src/app.module.ts
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
-  import { ServicesModule } from './modules/services/services.module';
+import { ServicesModule } from './modules/services/services.module';
 // import { ReservationsModule } from './modules/reservations/reservations.module';
 // import { ReviewsModule } from './modules/reviews/reviews.module';
 // import { SearchModule } from './modules/search/search.module';
-// import { NotificationsModule } from './modules/notifications/notifications.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 // import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AiModule } from './modules/ai/ai.module';
-// import { WebsocketModule } from './modules/websocket/websocket.module';
+import { WebsocketModule } from './modules/websocket/websocket.module';
 import configuration from './config/configuration';
 import { AdminModule } from './modules/admin/admin.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
+import { UploadModule } from './modules/upload/upload.module'; // ✅ CHANGEMENT: Importer le module, pas le controller
+import { AdvertisementsModule } from './modules/advertisements/advertisements.module';
 
 @Module({
   imports: [
@@ -38,11 +41,15 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
     UsersModule,
     ServicesModule,
     AiModule,
-        AdminModule,
-        DashboardModule,
-        ReviewsModule,
+    AdminModule,
+    DashboardModule,
+    ReviewsModule,
+    NotificationsModule,
+    WebsocketModule,
+    UploadModule,
+    AdvertisementsModule, 
   ],
-  controllers: [],  // Pas de controllers pour l'instant
-  providers: [],    // Pas de providers pour l'instant
+  controllers: [],
+  providers: [],
 })
 export class AppModule {}

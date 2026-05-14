@@ -1,44 +1,7 @@
 import { apiClient } from '../config';
-import { Service } from '@/lib/api/services/types';
+import { CreateServiceData, Service, ServiceFilters, UpsertLocationData } from '@/lib/api/services/types';
 
-export interface CreateServiceData {
-  name: string;
-  category: string;
-  description: string;
-  basePrice: number;
-  discountPrice?: number;
-  duration: number;
-  images?: string[];
-  location: {
-    coordinates: [number, number];
-    address: string;
-    city: string;
-    governorate: string;
-    postalCode?: string;
-  };
-}
 
-export interface UpsertLocationData {
-  location: {
-    coordinates: {
-      lng: number;
-      lat: number;
-    };
-    address: string;
-    city: string;
-    governorate: string;
-    postalCode?: string;
-  };
-}
-
-export interface ServiceFilters {
-  category?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  minRating?: number;
-  limit?: number;
-  skip?: number;
-}
 
 export const servicesApi = {
   getAll: async (filters?: ServiceFilters): Promise<Service[]> => {
@@ -98,6 +61,29 @@ export const servicesApi = {
 
   toggleActive: async (id: string): Promise<Service> => {
     const response = await apiClient.patch(`/services/${id}/toggle-active`, {});
+    return response.data;
+  },
+  getPendingServices: async (): Promise<Service[]> => {
+    const response = await apiClient.get('/services/admin/pending');
+    return response.data;
+  },
+
+  getPendingCount: async (): Promise<number> => {
+    const response = await apiClient.get('/services/admin/pending/count');
+    return response.data.count;
+  },
+
+  approveService: async (serviceId: string): Promise<Service> => {
+    const response = await apiClient.patch(`/services/admin/${serviceId}/approve`);
+    return response.data;
+  },
+
+  rejectService: async (serviceId: string, reason: string): Promise<Service> => {
+    const response = await apiClient.patch(`/services/admin/${serviceId}/reject`, { reason });
+    return response.data;
+  },
+    getAllAdmin: async (): Promise<Service[]> => {
+    const response = await apiClient.get('/services/admin/all');
     return response.data;
   },
 };
