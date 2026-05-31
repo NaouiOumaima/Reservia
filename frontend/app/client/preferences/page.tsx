@@ -4,7 +4,12 @@
 
 import { useEffect, useState } from 'react';
 import { UserPreferences } from '@/types';
-import { getAllCategoryLabels } from '@/lib/api/constants/categories.';
+import { CATEGORIES, CategoryKey, getCategoryByKey } from '@/lib/api/constants/categories';
+
+// ✅ Ajouter la fonction getAllCategoryLabels
+const getAllCategoryLabels = (): string[] => {
+  return CATEGORIES.map(cat => cat.frenchLabel);
+};
 
 export default function ClientPreferencesPage() {
   const [preferences, setPreferences] = useState<UserPreferences>({
@@ -28,16 +33,16 @@ export default function ClientPreferencesPage() {
     setLoading(false);
   }, []);
 
-  // Utiliser les catégories depuis le fichier constants
+  // ✅ Utiliser la fonction locale
   const categories = getAllCategoryLabels();
   const days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 
   const handleCategoryToggle = (category: string) => {
     setPreferences((prev) => ({
       ...prev,
-      favoriteCategories: prev.favoriteCategories.includes(category)
+      favoriteCategories: prev.favoriteCategories?.includes(category)
         ? prev.favoriteCategories.filter((c) => c !== category)
-        : [...prev.favoriteCategories, category],
+        : [...(prev.favoriteCategories || []), category],
     }));
   };
 
@@ -66,7 +71,6 @@ export default function ClientPreferencesPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-surface">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Mes Préférences
@@ -76,7 +80,6 @@ export default function ClientPreferencesPage() {
           </p>
         </div>
 
-        {/* Preferences Form */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 space-y-6">
           {/* Categories */}
           <div>
@@ -100,10 +103,10 @@ export default function ClientPreferencesPage() {
             </div>
           </div>
 
-          {/* Price Range */}
+          {/* Price Range - optionnel pour services gratuits */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-              Budget maximum
+              Budget maximum (services payants)
             </h3>
             <div className="flex items-center space-x-4">
               <input
@@ -121,6 +124,7 @@ export default function ClientPreferencesPage() {
                 {preferences.maxPrice || 0} DT
               </span>
             </div>
+            <p className="text-xs text-gray-500 mt-1">Note: La plupart des services sont gratuits</p>
           </div>
 
           {/* Distance */}

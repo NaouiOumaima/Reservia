@@ -50,10 +50,12 @@ export const reviewsApi = {
   },
 
   // Créer un avis (service ou app)
-  create: async (data: CreateReviewData): Promise<Review> => {
-    const response = await apiClient.post('/reviews', data);
-    return response.data;
-  },
+create: async (data: CreateReviewData): Promise<Review> => {
+  // Ne pas envoyer le champ 'type' à l'API
+  const { type, ...apiData } = data as any;
+  const response = await apiClient.post('/reviews', apiData);
+  return response.data;
+},
 
   // Signaler un avis
   report: async (id: string, data: ReportReviewData): Promise<Review> => {

@@ -13,6 +13,7 @@ import {
   ReviewIcon,
   TrendingUpIcon,
 } from '@/components/ui/Icons';
+import UnifiedReviewForm from '@/components/avis/UnifiedReviewForm';
 
 export default function ProviderDashboard() {
   const { user, isLoading } = useAuth();
@@ -41,7 +42,7 @@ export default function ProviderDashboard() {
     { label: 'Services actifs', value: '12', icon: <ServicesIcon className="w-6 h-6" />, change: '+2' },
     { label: 'Réservations ce mois', value: '48', icon: <BookingIcon className="w-6 h-6" />, change: '+15%' },
     { label: 'Note moyenne', value: '4.8', icon: <ReviewIcon className="w-6 h-6" />, change: '+0.3' },
-    { label: 'Taux d\'occupation', value: '85%', icon: <TrendingUpIcon className="w-6 h-6" />, change: '+12%' },
+    { label: "Taux d'occupation", value: '85%', icon: <TrendingUpIcon className="w-6 h-6" />, change: '+12%' },
   ];
 
   const recentBookings = [
@@ -110,6 +111,11 @@ export default function ProviderDashboard() {
             </div>
             <span className="font-semibold text-[rgb(var(--foreground))]">Réservations</span>
           </Link>
+        </div>
+
+        {/* Formulaire d'avis sur l'application */}
+        <div className="mb-8">
+          <UnifiedReviewForm type="app" />
         </div>
 
         {/* Réservations récentes */}

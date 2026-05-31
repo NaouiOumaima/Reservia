@@ -1,5 +1,7 @@
 // app/about/page.tsx
 
+'use client';
+
 import {
   UsersIcon,
   ServicesIcon,
@@ -12,6 +14,7 @@ import {
   CheckIcon,
   ChevronRightIcon,
 } from '@/components/ui/Icons';
+import RecentAppReviews from '@/components/avis/RecentAppReviews';
 
 // ─────────────────────────────────────────────────────────────
 //  DONNÉES DE LA PAGE
@@ -96,7 +99,7 @@ export default function AboutPage() {
             </h1>
 
             {/* Sous-titre */}
-                    <p className="text-lg text-[rgb(var(--foreground-muted))] max-w-2xl mx-auto leading-relaxed">
+            <p className="text-lg text-[rgb(var(--foreground-muted))] max-w-2xl mx-auto leading-relaxed">
               Reservia est la première plateforme tunisienne de réservation multi-services, 100 % gratuite. Réservez tous vos
               services locaux depuis un seul espace simple, clair et sans frais cachés.
             </p>
@@ -131,7 +134,7 @@ export default function AboutPage() {
               </div>
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-[rgb(var(--primary))] to-[rgb(var(--accent))] rounded-2xl blur-2xl opacity-20" />
-                <div className="relative bg-[rgb(var(--card))] rounded-2xl p-8 border border-[rgb(var(--border))]">
+                <div className="relative card rounded-2xl p-8">
                   <div className="text-6xl mb-4 text-[rgb(var(--primary))]">💡</div>
                   <p className="text-[rgb(var(--foreground-muted))] italic">
                     "L&apos;objectif est de rendre la résolution de services aussi simple que commander en ligne."
@@ -175,9 +178,30 @@ export default function AboutPage() {
       </section>
 
       {/* ══════════════════════════════════════════════
-          POURQUOI RESERVIA ? (Tableau comparatif)
+          AVIS CLIENTS - SECTION
       ══════════════════════════════════════════════ */}
       <section className="section bg-[rgb(var(--surface))]">
+        <div className="container-app">
+          <div className="text-center mb-8">
+            <h2 className="font-display text-[rgb(var(--foreground))]">
+              Donnez votre avis
+            </h2>
+            <p className="text-[rgb(var(--foreground-muted))] mt-3">
+              Votre opinion nous aide à nous améliorer chaque jour
+            </p>
+          </div>
+
+          {/* Affichage des derniers avis */}
+          <div className="max-w-2xl mx-auto mt-12">
+            <RecentAppReviews />
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════
+          POURQUOI RESERVIA ? (Tableau comparatif)
+      ══════════════════════════════════════════════ */}
+      <section className="section">
         <div className="container-app">
           <div className="text-center mb-12">
             <h2 className="font-display text-[rgb(var(--foreground))]">Pourquoi Reservia ?</h2>
@@ -225,7 +249,7 @@ export default function AboutPage() {
       {/* ══════════════════════════════════════════════
           FAQ
       ══════════════════════════════════════════════ */}
-      <section className="section">
+      <section className="section bg-[rgb(var(--surface))]">
         <div className="container-app">
           <div className="text-center mb-12">
             <h2 className="font-display text-[rgb(var(--foreground))]">Questions fréquentes</h2>
@@ -259,12 +283,7 @@ export default function AboutPage() {
       ══════════════════════════════════════════════ */}
       <section className="section">
         <div className="container-app">
-          <div
-            className="relative overflow-hidden rounded-[var(--radius-xl)] px-8 py-12 text-center"
-            style={{
-              background: 'linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--accent)) 100%)',
-            }}
-          >
+          <div className="relative overflow-hidden rounded-[var(--radius-xl)] px-8 py-12 text-center cta-section">
             <div className="relative z-10 max-w-2xl mx-auto">
               <HeadphonesIcon className="w-12 h-12 text-white mx-auto mb-4" />
               <h2 className="font-display text-white text-2xl md:text-3xl mb-4">

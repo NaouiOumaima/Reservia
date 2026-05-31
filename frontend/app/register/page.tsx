@@ -20,6 +20,7 @@ export default function RegisterPage() {
     businessName: '',
   });
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   // ── Google OAuth redirect ────────────────────────────────────────────────────
@@ -62,18 +63,25 @@ export default function RegisterPage() {
     }
 
     setIsLoading(true);
+    setError('');
+    setSuccess('');
+
     try {
       const { confirmPassword, ...registerData } = formData;
-      await register(registerData);
-      const storedUser = localStorage.getItem('user');
-      const currentUser = storedUser ? JSON.parse(storedUser) : null;
+      const result = await register(registerData);
 
-      if (currentUser?.role === 'admin') {
-        router.push('/admin/dashboard');
-      } else if (currentUser?.role === 'provider') {
-        router.push('/provider/dashboard');
+      if (result.requiresVerification) {
+        setSuccess('Inscription réussie ! Vérifiez votre email pour activer votre compte.');
+      } else if (result.user) {
+        if (result.user.role === 'admin') {
+          router.push('/admin/dashboard');
+        } else if (result.user.role === 'provider') {
+          router.push('/provider/dashboard');
+        } else {
+          router.push('/client/dashboard');
+        }
       } else {
-        router.push('/client/dashboard');
+        setSuccess('Inscription réussie ! Vous pouvez maintenant vous connecter.');
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Une erreur est survenue');
@@ -97,10 +105,15 @@ export default function RegisterPage() {
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {/* ── Erreur ── */}
+          {/* ── Erreur / Succès ── */}
           {error && (
             <div className="alert alert-error">
               <p className="text-sm">{error}</p>
+            </div>
+          )}
+          {success && (
+            <div className="alert alert-success">
+              <p className="text-sm">{success}</p>
             </div>
           )}
 

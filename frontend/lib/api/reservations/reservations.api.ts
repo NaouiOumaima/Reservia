@@ -1,12 +1,6 @@
+// frontend/lib/api/reservations.ts
 import { apiClient } from '../config';
-import { Reservation } from '@/types';
-
-export interface CreateReservationData {
-  serviceId: string;
-  startTime: string;
-  duration: number;
-  notes?: string;
-}
+import { CreateReservationData, Reservation } from './types';
 
 export const reservationsApi = {
   getMyReservations: async (): Promise<Reservation[]> => {
@@ -39,8 +33,29 @@ export const reservationsApi = {
     return response.data;
   },
 
-  getAvailability: async (serviceId: string, date: string): Promise<any[]> => {
-    const response = await apiClient.get(`/reservations/availability/${serviceId}?date=${date}`);
+  accept: async (id: string): Promise<Reservation> => {
+    const response = await apiClient.post(`/reservations/${id}/accept`);
+    return response.data;
+  },
+
+  reject: async (id: string, reason?: string): Promise<Reservation> => {
+    const response = await apiClient.post(`/reservations/${id}/reject`, { reason });
+    return response.data;
+  },
+
+  // ✅ Modifié: Vérifier la disponibilité d'une date/heure spécifique
+  checkAvailability: async (serviceId: string, dateTime: string): Promise<{ available: boolean; message: string }> => {
+    const response = await apiClient.get(`/reservations/availability`, {
+      params: { serviceId, dateTime }
+    });
+    return response.data;
+  },
+
+  // ✅ Optionnel: Obtenir tous les créneaux disponibles d'une journée
+  getAvailableSlots: async (serviceId: string, date: string): Promise<any[]> => {
+    const response = await apiClient.get(`/reservations/available-slots`, {
+      params: { serviceId, date }
+    });
     return response.data;
   },
 };

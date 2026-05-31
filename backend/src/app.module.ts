@@ -6,9 +6,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { ServicesModule } from './modules/services/services.module';
-// import { ReservationsModule } from './modules/reservations/reservations.module';
-// import { ReviewsModule } from './modules/reviews/reviews.module';
-// import { SearchModule } from './modules/search/search.module';
+import { SearchModule } from './modules/search/search.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 // import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AiModule } from './modules/ai/ai.module';
@@ -19,6 +17,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { UploadModule } from './modules/upload/upload.module'; // ✅ CHANGEMENT: Importer le module, pas le controller
 import { AdvertisementsModule } from './modules/advertisements/advertisements.module';
+import { ReservationsModule } from './modules/reservations/reservations.module';
 
 @Module({
   imports: [
@@ -48,6 +47,10 @@ import { AdvertisementsModule } from './modules/advertisements/advertisements.mo
     WebsocketModule,
     UploadModule,
     AdvertisementsModule, 
+    ReservationsModule,
+    SearchModule,
+
+    
   ],
   controllers: [],
   providers: [],

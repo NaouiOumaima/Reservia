@@ -2,7 +2,7 @@
 
 import { apiClient } from '../config';
 import { setAccessToken, setRefreshToken, setUser } from '../../helpers/storage';
-import type {  LoginResponse } from './login';
+import type { LoginResponse } from './login';
 
 export interface RegisterData {
   email: string;
@@ -16,8 +16,7 @@ export interface RegisterData {
 
 export const register = async (data: RegisterData): Promise<LoginResponse> => {
   try {
-    // ✅ Ajouter /api/ devant la route
-    const response = await apiClient.post<LoginResponse>('/api/auth/register', data);
+    const response = await apiClient.post<LoginResponse>('/auth/register', data);
     const { accessToken, refreshToken, user } = response.data;
 
     setAccessToken(accessToken);

@@ -1,113 +1,175 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { CATEGORIES } from '@/lib/api/constants/categories';
 import {
-  RestaurantIcon,
-  HotelIcon,
-  SpaIcon,
-  FitnessIcon,
-  LipstickIcon,
+  FilterIcon,
+  MapPinIcon,
+  SearchIcon,
+  XIcon,
 } from '@/components/ui/Icons';
 
+
 interface FilterBarProps {
-  filters: { category: string; minPrice: number; maxPrice: number; radius: number };
+  filters: {
+    category: string;
+    radius: number;
+    searchTerm?: string;
+  };
   onFilterChange: (filters: any) => void;
+  onSearch?: (searchTerm: string) => void;
 }
 
-const categories = [
-  { value: '', label: 'Toutes catégories', icon: null },
-  { value: 'restaurant', label: 'Restaurants', icon: <RestaurantIcon className="w-4 h-4" /> },
-  { value: 'hotel', label: 'Hôtels', icon: <HotelIcon className="w-4 h-4" /> },
-  { value: 'spa', label: 'Spa & Bien-être', icon: <SpaIcon className="w-4 h-4" /> },
-  { value: 'gym', label: 'Salles de sport', icon: <FitnessIcon className="w-4 h-4" /> },
-  { value: 'coiffeur', label: 'Coiffeurs & Salons', icon: <LipstickIcon className="w-4 h-4" /> },
-];
+export default function FilterBar({ filters, onFilterChange, onSearch }: FilterBarProps) {
+  const [isRadiusPulsing, setIsRadiusPulsing]   = useState(false);
+  const [localSearchTerm, setLocalSearchTerm]   = useState(filters.searchTerm || '');
+  const [isSearching, setIsSearching]           = useState(false);
+  const rangeRef       = useRef<HTMLInputElement>(null);
+  const searchTimeout  = useRef<ReturnType<typeof setTimeout>>();
 
-export default function FilterBar({ filters, onFilterChange }: FilterBarProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  /* ── Synchronise le dégradé de la piste du slider ── */
+  const updateRangeTrack = useCallback((value: number) => {
+    if (!rangeRef.current) return;
+    const pct = ((value - 1) / (50 - 1)) * 100;
+    rangeRef.current.style.setProperty('--progress', `${pct}%`);
+  }, []);
 
-  // Pour afficher l'icône à côté du texte dans le select, on ne peut pas facilement.
-  // On garde le texte seul pour le select, mais on peut ajouter l'icône dans le label de l'option.
-  // Solution : on affiche l'icône + texte via une structure personnalisée (non standard).
-  // Ici on reste simple : on affiche le texte.
+  useEffect(() => {
+    updateRangeTrack(filters.radius);
+  }, [filters.radius, updateRangeTrack]);
+
+  /* ── Recherche avec debounce ── */
+  const debouncedSearch = useCallback(
+    (term: string) => {
+      clearTimeout(searchTimeout.current);
+      searchTimeout.current = setTimeout(() => {
+        setIsSearching(true);
+        onSearch?.(term);
+        onFilterChange({ ...filters, searchTerm: term });
+        setTimeout(() => setIsSearching(false), 300);
+      }, 500);
+    },
+    [filters, onSearch, onFilterChange],
+  );
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setLocalSearchTerm(value);
+    debouncedSearch(value);
+  };
+
+  const clearSearch = () => {
+    setLocalSearchTerm('');
+    debouncedSearch('');
+  };
+
+  /* ── Rayon ── */
+  const handleRadiusChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = parseInt(e.target.value, 10);
+    setIsRadiusPulsing(true);
+    onFilterChange({ ...filters, radius: v });
+    updateRangeTrack(v);
+    setTimeout(() => setIsRadiusPulsing(false), 600);
+  };
+
+  /* ── Catégorie ── */
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    onFilterChange({ ...filters, category: e.target.value });
+  };
+
   return (
-    <div className="filter-bar">
-      <div className="filter-bar-container">
-        <div className="filter-bar-row">
-          <select
-            value={filters.category}
-            onChange={(e) => onFilterChange({ ...filters, category: e.target.value })}
-            className="filter-select"
-          >
-            {categories.map((cat) => (
-              <option key={cat.value} value={cat.value}>
-                {cat.label}
-              </option>
-            ))}
-          </select>
+    <div className="filterbar">
+      <div className="filterbar__inner">
+        <div className="filterbar__row">
 
-          <div className="filter-price">
-            <span>Max :</span>
-            <input
-              type="number"
-              value={filters.maxPrice}
-              min={0}
-              onChange={(e) =>
-                onFilterChange({ ...filters, maxPrice: parseInt(e.target.value) || 0 })
-              }
-              className="filter-input"
-              placeholder="500"
-            />
-            <span>DT</span>
-          </div>
-
-          <div className="filter-radius">
-            <span>Rayon :</span>
-            <input
-              type="range"
-              min="1"
-              max="50"
-              value={filters.radius}
-              onChange={(e) =>
-                onFilterChange({ ...filters, radius: parseInt(e.target.value) })
-              }
-              className="filter-range"
-            />
-            <span>{filters.radius} km</span>
-          </div>
-
-          <button onClick={() => setIsExpanded(!isExpanded)} className="filter-expand-btn">
-            {isExpanded ? '▲ Moins' : '▼ Plus de filtres'}
-          </button>
-        </div>
-
-        {isExpanded && (
-          <div className="filter-expanded">
-            <div className="filter-price-min">
-              <span>Prix min :</span>
+          {/* ── Recherche ── */}
+          <div className="filterbar__group filterbar__group--search">
+            <label className="filterbar__label" htmlFor="fb-search">
+              <SearchIcon className="icon-xs" aria-hidden />
+              <span>Rechercher un service</span>
+            </label>
+            <div className="filterbar__search-wrapper">
               <input
-                type="number"
-                value={filters.minPrice}
-                min={0}
-                onChange={(e) =>
-                  onFilterChange({ ...filters, minPrice: parseInt(e.target.value) || 0 })
-                }
-                className="filter-input"
-                placeholder="0"
+                id="fb-search"
+                type="text"
+                value={localSearchTerm}
+                onChange={handleSearchChange}
+                placeholder="Nom du service, mots-clés…"
+                className="filterbar__search-input"
+                aria-label="Rechercher un service par nom"
               />
-              <span>DT</span>
+              {isSearching && (
+                <div className="filterbar__search-spinner" aria-hidden>
+                  <div className="spinner" />
+                </div>
+              )}
+              {localSearchTerm && !isSearching && (
+                <button
+                  onClick={clearSearch}
+                  className="filterbar__search-clear"
+                  aria-label="Effacer la recherche"
+                  type="button"
+                >
+                  <XIcon className="icon-xs" />
+                </button>
+              )}
             </div>
-
-            <button
-              onClick={() =>
-                onFilterChange({ category: '', minPrice: 0, maxPrice: 500, radius: 10 })
-              }
-              className="filter-reset-btn"
-            >
-              Réinitialiser
-            </button>
           </div>
-        )}
+
+          {/* ── Catégorie ── */}
+          <div className="filterbar__group filterbar__group--category">
+            <label className="filterbar__label" htmlFor="fb-category">
+              <FilterIcon className="icon-xs" aria-hidden />
+              <span>Catégorie</span>
+            </label>
+            <select
+              id="fb-category"
+              value={filters.category}
+              onChange={handleCategoryChange}
+              className="filterbar__select"
+            >
+              <option value="">Toutes les catégories</option>
+              {CATEGORIES.map((cat) => (
+                <option key={cat.key} value={cat.label}>
+                  {cat.frenchLabel}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* ── Rayon ── */}
+          <div className="filterbar__group filterbar__group--radius">
+            <label className="filterbar__label" htmlFor="fb-radius">
+              <MapPinIcon className="icon-xs" aria-hidden />
+              <span>Rayon de recherche</span>
+            </label>
+            <div className="filterbar__radius-ctrl">
+              <span
+                className={[
+                  'filterbar__radius-val',
+                  isRadiusPulsing ? 'filterbar__radius-val--active' : '',
+                ].join(' ')}
+                aria-live="polite"
+                aria-label={`${filters.radius} kilomètres`}
+              >
+                {filters.radius} km
+              </span>
+              <input
+                ref={rangeRef}
+                id="fb-radius"
+                type="range"
+                min="1"
+                max="50"
+                step="1"
+                value={filters.radius}
+                onChange={handleRadiusChange}
+                className="filterbar__range"
+                aria-label="Rayon de recherche en kilomètres"
+              />
+            </div>
+          </div>
+
+        </div>
       </div>
     </div>
   );

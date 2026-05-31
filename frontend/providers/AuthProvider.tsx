@@ -9,6 +9,7 @@ import {
   logout as logoutApi,
   type LoginCredentials,
   type RegisterData,
+  type RegisterResponse,
   type User,
 } from '@/lib/api';
 
@@ -17,7 +18,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  register: (data: RegisterData) => Promise<RegisterResponse>;
   logout: () => Promise<void>;
   refreshAuth: () => void;
   updateUser: (updatedUser: User) => void;
@@ -47,6 +48,7 @@ function clearAllTokens() {
   localStorage.removeItem('refreshToken');
   deleteCookie('accessToken');
   deleteCookie('token');
+  window.dispatchEvent(new Event('authChanged'));
 }
 
 function getInitialUser(): User | null {
@@ -100,6 +102,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       localStorage.setItem('accessToken', res.accessToken);
       localStorage.setItem('refreshToken', res.refreshToken);
       setCookie('accessToken', res.accessToken, 7);
+      window.dispatchEvent(new Event('authChanged'));
     } catch (error: any) {
       // ✅ Si erreur 401, nettoyer les tokens
       if (error?.response?.status === 401) {
@@ -113,13 +116,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const register = async (data: RegisterData) => {
     try {
       const res = await registerApi(data);
-      setUser(res.user);
-      if (res.accessToken) {
+      if (res.accessToken && res.refreshToken && res.user) {
+        setUser(res.user);
         localStorage.setItem('user', JSON.stringify(res.user));
         localStorage.setItem('accessToken', res.accessToken);
         localStorage.setItem('refreshToken', res.refreshToken);
         setCookie('accessToken', res.accessToken, 7);
+        window.dispatchEvent(new Event('authChanged'));
       }
+      return res;
     } catch (error: any) {
       // ✅ Si erreur 401, nettoyer les tokens
       if (error?.response?.status === 401) {

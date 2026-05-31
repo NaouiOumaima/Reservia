@@ -1,0 +1,3 @@
+chatbot , recommandation de chat , et navigation , service (si par validation ou non ) 
+voir les services par les cleints et ajouter au liste de favoris et consulter , faire avis sur un services 
+les avis de chaque user dois consulter si il a fait c-a-d bloque le champs 

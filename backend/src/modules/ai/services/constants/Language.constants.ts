@@ -1,1073 +1,465 @@
 // src/modules/ai/constants/language.constants.ts
 // ═══════════════════════════════════════════════════════════════════════════
-//  DICTIONNAIRES LINGUISTIQUES — séparés par langue
-//  Langues : Français (FR) | English (EN) | Tunisien/Darija (TN) | Arabe (AR)
+//  DICTIONNAIRES LINGUISTIQUES MULTILINGUES COMPLETS
+//  Langues : FR, EN, TN, AR, DE, IT, ES
 // ═══════════════════════════════════════════════════════════════════════════
 
-export type Language = 'fr' | 'en' | 'tn' | 'ar';
+export type Language = 'fr' | 'en' | 'tn' | 'ar' | 'de' | 'it' | 'es';
 
-// ───────────────────────────────────────────────────────────────────────────
-// SECTION 1 — INTENT KEYWORDS
-// ───────────────────────────────────────────────────────────────────────────
-
+// ============================================
+// INTENT KEYWORDS - FRANÇAIS
+// ============================================
 export const INTENT_KEYWORDS_FR: Record<string, string[]> = {
   search: [
-    // verbes de recherche
-    'cherche', 'recherche', 'rechercher', 'chercher', 'trouver', 'trouve',
-    'cherchez', 'recherchez', 'trouvez', 'j cherche', 'je cherche',
-    'j recherche', 'je recherche',
-    // localisation
-    'ou', 'ou est', 'ou se trouve', 'ou puis-je', 'ou peut-on',
-    'ou trouver', 'ou est-ce que', 'dans quelle rue', 'dans quel quartier',
-    'proche', 'pres', 'alentour', 'autour', 'aux alentours', 'a proximite',
-    'dans le quartier', 'dans ma zone', 'dans ma ville', 'dans la region',
-    'pas loin', 'pas loin de', 'juste a cote',
-    // affichage / listage
-    'voir', 'montrer', 'montrez', 'montrez-moi', 'afficher', 'affichez',
-    'lister', 'listez', 'liste', 'liste de', 'donne une liste',
-    'quels', 'quelles', 'quels sont', 'quelles sont', 'quels types',
-    'proposer', 'proposez', 'suggerer', 'suggerez', 'suggere', 'conseiller',
-    'conseillez', 'recommandez', 'recommande',
-    // disponibilité
-    'disponible', 'disponibles', 'ouvert', 'ouverts', 'ouverte', 'ouvertes',
-    'libre', 'libres', 'existe', 'existent', 'il y a', 'y a-t-il',
-    'est-ce qu il y a', 'est-ce que vous avez', 'avez-vous',
-    // exploration
-    'explorer', 'decouvrir', 'connaitre', 'savoir s il y a',
-    'donne moi', 'donne-moi', 'dis moi', 'dis-moi', 'montrez-moi',
-    'je veux savoir', 'je cherche a savoir', 'j aimerais voir',
-    'j aimerais connaitre', 'j aimerais savoir',
+    'cherche', 'recherche', 'trouver', 'trouve', 'chercher', 'rechercher',
+    'je cherche', 'je recherche', 'j\'cherche', 'j\'recherche',
+    'où est', 'où se trouve', 'ou puis-je', 'ou peut-on',
+    'voir', 'montrer', 'afficher', 'lister', 'quels sont', 'quelles sont',
+    'proche', 'près', 'alentour', 'autour', 'à proximité',
+    'pas loin', 'juste à côté', 'dans le coin', 'dans le quartier',
+    'disponible', 'ouvert', 'libre', 'existe', 'il y a',
+    'suggérer', 'conseiller', 'recommander', 'proposer'
   ],
   booking: [
-    // verbes de réservation
-    'reserver', 'reservation', 'reservations', 'reservez', 'je veux reserver',
-    'je voudrais reserver', 'j aimerais reserver', 'faire une reservation',
-    'planifier', 'planifiez', 'programmer', 'programmez',
-    'fixer', 'fixez', 'fixer un rdv', 'prendre rendez-vous',
-    'prendre un rdv', 'prendre une table', 'prendre un billet',
-    'commander', 'commande', 'passer commande', 'passer une commande',
-    // volonté
-    'veux', 'voudrais', 'voudrait', 'voudrons', 'aimerais', 'aimerait',
-    'je voudrais', 'je veux', 'j aimerais', 'j aimerai',
-    'j aurai voulu', 'j aurais aime',
-    // besoin
-    'besoin', 'besoin de', 'j ai besoin', 'il me faut', 'il nous faut',
-    'faut que', 'il faut', 'obligatoire',
-    // rendez-vous / slots
-    'rendez-vous', 'rdv', 'creneau', 'creneaux', 'horaire', 'horaires',
-    'heure', 'heures', 'seance', 'seances',
-    // éléments réservables
-    'table', 'tables', 'chambre', 'chambres', 'place', 'places',
-    'salle', 'salles', 'billet', 'billets', 'ticket', 'tickets',
-    'billet d entree', 'entree', 'pass', 'abonnement',
-    // confirmations
-    'confirmer', 'confirmation', 'valider', 'validation',
-    'ok pour', 'd accord pour', 'je confirme', 'c est bon',
+    'réserver', 'réservation', 'booker', 'commander', 'prendre',
+    'je veux réserver', 'je voudrais réserver', 'j\'aimerais réserver',
+    'faire une réservation', 'prendre un rdv', 'prendre rendez-vous',
+    'planifier', 'programmer', 'fixer', 'caler',
+    'table', 'chambre', 'place', 'billet', 'ticket',
+    'confirmer', 'valider', 'ok pour', 'd\'accord pour'
   ],
   cancel: [
-    // annulation
-    'annuler', 'annule', 'annulons', 'j annule', 'annulation', 'annulations',
-    'annuler ma reservation', 'annuler mon rdv', 'annuler ma commande',
-    'supprimer', 'supprime', 'suppression', 'supprimer ma reservation',
-    'effacer', 'enlever', 'retirer', 'desinscrire', 'se desinscrire',
-    // impossibilité de venir
-    'pas venir', 'ne peux pas venir', 'je ne peux pas venir',
-    'ne peux venir', 'je ne viendrai pas', 'ne viendrai pas',
-    'ne peut pas venir', 'impossible de venir', 'je ne vais pas venir',
-    'je n arrive pas', 'je serai absent', 'absent ce jour',
-    'je ne pourrai pas', 'je ne serai pas la',
-    // refus / abandon
-    'abandonner', 'renoncer', 'me desister', 'desistement',
-    'je ne veux plus', 'je ne veux pas', 'changer d avis',
-    'finalement non', 'finalement je ne veux plus',
-    // remboursement
-    'rembourser', 'remboursement', 'recuperer mon argent', 'rembourse',
-    // modifier / reporter
-    'modifier', 'modifier ma reservation', 'changer', 'changer de date',
-    'reprogrammer', 'decaler', 'reporter', 'repousser',
+    'annuler', 'annulation', 'supprimer', 'effacer', 'enlever',
+    'j\'annule', 'je veux annuler', 'je voudrais annuler',
+    'annuler ma réservation', 'annuler mon rdv',
+    'pas venir', 'ne peux pas venir', 'je ne viendrai pas',
+    'annulation sans frais', 'rembourser', 'remboursement',
+    'modifier', 'changer', 'reporter', 'décaler'
+  ],
+  modify: [
+    'modifier', 'changer', 'reporter', 'décaler', 'ajuster',
+    'changer la date', 'changer l\'heure', 'modifier ma réservation',
+    'reprogrammer', 'déplacer', 'avancer', 'reculer'
   ],
   help: [
-    // aide
-    'aide', 'aider', 'aidez', 'aidez-moi', 'au secours',
-    'assistance', 'assister', 'support', 'j ai besoin d aide',
-    'vous pouvez m aider', 'pouvez-vous m aider',
-    // questions de compréhension
-    'comment', 'comment ca', 'comment ca marche', 'comment faire',
-    'comment utiliser', 'comment fonctionne', 'comment ca fonctionne',
-    'comment je peux', 'comment puis-je',
-    'quoi', 'que faire', 'que puis-je', 'qu est-ce que', 'qu est-ce que je',
-    'expliquer', 'expliquez', 'explique', 'expliquez-moi',
-    'comprendre', 'je ne comprends pas', 'je comprends pas', 'j comprends pas',
-    // info
-    'info', 'information', 'informations', 'renseignement', 'renseignements',
-    'instruction', 'instructions', 'guide', 'tutoriel', 'tuto', 'manuel',
-    'documentation', 'faq', 'questions frequentes',
-    // capacités du bot
-    'que peux-tu', 'tu peux faire quoi', 'tes fonctions', 'quelles fonctions',
-    'tes capacites', 'que sais-tu', 'quelles commandes',
-    'qu est-ce que tu fais', 'qu est-ce que tu peux faire',
-    'quelles sont tes fonctionnalites',
+    'aide', 'aider', 'assistance', 'support', 'guide',
+    'comment ça marche', 'comment faire', 'comment utiliser',
+    'que peux-tu faire', 'tes fonctions', 'commande', 'instructions',
+    'j\'ai besoin d\'aide', 'pouvez-vous m\'aider'
   ],
   greeting: [
-    // salutations classiques
-    'bonjour', 'bonsoir', 'bonne nuit', 'bonne matinee', 'bonne apres-midi',
-    'salut', 'salut a toi', 'salut tout le monde', 'coucou', 'allo',
-    'hello', 'hey', 'yo', 'wesh', 'wesh gros',
-    'bonjour a tous', 'bonsoir a tous', 'bonsoir tout le monde',
-    // formules d'ouverture
-    'bonne journee', 'bonne soiree', 'bonne semaine',
-    'ravi de te parler', 'ravi de vous parler', 'content de vous voir',
-    'ca va', 'comment ca va', 'ca va bien', 'comment allez-vous',
-    'comment vas-tu', 'comment vous allez', 'tu vas bien', 'vous allez bien',
+    'bonjour', 'bonsoir', 'salut', 'coucou', 'hello', 'hey',
+    'bonne journée', 'bonne soirée', 'comment ça va', 'ça va',
+    'ravi de vous voir', 'content de vous parler'
   ],
   feedback: [
-    // évaluation
-    'avis', 'mon avis', 'donner mon avis', 'laisser mon avis',
-    'note', 'noter', 'notez', 'donner une note', 'laisser une note',
-    'evaluer', 'evaluez', 'evaluation', 'mettre une note',
-    'etoile', 'etoiles', 'score', 'point', 'points', 'mettre des etoiles',
-    // commentaires
-    'commentaire', 'commenter', 'commentez', 'laisser un avis',
-    'laisser un commentaire', 'partager mon avis', 'partager mon experience',
-    'donner un retour', 'faire un retour',
-    // recommandation
-    'recommande', 'recommander', 'je recommande', 'je ne recommande pas',
-    'je conseille', 'je deconseille',
-    // satisfaction
-    'satisfaction', 'satisfait', 'insatisfait', 'content', 'mecontent',
-    'opinion', 'critique', 'retour', 'retour d experience',
-    'experience', 'mon experience', 'c etait comment', 'comment c etait',
-    // qualité
-    'qualite', 'qualite du service', 'qualite des produits',
-    'superbe', 'decevant', 'decu', 'pas terrible',
+    'avis', 'donner mon avis', 'laisser un avis', 'note', 'noter',
+    'étoile', 'étoiles', 'commentaire', 'commenter',
+    'évaluation', 'évaluer', 'retour', 'retour d\'expérience',
+    'satisfait', 'insatisfait', 'recommande', 'déconseille'
   ],
   goodbye: [
-    // au revoir
-    'au revoir', 'aurevoir', 'a bientot', 'a tout a l heure',
-    'a plus', 'a plus tard', 'a tres bientot', 'a la prochaine',
-    'adieu', 'salut', 'bye', 'bye bye', 'ciao', 'tchao',
-    // formules de fin
-    'bonne journee', 'bonne continuation', 'passe une bonne journee',
-    'bonne soiree', 'passe une bonne soiree',
-    'merci et au revoir', 'merci bonne journee', 'merci bonsoir',
-    // satisfaction en fin
-    'c est tout', 'j ai tout', 'j ai tout ce qu il me faut',
-    'c est bon merci', 'c est parfait merci', 'ca marche merci',
-    'ok merci', 'tres bien merci', 'super merci', 'parfait merci',
-    'c est tout pour moi', 'j ai plus de questions',
+    'au revoir', 'aurevoir', 'à bientôt', 'à plus', 'à la prochaine',
+    'bye', 'ciao', 'tchao', 'salut', 'bonne journée', 'à tout à l\'heure'
   ],
+  nearby: [
+    'près de moi', 'proche de moi', 'autour de moi', 'dans mon quartier',
+    'à côté de chez moi', 'à proximité', 'dans les environs',
+    'à deux pas', 'pas loin d\'ici'
+  ],
+  top_rated: [
+    'meilleur', 'mieux noté', 'top', 'le mieux', 'le plus populaire',
+    'le plus recommandé', 'le mieux noté', 'étoilé', '5 étoiles',
+    'excellent', 'exceptionnel', 'très bien noté'
+  ],
+  recommend: [
+    'recommande', 'conseille', 'suggère', 'propose', 'idée',
+    'que me conseilles-tu', 'suggestions', 'coup de cœur'
+  ],
+  price: [
+    'prix', 'tarif', 'combien', 'coût', 'budget', 'gratuit', 'payant',
+    'moins cher', 'cher', 'économique', 'luxe'
+  ]
 };
 
+// ============================================
+// INTENT KEYWORDS - ENGLISH
+// ============================================
 export const INTENT_KEYWORDS_EN: Record<string, string[]> = {
   search: [
-    // direct search
-    'find', 'search', 'look', 'look for', 'look up', 'seek', 'seeking',
-    'hunt', 'scout', 'explore', 'browse', 'discover', 'locate', 'get',
-    'i need to find', 'i want to find', 'i am looking for',
-    'can you find', 'can you show', 'could you find',
-    // location
-    'near', 'nearby', 'near me', 'close to', 'close by', 'around me',
-    'around here', 'in the area', 'in my area', 'in my city',
-    'in my neighborhood', 'in my street', 'around the corner',
-    'local', 'closest', 'nearest', 'around', 'surrounding',
-    'walking distance', 'not far', 'just around',
-    // display
-    'show', 'show me', 'display', 'list', 'give me', 'give me a list',
-    'tell me about', 'what are the', 'which', 'which are', 'which ones',
-    // availability
-    'available', 'open', 'is there', 'are there', 'do you have',
-    'any', 'any available', 'still open', 'currently open',
-    // suggestions
-    'suggest', 'recommend', 'advise', 'propose', 'any suggestions',
-    'what do you recommend', 'what would you suggest',
-    'i want to know', 'i d like to know', 'i would like to know',
+    'find', 'search', 'look for', 'seek', 'discover', 'locate',
+    'i need', 'i want to find', 'i am looking for', 'can you find',
+    'where is', 'where can i', 'show me', 'display', 'list',
+    'near', 'nearby', 'close to', 'around me', 'in my area',
+    'available', 'open', 'is there', 'are there'
   ],
   booking: [
-    // book
-    'book', 'booking', 'reserve', 'reservation', 'reservations',
-    'schedule', 'schedule a', 'set up', 'arrange', 'organize',
-    'make a booking', 'make a reservation', 'i want to book',
-    'i d like to book', 'i would like to book', 'can i book',
-    'can i reserve', 'could i book',
-    // appointment
-    'appointment', 'appointments', 'slot', 'slots', 'time slot', 'session',
-    // order
-    'order', 'place an order', 'place order', 'i want to order',
-    // desire
-    'want', 'i want', 'i d like', 'i would like', 'i need', 'i require',
-    'looking to', 'plan to', 'planning to', 'hoping to', 'wish to',
-    // confirm
-    'confirm', 'confirmation', 'finalize', 'lock in', 'secure', 'i confirm',
-    // elements
-    'table', 'room', 'seat', 'spot', 'ticket', 'pass', 'entry',
-    'check in', 'checkin', 'check-in', 'check out',
+    'book', 'booking', 'reserve', 'reservation', 'order',
+    'i want to book', 'i would like to book', 'can i book',
+    'make a reservation', 'schedule', 'set up', 'arrange',
+    'table', 'room', 'seat', 'ticket', 'slot', 'appointment'
   ],
   cancel: [
-    // cancel
-    'cancel', 'cancellation', 'cancelation', 'cancel my', 'cancel the',
-    'call off', 'call it off', 'scrap', 'scratch', 'i want to cancel',
-    'i d like to cancel', 'how do i cancel', 'can i cancel',
-    // delete
-    'delete', 'remove', 'delete my', 'remove my', 'drop', 'erase',
-    // unable
-    "can't come", 'cannot come', "won't come", 'will not come',
-    'unable to come', 'unable to make it', "can't make it",
-    'wont be able', 'will not be able', "i'm not coming",
-    'not going to make it', 'something came up',
-    // abort
-    'abort', 'stop', 'end', 'terminate', 'undo', 'back out',
-    // change
-    'reschedule', 'postpone', 'change my booking', 'move my reservation',
-    'change date', 'change time', 'move to another date',
-    // refund
-    'refund', 'get my money back', 'money back', 'reimbursement',
+    'cancel', 'cancellation', 'delete', 'remove', 'undo',
+    'i want to cancel', 'i would like to cancel', 'can i cancel',
+    'not coming', 'cannot come', 'won\'t make it', 'reschedule'
+  ],
+  modify: [
+    'modify', 'change', 'reschedule', 'update', 'adjust',
+    'change date', 'change time', 'move', 'postpone', 'bring forward'
   ],
   help: [
-    // help
-    'help', 'assist', 'assistance', 'support', 'guide', 'guidance',
-    'help me', 'i need help', 'can you help', 'could you help',
-    'please help', 'i need assistance', 'need support',
-    // questions
-    'how', 'how do i', 'how can i', 'how to', 'how does',
-    'how do you', 'how would i', 'what', 'what is', 'what are',
-    'what can you', 'what do you', 'what should i',
-    // explain
-    'explain', 'tell me', 'show me how', 'walk me through',
-    'describe', 'clarify', 'elaborate', 'can you explain',
-    // info
-    'info', 'information', 'details', 'more info', 'find out',
-    'tutorial', 'instructions', 'manual', 'faq',
-    // bot capabilities
-    'what can you do', 'what are your features', 'what commands',
-    'capabilities', 'functions', 'features', 'options',
-    'what do you offer', 'what services do you provide',
+    'help', 'assist', 'support', 'guide', 'how to', 'tutorial',
+    'what can you do', 'commands', 'instructions', 'i need help'
   ],
   greeting: [
-    'hello', 'hi', 'hey', 'howdy', 'greetings', 'sup', 'yo',
-    'good morning', 'good afternoon', 'good evening', 'good night',
-    'how are you', 'how do you do', 'how s it going', 'what s up',
-    'nice to meet you', 'pleased to meet you',
-    "how's everything", "how's life", "how ya doing", "how r u",
-    'hiya', 'heya', 'wassup', 'whats good',
+    'hello', 'hi', 'hey', 'good morning', 'good afternoon',
+    'good evening', 'how are you', 'what\'s up', 'greetings'
   ],
   feedback: [
-    'feedback', 'review', 'rate', 'rating', 'ratings',
-    'stars', 'star rating', 'give a rating', 'leave a review',
-    'leave feedback', 'write a review', 'write a comment',
-    'comment', 'opinion', 'thoughts', 'impression',
-    'recommend', 'not recommend', 'would recommend', 'would not recommend',
-    'satisfied', 'unsatisfied', 'happy with', 'unhappy with',
-    'experience', 'my experience', 'how was', 'how is',
-    'quality', 'service quality', 'what do you think', 'i think',
-    'in my opinion', 'i liked', 'i didn t like', 'i loved', 'i hated',
+    'review', 'rate', 'rating', 'star', 'comment', 'feedback',
+    'leave a review', 'give feedback', 'testimonial', 'opinion'
   ],
   goodbye: [
-    'bye', 'goodbye', 'see you', 'see ya', 'later', 'cya',
-    'take care', 'have a good one', 'have a nice day', 'have a great day',
-    'talk later', 'talk soon', 'catch you later', 'until next time',
-    'farewell', 'so long', "that's all", "that's it", "i'm done",
-    "all good thanks", 'thanks bye', 'ok thanks bye',
-    'cheers', 'peace', 'peace out', 'gotta go', 'i gotta go',
-    'im leaving', 'signing off', 'ttyl', 'ttys',
+    'goodbye', 'bye', 'see you', 'later', 'farewell', 'take care',
+    'have a nice day', 'see you later', 'cya'
   ],
+  nearby: [
+    'near me', 'close to me', 'around me', 'in my neighborhood',
+    'within walking distance', 'nearby', 'close by'
+  ],
+  top_rated: [
+    'best', 'top rated', 'highest rated', 'top', 'popular',
+    'best reviewed', 'recommended', '5 star', 'excellent'
+  ],
+  recommend: [
+    'recommend', 'suggest', 'advise', 'propose', 'recommendations',
+    'what do you suggest', 'any suggestions', 'pick for me'
+  ],
+  price: [
+    'price', 'cost', 'how much', 'budget', 'cheap', 'expensive',
+    'free', 'affordable', 'luxury', 'economy'
+  ]
 };
 
+// ============================================
+// INTENT KEYWORDS - TUNISIEN/DARIJA
+// ============================================
 export const INTENT_KEYWORDS_TN: Record<string, string[]> = {
-  // Dialecte tunisien (Darija / Tounsi) — translittéré
   search: [
-    // localisation / où
-    'fama', 'fayn', 'win', 'wini', 'wen', 'wena', 'feyn', 'fein', 'wiin',
-    'fayna', 'wein', 'weina', 'fiha', 'fih', 'finh',
-    'win najjem', 'win nlaqqa', 'win nchouf',
-    // voir / chercher
-    'nchof', 'nchouf', 'nchuf', 'chof', 'chouf', 'chuf',
-    'yechof', 'yechouf', 'nchofhom', 'nchoufhom',
-    'nlaqqa', 'nlaqa', 'nlaqah', 'nlaquiha', 'laqqa', 'laqa',
-    'n7ott', 'n7et', 'nekhdem',
-    // pouvoir / chercher
-    'najjem', 'najem', 'njjem', 'njem', 'najma', 'najjam', 'ynajem',
-    'nqader', 'nqadar', 'nkhodem',
-    // proximité
-    'qrib', 'grib', 'qriib', 'griib', 'qriba', 'griba',
-    'qribna', 'gribna', 'qrib meni', 'grib meni',
-    'hawali', 'howali', 'haweli', 'hawaliha', 'fi hwali',
-    // existence
-    'ena', 'fi', 'fih', 'fiha', 'mawjoud', 'mawjouda', 'kayen', 'kayena',
-    'wesh kayen', 'wesh fih', 'wesh fih chi',
-    // montrer / afficher
-    'warrini', 'warini', 'warrni', 'warrihom', 'wariihom',
-    'bech', 'besh', 'beche', 'bch', 'bahh',
-    'a3tini', 'a3tili', 'a3ti', 'attini', 'attili',
-    // lister
-    'ktibli', '7ottli', 'hab', 'habb', 'hatli', 'hebbili',
-    'aawedhli', 'wriha', 'wurini',
+    'nchof', 'nchouf', 'chouf', 'nlaqqa', 'nlaqa', 'n7ott',
+    'win', 'fayn', 'wein', 'wini', 'fama', 'kayen',
+    'qrib', 'grib', 'hawali', 'qrib meni', 'grib meni',
+    'warrini', 'a3tini', 'ktibli', '7ottli', 'warini'
   ],
   booking: [
-    // réserver — toutes variations phonétiques
-    'hejez', 'hejiz', 'hajez', 'hjez', 'hjiz', 'heji', 'haji', 'hji',
-    'nheji', 'nhaji', 'nhejiz', 'nhejez', 'yheji', 'yhaji',
-    'ihejez', 'ihajez', 'nehji', 'nehaji',
-    'hejez li', 'hejezli', 'hajezli',
-    // vouloir / besoin
-    'nheb', 'nhebb', 'nhab', 'nhabb', 'nhebbek', 'habba', 'hubb',
-    'nheb nhejez', 'nheb njiw', 'nheb nrawah',
-    '3andi', 'andi', 'a3ndi', '3ndi', '3andna',
-    'lazem', 'laazem', 'lazim', 'laazim', 'ylzem',
-    'khassni', 'khasna',
-    // rendez-vous
-    'mawid', 'mawad', 'maw3id', 'maw3ad', 'mwaid', 'mwad',
-    'mawid mta3i', 'mawid fi',
-    // table / place
-    'tabla', 'tebla', 'tabela', 'tebli', 'tableti',
-    'mekda', 'meqd', 'mqa3da', 'mqa3d', 'kursi', 'blas',
-    // chambre
-    'bit', 'bett', 'bit noumy', 'ghorfa', 'ghorfti',
-    // commander / demander
-    'tlab', 'etlab', 'tlebli', 'commanda', 'commandili',
-    'tleblou', 'yettlab',
-    // confirmer
-    'akkad', 'akkad li', 'confirm', 'takkad', 'nakkad',
+    'hejez', 'hajez', 'nhejez', 'nheji', '7ejjez', 'tlab',
+    'nheb nhejez', 'nheb njiw', 'commanda', 'commandili',
+    'mawid', 'tabla', 'bit', 'blas', 'mekda', 'kursi'
   ],
   cancel: [
-    // annuler
-    'lheg', 'alheg', 'elheg', 'nheg', 'lheg el', 'elheg el',
-    'batel', 'btal', 'btil', 'batil', 'battal', 'battil',
-    'nbatel', 'nbattel', 'tbattel', 'abatel',
-    // ne pas venir
-    'ma njiich', 'manjiich', 'ma najich', 'manajich',
-    'ma jich', 'majich', 'mish ji', 'mishji',
-    'ma yejich', 'mayejich', 'ma tejich',
-    'ma nqaderch', 'manqaderch', 'ma nqadarche', 'ma nqader niji',
-    'majech', 'mich ji', 'ma tawa jiich', 'ma3adesh niji',
-    'ma bqetsh', 'ma3adesh nheb',
-    // arrêter
-    'waqef', 'waqaf', 'wekf', 'ewqef', 'ewqaf', 'wqef',
-    // effacer
-    'emseh', 'mseh', 'emsah', 'msah', 'masha', 'amsah',
-    'enhiha', 'nhiha', 'shilha', 'chilha',
-    // reporter
-    'baadel', 'badel', 'baddalou', 'baddel', 'badellou',
-    'baadlou', 'baddilha',
-    // rembourser
-    'rab7i', 'flousy', 'rdouly flousy', 'aredli flousy',
-    'roddha', 'redo flousy',
+    'lheg', 'batel', 'nbatel', 'nheg', 'lheg el', 'elheg',
+    'ma njiich', 'ma najich', 'ma jich', 'majich',
+    'waqef', 'emseh', 'mseh', 'enhiha', 'shilha'
+  ],
+  modify: [
+    'baadel', 'badel', 'baddel', 'baddalou', 'baddilha',
+    'badel waqt', 'badel tarikh', 'ghayyir', 'beddel'
   ],
   help: [
-    // aide
-    '3aweni', '3awneni', 'aweni', 'awneni', 'a3weni', 'sa3edni',
-    'i3aweni', 'i3awneni', 'yeawini', 'a3wni', 'a3wanni',
-    'sar3edni', 'ta3aweni', '3awnini',
-    // comprendre
-    'fehem', 'fehim', 'nfehim', 'nfehem', 'fahim', 'nfhem',
-    'ma fehimtch', 'ma fehimtsh', 'ma fhemtch', 'mich fahim',
-    'mich fehim', 'ma3rafch', 'ma3raftch',
-    // quoi / comment
-    'chno', 'chnowa', 'shnoa', 'shnowa', 'chneya', 'chnahi', 'chnahy',
-    'kifech', 'kifash', 'kifesh', 'kefash', 'kefesh', 'kifah', 'kifeh',
-    'kifhe', 'kif', 'kif taw', 'kif bech', 'kif yemchi',
-    'wesh', 'wech', 'wach', 'wechbi', 'weshbek',
-    // info
-    '3arrefni', '3arrifni', 'khabberni', 'khebberni',
-    'qulha', 'qolha', 'qullha', 'qelli', 'gelli',
-    // guide
-    'dellni', 'dalni', 'delni', 'weddini', 'waddini',
-    'wjehni', 'ershidni', 'dellini',
+    '3aweni', '3awneni', 'sa3edni', 'a3weni', 'mosa3da',
+    'fehemni', '3arrefni', 'khabberni', 'dellni', 'wjehni'
   ],
   greeting: [
-    // salutations
-    'ahla', 'ahlen', 'ahlen bik', 'ahlen biha',
-    'salam', 'slam', 'slema', 'salamou', 'slaaamou',
-    'marhba', 'marhaba', 'marhbik', 'marhbek', 'marhbin', 'marhbeni',
-    // comment ça va
-    'labas', 'labes', 'lbes', 'lbes 3lik', 'labes 3lik', 'labas 3lik',
-    'keefak', 'kifak', 'kifek', 'keefek', 'kif 7alek', 'kif 7alik',
-    'kif nhar', 'kif el7el', 'kif sa7bek', 'kif 7alik',
-    'ech 7wejek', 'ech 7woujek', 'labes lik',
-    // salutations du jour
-    'sba7 elkhir', 'sbah khir', 'sba7khir', 'sba7 el kher', 'sbah el kher',
-    'sba7 elkhir 3lik', 'ysba7 3lik bel kher',
-    'msa elkhir', 'mesa khir', 'masa elkhir', 'masa kher',
-    'msa el kher 3lik',
-    // expressions d'ouverture
-    'ychou', 'yechou', 'yechaw', 'chelya', 'chella',
-    'halloum', 'hallouma', 'hala', 'halabikoum',
+    'ahla', 'ahlen', 'salam', 'slema', 'marhba', 'labas',
+    'sba7 elkhir', 'msa elkhir', 'kifeh', 'kifak', 'kifech'
   ],
   feedback: [
-    // avis
-    'ra2yi', 'ra2y', 'rayo', 'ra3y', 'rai', 'ra2i', 'ra2yu', 'errai',
-    'ra2yi fi', 'ra2yi 3al',
-    // plaire / aimer
-    '3ajbek', '3ajbak', 'a3jebek', 'a3jebak', 'y3ajeb', 'a3jebni',
-    'ma3ajbich', 'ma a3jebni', 'ma 3ajbatch', 'ma3ajbiniich',
-    'a7bebtou', 'a7babtu', 'krahtu', 'ma3jabniich',
-    // service
-    'kif lkhidma', 'kifeh lkhidma', 'kif el khidma', 'kif elkhidma',
-    'kif el service', 'kif el khidma mta3kom',
-    // noter
-    'note', 'nnoti', 'notili', 'notilhom', 'nota',
-    'nta3ti', 'e3ta', 'aw3a', 'n3eti', 'na3ti nota',
-    // étoiles
-    'njma', 'njom', 'njoum', 'njem', 'tejma', 'ntajom',
-    // qualité
-    'mezyan', 'mezyana', 'mzian', 'bahi', 'bahia', 'bhayen',
-    'khayeb', 'khayba', 'khaybeen', 'khyeb',
-    'normal', 'wech bahi', 'wech mezyan', 'wech a7la',
-    'zorba', 'ta7i', 'ta7ia', 'maalich', 'mziyenach',
+    'ra2yi', 'ra2y', 'nota', 'notili', 'nnoti', '3tini ra2yek',
+    'chnowa ra2yek', 'ta3li9', 'ta3li9a', 'najem'
   ],
   goodbye: [
-    'beslema', 'bislama', 'bisslema', 'b slema', 'bslema', 'bsslema',
-    'beslema bik', 'yalla beslema',
-    'baraka', 'braka', 'bareka', 'barekallah',
-    'yalla', 'yalllah', 'yela', 'alla', 'yala', 'yala bik',
-    'msek bkhir', 'msek bel kher', 'tmessha bkhir',
-    'tsbah bel kher', 'tsbah 3la kher',
-    'sla3lik', 'sel3lik', 'sla 3lik', 'slemtek',
-    'n9aw lahna', 'n9aw lah', 'njaw lahna',
-    'tawa nrawah', 'nrawah', 'shuya nrawah', 'yalla nrawah',
-    'w3lik salam', 'wa3lik salam',
-    'shokran bzzaf', 'bzzaf shokran', 'merci bzzaf',
+    'beslema', 'bislema', 'yalla', 'nrawah', 'nrawahk',
+    'tsbah 3la kher', 'tmessha bkhir', 'n9aw lahna'
   ],
+  nearby: [
+    'qrib meni', 'grib meni', 'hawali', 'fi hwali', 'blasi',
+    'fi blesti', 'qribna', 'gribna', 'fi lhouma'
+  ],
+  top_rated: [
+    'ahsen', 'mzyan barcha', 'ta7i', 'zorba', 'khatr',
+    'qawi', 'a7la 7aja', 'behi barcha', 'mli7'
+  ],
+  recommend: [
+    'nsi7', 'nsa7', '3tini ra2yek', 'chnowa tnsa7ni bih',
+    'wa7ed mli7', 'recommande', 'nsay7ek'
+  ],
+  price: [
+    'flous', 'chnowa thamen', 'b qadech', 'ghali', 'rkhiis',
+    'zeyed', 'mch 9awi', 'barcha', 'so8ayar'
+  ]
 };
 
+// ============================================
+// INTENT KEYWORDS - ARABE
+// ============================================
 export const INTENT_KEYWORDS_AR: Record<string, string[]> = {
-  // Arabe standard + formes maghrébines / égyptiennes écrites
   search: [
-    // بحث
-    'ابحث', 'ابحث عن', 'بحث', 'اجد', 'اجد لي', 'ايجاد',
-    'اريد ان اجد', 'اريد ان ابحث', 'هل يوجد', 'هل توجد', 'هل عندكم',
-    'هل لديكم', 'هل يمكنني ان اجد',
-    // أين
-    'فين', 'وين', 'اين', 'اين يوجد', 'اين يمكن', 'اين اجد',
-    'في اي مكان', 'اي مكان', 'ما مكان',
-    // عرض
-    'اعرض', 'اظهر', 'اظهر لي', 'ارني', 'اريني', 'اعطني قائمة',
-    'قائمة', 'اريد قائمة', 'اريد ان ارى', 'ارى', 'اشوف',
-    // قرب
-    'قريب', 'قريب مني', 'بالقرب', 'بالقرب مني', 'قرب منى',
-    'حولي', 'حوالي', 'في محيطي', 'في منطقتي', 'بجواري',
-    // توافر
-    'متاح', 'متاحة', 'موجود', 'موجودة', 'مفتوح', 'مفتوحة',
-    'هل متاح', 'هل موجود',
-    // اقتراح
-    'اقترح', 'اقترح لي', 'انصحني', 'انصح لي',
-    'ماذا تنصح', 'ماذا تقترح', 'ماذا توصي',
+    'ابحث', 'ابحث عن', 'بحث', 'أجد', 'أريد أن أجد', 'هل يوجد',
+    'أين', 'أين يوجد', 'اعرض', 'أظهر', 'أرني', 'قائمة',
+    'قريب', 'بالقرب مني', 'حولي', 'في منطقتي', 'متاح', 'موجود', 'مفتوح'
   ],
   booking: [
-    // حجز
-    'احجز', 'احجز لي', 'حجز', 'حجوزة', 'الحجز', 'اريد حجز',
-    'اريد ان احجز', 'هل يمكن الحجز', 'هل يمكنني الحجز',
-    'كيف احجز', 'اريد حجز مكان', 'احجز مكان',
-    // موعد
-    'موعد', 'مواعيد', 'حدد موعد', 'اريد موعد', 'اريد مواعيد',
-    'اريد تحديد موعد', 'حجز موعد',
-    // طلب
-    'اطلب', 'اطلب لي', 'طلب', 'اريد ان اطلب', 'طلب حجز', 'اطلب مكان',
-    // طاولة / غرفة
-    'طاولة', 'طاولة لـ', 'طاولة ل', 'غرفة', 'غرفة لـ',
-    'مقعد', 'مقاعد', 'كرسي', 'مكان',
-    // رغبة
-    'اريد', 'اريد ان', 'ارغب في', 'ارغب ب', 'احتاج', 'احتاج الى',
-    'ابي', 'ابغى', 'نفسي في', 'نفسي اروح',
-    // تأكيد
-    'اكد', 'تأكيد', 'تأكيد الحجز', 'اريد تأكيد',
+    'احجز', 'احجز لي', 'حجز', 'حجوزة', 'الحجز', 'أريد حجز', 'أريد أن احجز',
+    'موعد', 'حدد موعد', 'طلب', 'اطلب', 'طاولة', 'غرفة', 'مكان', 'مقعد'
   ],
   cancel: [
-    // الغاء
-    'الغ', 'الغ حجزي', 'الغاء', 'الغاء الحجز', 'اريد الالغاء',
-    'اريد ان الغي', 'كيف الغي', 'كيف الغ',
-    // حذف
-    'احذف', 'حذف', 'احذف حجزي', 'حذف الحجز',
-    // عدم المجيء
-    'لن اتمكن', 'لن اتمكن من الحضور', 'لن احضر', 'لن اجي',
-    'لا استطيع الحضور', 'لا يمكنني الحضور', 'ما راح اجي',
-    'ما راح اقدر', 'مش قادر اجي', 'مش قادر احضر',
-    'ظرف طرأ', 'طرأت ظروف', 'ما قدرتش', 'ما نقدرش',
-    // وقف
-    'اوقف', 'وقف', 'اوقف الحجز', 'الغي',
-    // تعديل
-    'عدل', 'غير', 'غير موعدي', 'اجل', 'اجل موعدي',
-    'غير الموعد', 'بدل الموعد',
-    // استرداد
-    'استرداد', 'استرداد المبلغ', 'ارجاع المال', 'ارجاع الفلوس',
-    'استرجاع المبلغ', 'رجعلي فلوسي',
+    'الغ', 'الغاء', 'الغ حجزي', 'الغاء الحجز', 'أريد الإلغاء', 'أريد أن ألغي',
+    'احذف', 'حذف', 'لن أحضر', 'لا أستطيع الحضور', 'لن أتمكن'
+  ],
+  modify: [
+    'عدل', 'غير', 'غير موعدي', 'اجل', 'اجل موعدي', 'غير التاريخ', 'غير الوقت'
   ],
   help: [
-    // مساعدة
-    'ساعدني', 'ساعد', 'مساعدة', 'اريد مساعدة', 'احتاج مساعدة',
-    'عاوني', 'عاون', 'عاونني', 'ساعدني من فضلك',
-    'ممكن تساعدني', 'محتاج مساعدة',
-    // كيف
-    'كيف', 'كيفاش', 'كيفه', 'كيف يمكن', 'كيف اقدر',
-    'كيف استخدم', 'كيف اعمل', 'كيف اطلب', 'كيف احجز',
-    // ماذا / شنوا
-    'ماذا', 'ماذا يمكنك', 'ماذا تستطيع', 'شنوا', 'شنوه',
-    'ما هو', 'ما هي', 'ما هذا', 'ما هذه',
-    // شرح
-    'اشرح', 'اشرح لي', 'شرح', 'وضح', 'وضح لي',
-    'فهمني', 'افهمني', 'وضح لي', 'اعطني تفاصيل',
-    // معلومات
-    'معلومات', 'تفاصيل', 'اعطني معلومات', 'اخبرني',
-    'ما هي الخيارات', 'ما هي الامكانيات', 'ما هي الخدمات',
-    // فهم
-    'لم افهم', 'ما فهمتش', 'مش فاهم', 'لا افهم', 'مفهمتش',
+    'ساعدني', 'ساعد', 'مساعدة', 'أحتاج مساعدة', 'كيف', 'كيف يمكن', 'ماذا',
+    'اشرح لي', 'وضح لي', 'فهمني', 'معلومات', 'تفاصيل'
   ],
   greeting: [
-    'السلام عليكم', 'سلام', 'السلام', 'وعليكم السلام', 'عليكم السلام',
-    'مرحبا', 'اهلا', 'اهلا وسهلا', 'حياك', 'حياكم', 'اهلا بيك',
-    'صباح الخير', 'صباح النور', 'مساء الخير', 'مساء النور',
-    'كيف الحال', 'كيف حالك', 'كيفك', 'كيف صحتك', 'كيف الاحوال',
-    'ازيك', 'ازيكم', 'عامل ايه', 'كيف حالكم', 'تمام',
-    'لاباس', 'لاباس عليك', 'شلونك', 'شلونكم', 'هلا',
+    'السلام عليكم', 'مرحبا', 'اهلا', 'صباح الخير', 'مساء الخير', 'كيف الحال'
   ],
   feedback: [
-    'تقييم', 'تقييمي', 'اريد تقييم', 'اقيم', 'تقيم', 'اريد ان اقيم',
-    'رأيي', 'رايي', 'راي', 'اعطيك رايي', 'رأي', 'ما رأيك',
-    'تعليق', 'اترك تعليق', 'اريد ان اعلق', 'اضيف تعليق',
-    'نجوم', 'نجمات', 'تقييم نجوم', 'اعطي نجوم',
-    'كيف الخدمة', 'كيف كانت الخدمة', 'هل الخدمة جيدة',
-    'ممتاز', 'جيد', 'سيء', 'ردئ', 'ليس جيد',
-    'انصح', 'لا انصح', 'انصح به', 'لا انصح به', 'ينصح',
-    'راضي', 'غير راضي', 'راضية', 'غير راضية', 'مبسوط', 'مش مبسوط',
+    'تقييم', 'رأيي', 'رأي', 'تعليق', 'أريد تقييم', 'أقيم', 'نجوم', 'ممتاز', 'جيد', 'سيء'
   ],
   goodbye: [
-    'مع السلامة', 'في امان الله', 'باي', 'باي باي',
-    'بسلامة', 'بالسلامة', 'الله يسلمك', 'الله يسلمكم',
-    'وداعا', 'الى اللقاء', 'نلتقي لاحقا', 'الى المرة القادمة',
-    'تصبح على خير', 'تمسي على خير', 'شكرا مع السلامة',
-    'انتهيت', 'كل شيء تمام شكرا', 'شكرا وداعا',
-    'خلاص', 'خلاص شكرا', 'بس هذا', 'هذا كل شيء',
-    'يسلمو', 'يعطيك الصحة', 'ربي يحفظك',
+    'مع السلامة', 'وداعا', 'الى اللقاء', 'باي', 'بسلامة', 'الله يسلمك'
   ],
+  nearby: [
+    'بالقرب مني', 'قريب مني', 'حولي', 'في منطقتي', 'بجواري', 'في محيطي'
+  ],
+  top_rated: [
+    'أفضل', 'أعلى تقييم', 'ممتاز', 'خمس نجوم', 'الأكثر شهرة', 'الموصى به'
+  ],
+  recommend: [
+    'أوصي', 'اقترح', 'انصح', 'ماذا تنصحني', 'اقتراحات', 'توصيات'
+  ],
+  price: [
+    'سعر', 'تكلفة', 'كم', 'ميزانية', 'رخيص', 'غالي', 'مجاني'
+  ]
 };
 
-// ───────────────────────────────────────────────────────────────────────────
-// SECTION 2 — CATEGORY KEYWORDS
-// ───────────────────────────────────────────────────────────────────────────
+// ============================================
+// INTENT KEYWORDS - ALLEMAND
+// ============================================
+export const INTENT_KEYWORDS_DE: Record<string, string[]> = {
+  search: ['suchen', 'finden', 'wo ist', 'zeige mir', 'in der Nähe', 'verfügbar'],
+  booking: ['buchen', 'reservierung', 'ich möchte buchen', 'tisch', 'zimmer', 'termin'],
+  cancel: ['stornieren', 'annullieren', 'löschen', 'absagen', 'nicht kommen'],
+  help: ['hilfe', 'assistenz', 'wie funktioniert', 'was kannst du'],
+  greeting: ['hallo', 'guten tag', 'guten abend', 'guten morgen', 'servus', 'moin'],
+  goodbye: ['auf wiedersehen', 'tschüss', 'bis bald', 'ciao'],
+  nearby: ['in meiner nähe', 'um mich herum', 'nebenan'],
+  top_rated: ['am besten', 'top bewertet', '5 sterne', 'ausgezeichnet'],
+  recommend: ['empfehlen', 'vorschlagen', 'tipp', 'idee']
+};
 
+// ============================================
+// INTENT KEYWORDS - ITALIEN
+// ============================================
+export const INTENT_KEYWORDS_IT: Record<string, string[]> = {
+  search: ['cercare', 'trova', 'dov\'è', 'mostrami', 'vicino', 'disponibile'],
+  booking: ['prenotare', 'prenotazione', 'vorrei prenotare', 'tavolo', 'camera'],
+  cancel: ['cancellare', 'annullare', 'eliminare', 'non posso venire'],
+  help: ['aiuto', 'assistenza', 'come funziona', 'cosa puoi fare'],
+  greeting: ['ciao', 'buongiorno', 'buonasera', 'salve', 'buondì'],
+  goodbye: ['arrivederci', 'ciao', 'a presto', 'addio'],
+  nearby: ['vicino a me', 'intorno a me', 'nelle vicinanze'],
+  top_rated: ['migliore', 'più votato', '5 stelle', 'eccellente'],
+  recommend: ['consigliare', 'suggerire', 'raccomandare', 'idea']
+};
+
+// ============================================
+// INTENT KEYWORDS - ESPAGNOL
+// ============================================
+export const INTENT_KEYWORDS_ES: Record<string, string[]> = {
+  search: ['buscar', 'encontrar', 'dónde está', 'muéstrame', 'cerca', 'disponible'],
+  booking: ['reservar', 'reserva', 'quiero reservar', 'mesa', 'habitación'],
+  cancel: ['cancelar', 'anular', 'eliminar', 'no puedo venir'],
+  help: ['ayuda', 'asistencia', 'cómo funciona', 'qué puedes hacer'],
+  greeting: ['hola', 'buenos días', 'buenas tardes', 'buenas noches', 'saludos'],
+  goodbye: ['adiós', 'chao', 'hasta luego', 'hasta pronto'],
+  nearby: ['cerca de mí', 'a mi alrededor', 'en mi zona'],
+  top_rated: ['mejor', 'mejor valorado', '5 estrellas', 'excelente'],
+  recommend: ['recomendar', 'sugerir', 'aconsejar', 'idea']
+};
+
+// ============================================
+// CATEGORY KEYWORDS MULTILINGUES
+// ============================================
 export const CATEGORY_KEYWORDS_FR: Record<string, string[]> = {
-  restaurant: [
-    'restaurant', 'resturant', 'restorant', 'restoran',
-    'resto', 'restau', 'brasserie', 'bistro', 'bistrot', 'taverne',
-    'pizzeria', 'trattoria', 'rotisserie', 'grill', 'cantine',
-    'manger', 'repas', 'dejeuner', 'diner', 'petit-dejeuner', 'brunch',
-    'nourriture', 'cuisine', 'plat', 'menu', 'carte', 'gastronomie',
-    'gastronomique', 'fast-food', 'fastfood', 'restauration rapide',
-    'kebab', 'sandwicherie', 'boulangerie', 'patisserie', 'creperie', 'snack',
-    'table', 'reservez une table', 'diner dehors', 'manger dehors',
-    'cafe', 'cafeteria', 'salon de the', 'coffee shop',
-    'livraison', 'livraison repas', 'a emporter', 'take-away',
-    'sushi', 'pizza', 'burger', 'seafood', 'fruit de mer',
-    'halal', 'vegetarien', 'vegan',
-  ],
-  hotel: [
-    'hotel', 'hotele', 'hotle', 'hostel', 'auberge', 'auberge de jeunesse',
-    'residence', 'apparthotel', 'gite', 'gite rural', 'maison d hotes',
-    'logement', 'hebergement', 'nuitee', 'nuit', 'dormir',
-    'chambre', 'chambre double', 'chambre simple', 'suite', 'deluxe',
-    'pension', 'pension complete', 'demi-pension', 'petit-dejeuner inclus',
-    'check-in', 'checkout', 'reception', 'riad', 'villa', 'resort',
-    'sejour', 'vacances', 'voyage', 'trip',
-  ],
-  spa: [
-    'spa', 'hammam', 'bain turc', 'bain maure', 'sauna', 'jacuzzi',
-    'massage', 'massage relaxant', 'massage sportif', 'massage oriental',
-    'bien-etre', 'bienetre', 'relaxation', 'detente', 'zen',
-    'soin', 'soins', 'soin du visage', 'soin de la peau', 'soin du corps',
-    'beauty', 'beaute', 'esthetique', 'estheticienne', 'cosmetique',
-    'aromatherapie', 'reflexologie', 'gommage', 'enveloppement', 'peeling',
-    'centre de bien-etre', 'centre spa', 'spa hotel', 'day spa',
-    'meditation', 'yoga', 'thalasso', 'thalassotherapie',
-  ],
-  gym: [
-    'gym', 'salle de sport', 'salle de fitness', 'fitness', 'musculation',
-    'powerlifting', 'crossfit', 'hiit', 'circuit training',
-    'sport', 'entrainement', 'seance', 'seance de sport',
-    'yoga', 'pilates', 'zumba', 'aerobic', 'cardio', 'stretching',
-    'coach sportif', 'coach personnel', 'personal trainer',
-    'natation', 'piscine', 'aquagym', 'aquafit',
-    'arts martiaux', 'boxe', 'karate', 'judo', 'mma', 'taekwondo',
-    'spinning', 'cycling', 'course a pied', 'running',
-  ],
-  salon: [
-    'coiffeur', 'coiffeuse', 'salon de coiffure', 'barbier', 'barber',
-    'salon', 'salon beaute', 'salon de beaute',
-    'coupe', 'coupe de cheveux', 'coiffure', 'brushing', 'lissage',
-    'ongles', 'manucure', 'pedicure', 'gel ongles', 'nail art',
-    'maquillage', 'maquillage professionnel', 'epilation', 'cire',
-    'coloration', 'meches', 'extension', 'balayage', 'tie-dye',
-    'barbe', 'rasage', 'contour de barbe', 'taille de barbe',
-    'cils', 'extension de cils', 'sourcils', 'microblading',
-    'permanente', 'defrisage', 'keratine',
-  ],
-  clinic: [
-    'clinique', 'cabinet medical', 'medecin', 'docteur', 'dr', 'centre medical',
-    'dentiste', 'orthodontiste', 'ophtalmologue', 'dermatologue',
-    'gynecologue', 'cardiologue', 'neurologue', 'pediatre', 'generaliste',
-    'pharmacie', 'parapharmacie', 'laboratoire', 'analyse', 'prise de sang',
-    'kinesitherapie', 'kine', 'osteopathie', 'osteopathe', 'chiropracteur',
-    'psychologue', 'psychiatre', 'nutritionniste', 'dieticien',
-    'consultation', 'rendez-vous medical', 'bilan', 'examen', 'radio',
-    'echographie', 'scanner', 'irm', 'urgences',
-  ],
-  event: [
-    'evenement', 'event', 'soiree', 'soiree privee', 'salle des fetes',
-    'mariage', 'fiancailles', 'anniversaire', 'bapteme', 'fete',
-    'conference', 'seminaire', 'reunion', 'reunion d affaires',
-    'spectacle', 'concert', 'theatre', 'exposition', 'galerie',
-    'location de salle', 'salle de reception', 'salle de banquet',
-    'ceremonie', 'banquet', 'gala', 'reception', 'cocktail',
-    'team building', 'atelier', 'workshop',
-  ],
+  restaurant: ['restaurant', 'resto', 'manger', 'repas', 'cuisine', 'gastronomie', 'brasserie', 'bistro', 'pizzeria'],
+  hotel: ['hôtel', 'hotel', 'logement', 'hébergement', 'chambre', 'nuitée', 'séjour', 'auberge'],
+  spa: ['spa', 'hammam', 'massage', 'bien-être', 'détente', 'relaxation', 'soin', 'sauna', 'jacuzzi'],
+  gym: ['gym', 'salle de sport', 'fitness', 'musculation', 'yoga', 'pilates', 'crossfit'],
+  salon: ['coiffeur', 'salon de coiffure', 'barbier', 'manucure', 'pédicure', 'beauté'],
+  clinic: ['clinique', 'médecin', 'dentiste', 'pharmacie', 'cabinet médical', 'laboratoire'],
+  event: ['événement', 'event', 'soirée', 'mariage', 'anniversaire', 'fête', 'conférence']
 };
 
 export const CATEGORY_KEYWORDS_EN: Record<string, string[]> = {
-  restaurant: [
-    'restaurant', 'eatery', 'diner', 'bistro', 'brasserie', 'tavern',
-    'pizzeria', 'steakhouse', 'seafood', 'sushi', 'thai', 'italian',
-    'french', 'chinese', 'indian', 'mexican', 'lebanese', 'mediterranean',
-    'eat', 'food', 'meal', 'lunch', 'dinner', 'breakfast', 'brunch',
-    'cuisine', 'dish', 'menu', 'takeout', 'takeaway', 'delivery',
-    'fast food', 'burger', 'sandwich', 'pizza', 'kebab', 'wings',
-    'cafe', 'coffee shop', 'bakery', 'pastry', 'snack bar', 'grill',
-    'halal', 'vegetarian', 'vegan', 'organic', 'fine dining',
-  ],
-  hotel: [
-    'hotel', 'hostel', 'motel', 'inn', 'lodge', 'resort',
-    'bed and breakfast', 'b&b', 'guesthouse', 'guest house',
-    'villa', 'apartment hotel', 'serviced apartment', 'airbnb',
-    'room', 'double room', 'single room', 'suite', 'deluxe', 'suite',
-    'stay', 'accommodation', 'lodging', 'overnight', 'sleep',
-    'check-in', 'checkout', 'reception', 'concierge',
-  ],
-  spa: [
-    'spa', 'hammam', 'turkish bath', 'sauna', 'jacuzzi', 'hot tub',
-    'massage', 'relaxing massage', 'sports massage', 'hot stone massage',
-    'wellness', 'well-being', 'relaxation', 'relax',
-    'facial', 'body treatment', 'scrub', 'wrap', 'peel',
-    'beauty', 'beauty treatment', 'esthetic', 'aesthetics',
-    'aromatherapy', 'reflexology', 'meditation', 'detox',
-  ],
-  gym: [
-    'gym', 'fitness', 'fitness center', 'sports center', 'sports hall',
-    'workout', 'training', 'exercise', 'session', 'class',
-    'weightlifting', 'bodybuilding', 'crossfit', 'hiit', 'cardio',
-    'yoga', 'pilates', 'zumba', 'aerobics', 'spinning',
-    'personal trainer', 'coach', 'sports coach', 'pt',
-    'swimming', 'pool', 'aqua gym', 'aquafit',
-    'martial arts', 'boxing', 'karate', 'judo', 'mma', 'bjj',
-  ],
-  salon: [
-    'salon', 'hair salon', 'barber', 'barbershop', 'hairdresser',
-    'haircut', 'hairstyle', 'blowout', 'straightening', 'coloring',
-    'nails', 'manicure', 'pedicure', 'gel nails', 'nail art', 'acrylics',
-    'makeup', 'waxing', 'threading', 'eyebrows', 'lashes',
-    'beard', 'shave', 'trim', 'fade', 'skin fade',
-    'eyelashes', 'lash extensions', 'microblading',
-    'beauty salon', 'nail salon', 'day spa',
-  ],
-  clinic: [
-    'clinic', 'medical center', 'doctor', 'physician', 'dr',
-    'dentist', 'orthodontist', 'optometrist', 'dermatologist',
-    'gynecologist', 'cardiologist', 'neurologist', 'pediatrician',
-    'pharmacy', 'lab', 'laboratory', 'blood test',
-    'physiotherapy', 'physiotherapist', 'osteopath', 'chiropractor',
-    'psychologist', 'psychiatrist', 'nutritionist', 'dietitian',
-    'consultation', 'appointment', 'checkup', 'exam', 'scan', 'xray',
-  ],
-  event: [
-    'event', 'venue', 'party', 'wedding', 'engagement', 'birthday',
-    'conference', 'seminar', 'meeting', 'corporate event',
-    'concert', 'show', 'theater', 'exhibition', 'gallery',
-    'reception', 'banquet', 'gala', 'ceremony',
-    'event hall', 'function room', 'ballroom', 'private room',
-    'team building', 'workshop', 'retreat',
-  ],
+  restaurant: ['restaurant', 'eatery', 'food', 'meal', 'dinner', 'lunch', 'breakfast', 'cafe'],
+  hotel: ['hotel', 'accommodation', 'lodging', 'room', 'stay', 'inn', 'hostel'],
+  spa: ['spa', 'massage', 'wellness', 'relaxation', 'sauna', 'jacuzzi', 'treatment'],
+  gym: ['gym', 'fitness', 'workout', 'exercise', 'yoga', 'pilates', 'training'],
+  salon: ['salon', 'hairdresser', 'barber', 'beauty', 'nails', 'makeup'],
+  clinic: ['clinic', 'doctor', 'dentist', 'pharmacy', 'medical', 'healthcare'],
+  event: ['event', 'party', 'wedding', 'birthday', 'celebration', 'conference']
 };
 
 export const CATEGORY_KEYWORDS_TN: Record<string, string[]> = {
-  restaurant: [
-    'makla', 'mekla', 'nakol', 'mazel', 'makal', 'tajin', 'tajine',
-    'restaurant', 'resto', 'mta3 makla', 'win nakol',
-    'couscous', 'koucha', 'brik', 'fricasse', 'ojja', 'chakchouka',
-    'merguez', 'kafteji', 'bambalouni', 'harissa',
-    'snack', 'sandwitch', 'sandouich', 'kaskrout',
-    'kahwa', 'qahwa', 'cafe', 'qahwet',
-    'ghda', 'ghada', 'a3cha', 'a3sha', 'ftour', 'bkhor',
-    'pizza', 'burger', 'tacos', 'chawarma', 'kebab',
-    'halal', 'samak', 'fruits de mer',
-  ],
-  hotel: [
-    'otil', 'outil', 'hotel', 'utel',
-    'bit', 'bett', 'ghorfa', 'ghorfet',
-    'mahal', 'manzal', 'dar',
-    'nyem', 'nayem', 'byet', 'byet noma', 'bet el noma',
-    'libas', 'iqama', 'mbi9',
-    'villa', 'manzal', 'chalets', 'chalet',
-  ],
-  spa: [
-    'hmmam', 'hammam', 'spa', 'hamamm',
-    'massage', 'massaj', 'massaje',
-    'rlaksation', 'ralaksation', 'relaks', 'rla9sa',
-    'soin', 'msayes', 'hsina', 'ta3lab',
-    'detant', 'raha', 'tarwi7a',
-    'zen', 'bel kher',
-  ],
-  gym: [
-    'sala sport', 'sportsala', 'sala riyadha', 'sala sport mta3',
-    'tmarran', 'tmaren', 'exercice', 'sport', 'riyadha',
-    'musculasyon', 'musculasion', 'body building',
-    'yoga', 'zumba', 'fitness',
-    'el gym', 'gym', 'sala', 'braya',
-    'boxing', 'karate', 'judo', 'arts martiaux',
-  ],
-  salon: [
-    'hajjem', 'hejjem', 'hajjam', 'hajjem',
-    'salle beaute', 'salon beaute', 'salon el beaute',
-    'coupe', 'qass', 'qas', 'qasa', 'taqsira',
-    '7ela9a', 'hela9a', 'helaka', 'helq',
-    'manycur', 'pedicur', 'nails',
-    'maquiyaj', 'makiyaj', 'maquillage',
-    'barbe', 'tresser', 'lissage', 'couleur',
-    'sourcils', 'cils', 'epilation',
-  ],
-  clinic: [
-    'twabib', 'tbib', 'doctor', 'docteur', 'dokteur',
-    'clinica', 'clinique', 'moustachfa', 'spitar', 'mostapha',
-    'sanner', 'analyse', 'taya7', 'tayah', 'ta7lil',
-    'pharmacie', 'farmasyen', 'saidliya',
-    'dantist', 'dentiste', 'snan', 'derdo',
-    'kine', 'osteo', 'psy',
-    'radio', 'scanner', 'echo',
-  ],
-  event: [
-    '3ars', 'ars', '3arsa', 'freh', 'frh', 'far7a',
-    'khotba', 'khitba', 'milad',
-    'festa', 'partie', 'soiree', 'lila',
-    '3id milad', 'eid milad', '3id',
-    'sala', 'qa3a', 'salle', 'qa3at afra7',
-    'concert', 'hafla', 'hfla', 'musique', 'ghna',
-    'mahrajan', 'festival',
-  ],
+  restaurant: ['restaurant', 'makla', 'nakol', 'tajin', 'couscous', 'pizza', 'burger'],
+  hotel: ['hotel', 'otil', 'bit', 'ghorfa', 'manzal', 'dar', 'byet'],
+  spa: ['hammam', 'spa', 'massage', 'rla9sa', 'detant', 'ra7a', 'soin'],
+  gym: ['sala sport', 'gym', 'fitness', 'tmarran', 'sport', 'riyadha'],
+  salon: ['hajjem', 'salon', 'coiffeur', 'tresser', 'qass', '7ela9a'],
+  clinic: ['clinique', 'tbib', 'doctor', 'spitar', 'moustachfa', 'dokteur'],
+  event: ['3ars', 'far7a', 'festa', 'hafla', 'concert', 'soiree']
 };
 
 export const CATEGORY_KEYWORDS_AR: Record<string, string[]> = {
-  restaurant: [
-    'مطعم', 'مطاعم', 'اكل', 'طعام', 'ماكل', 'ناكل', 'اكلة',
-    'غداء', 'عشاء', 'فطور', 'فطار', 'افطار',
-    'كافيه', 'مقهى', 'كافيتريا', 'قهوة',
-    'وجبة', 'وجبات', 'منيو', 'قائمة طعام',
-    'توصيل', 'توصيل اكل', 'طلب اكل', 'اطلب اكل',
-    'برجر', 'بيتزا', 'كباب', 'شاورما', 'فلافل', 'شيش طاووق',
-    'مشويات', 'بحريات', 'سمك', 'حلال', 'نباتي',
-    'كسكسي', 'طاجين', 'حريسة', 'برك',
-  ],
-  hotel: [
-    'فندق', 'فنادق', 'نزل', 'شقة فندقية', 'ريزيدانس',
-    'غرفة', 'غرف', 'جناح', 'اقامة', 'اقامة ليلية',
-    'حجز فندق', 'ليلة', 'نوم', 'مبيت',
-    'استقبال', 'شيك ان', 'شيك اوت',
-    'ريزورت', 'منتجع', 'فيلا', 'شاليه',
-    'رياض', 'دار', 'بيت الضيافة',
-  ],
-  spa: [
-    'حمام', 'حمام مغربي', 'حمام تركي', 'سبا', 'ساونا', 'جاكوزي',
-    'مساج', 'تدليك', 'استرخاء', 'راحة', 'هدوء',
-    'علاج جسدي', 'علاج بالاعشاب', 'علاج بالزيوت',
-    'تجميل', 'عناية بالبشرة', 'قشرة', 'جلسة تجميل',
-    'ارومثيرابي', 'ريفلكسولوجي', 'تأمل', 'ديتوكس',
-  ],
-  gym: [
-    'صالة رياضية', 'صالة', 'صالة جيم', 'جيم', 'نادي رياضي',
-    'تمارين', 'تمرين', 'رياضة', 'لياقة', 'لياقة بدنية',
-    'كمال اجسام', 'عضلات', 'تدريب',
-    'يوغا', 'بيلاتيس', 'زومبا', 'كروس فيت',
-    'مدرب شخصي', 'مدرب رياضي', 'كوتش',
-    'سباحة', 'مسبح', 'حوض سباحة',
-    'ملاكمة', 'كراتيه', 'جودو', 'فنون قتالية', 'ام ام ايه',
-  ],
-  salon: [
-    'حلاق', 'صالون', 'صالون حلاقة', 'صالون تجميل', 'كوافير',
-    'قص شعر', 'قصة', 'تسريحة', 'قصات',
-    'مانيكير', 'بيديكير', 'مناكير', 'نقش',
-    'ميك اب', 'مكياج', 'تجميل',
-    'ازالة الشعر', 'شمع', 'ليزر',
-    'تشقير', 'صبغ شعر', 'بلاشات', 'كيراتين',
-    'لحية', 'حلاقة لحية', 'تشكيل اللحية',
-    'رموش', 'حواجب', 'ميكروبليدينغ',
-  ],
-  clinic: [
-    'عيادة', 'مستشفى', 'مركز طبي', 'طبيب', 'دكتور',
-    'طبيب اسنان', 'اسنان', 'تقويم', 'طبيب اسنان',
-    'صيدلية', 'دواء', 'صيدلاني',
-    'تحاليل', 'تحليل دم', 'مختبر', 'مخبر',
-    'علاج طبيعي', 'اشعة', 'فحص', 'كشف',
-    'عيون', 'طبيب عيون', 'نظارة',
-    'موعد طبي', 'استشارة', 'فحص دوري',
-    'نفسي', 'طبيب نفسي', 'اخصائي',
-  ],
-  event: [
-    'حفل', 'حفلة', 'عرس', 'زفاف', 'خطوبة', 'خطبة',
-    'عيد ميلاد', 'مناسبة', 'احتفال', 'احتفالية',
-    'قاعة', 'قاعة افراح', 'قاعة احداث', 'قاعة مناسبات',
-    'مؤتمر', 'ندوة', 'اجتماع', 'ورشة عمل',
-    'حفل موسيقي', 'عرض', 'مسرح', 'فرقة',
-    'حفل استقبال', 'كوكتيل', 'غالا',
-    'مهرجان', 'موسم', 'نشاط',
-  ],
+  restaurant: ['مطعم', 'اكل', 'طعام', 'وجبة', 'غداء', 'عشاء', 'كافيه'],
+  hotel: ['فندق', 'اقامة', 'غرفة', 'نوم', 'سكن', 'نزل', 'ريزيدانس'],
+  spa: ['سبا', 'حمام', 'مساج', 'استرخاء', 'هدوء', 'عناية'],
+  gym: ['جيم', 'صالة رياضية', 'رياضة', 'تمارين', 'لياقة', 'يوجا'],
+  salon: ['صالون', 'حلاق', 'كوافير', 'تجميل', 'مناكير', 'قص شعر'],
+  clinic: ['عيادة', 'طبيب', 'مستشفى', 'دكتور', 'علاج', 'صيدلية'],
+  event: ['حفل', 'مناسبة', 'عرس', 'زفاف', 'عيد', 'مؤتمر']
 };
 
-// ───────────────────────────────────────────────────────────────────────────
-// SECTION 3 — SENTIMENT LEXICONS
-// ───────────────────────────────────────────────────────────────────────────
-
+// ============================================
+// SENTIMENT LEXICONS MULTILINGUES
+// ============================================
 export const SENTIMENT_POS: Record<Language, string[]> = {
-  fr: [
-    'bon', 'bonne', 'super', 'excellent', 'excellente', 'genial', 'geniale',
-    'parfait', 'parfaite', 'bien', 'tres bien', 'content', 'contente',
-    'satisfait', 'satisfaite', 'merci', 'formidable', 'magnifique',
-    'bravo', 'felicitations', 'top', 'fantastique', 'impeccable',
-    'delicieux', 'propre', 'rapide', 'ponctuel', 'professionnel',
-    'accueillant', 'sympa', 'agreable', 'recommande', 'adore',
-  ],
-  en: [
-    'good', 'great', 'excellent', 'amazing', 'wonderful', 'fantastic',
-    'nice', 'love', 'loved', 'perfect', 'awesome', 'brilliant',
-    'satisfied', 'happy', 'pleased', 'recommend', 'best', 'top',
-    'clean', 'fast', 'professional', 'friendly', 'welcoming', 'superb',
-  ],
-  tn: [
-    'mzyan', 'mezian', 'mziana', 'behi', 'bahi', 'bahia',
-    'ta7i', 'ta7ia', 'zorba', 'chokran', 'merci', 'bravo',
-    '3la rasi', 'mli7', 'mliha', 'nqiya', 'ser3a', 'dghiya',
-    'khatr', '9awi', 'zwina', 'e7la', 'a7la', 'a7la 7aga', 'a7sante',
-  ],
-  ar: [
-    'ممتاز', 'ممتازة', 'رائع', 'رائعة', 'جيد', 'جيدة', 'جميل', 'جميلة',
-    'شكرا', 'شكراً', 'احسنت', 'احسنتم', 'بارك الله فيك',
-    'راضي', 'راضية', 'سعيد', 'سعيدة', 'نظيف', 'سريع', 'محترف',
-    'انصح', 'انصح به', 'الافضل', 'مبسوط', 'يسلمو',
-  ],
+  fr: ['bon', 'bien', 'super', 'excellent', 'parfait', 'génial', 'formidable', 'magnifique', 'top', 'content', 'satisfait', 'merci', 'bravo', 'parfait'],
+  en: ['good', 'great', 'excellent', 'perfect', 'awesome', 'amazing', 'wonderful', 'fantastic', 'nice', 'love', 'happy', 'satisfied', 'thanks'],
+  tn: ['mzyan', 'behi', 'ta7i', 'zorba', 'khatr', 'qawi', 'mli7', 'zwina', 'e7la', 'a7la', 'bravo', 'merci', 'chokran'],
+  ar: ['جيد', 'ممتاز', 'رائع', 'جميل', 'ممتازة', 'رائعة', 'شكرا', 'أحسنت', 'راضي', 'سعيد', 'مبسوط'],
+  de: ['gut', 'super', 'ausgezeichnet', 'perfekt', 'toll', 'fantastisch', 'danke', 'zufrieden'],
+  it: ['buono', 'ottimo', 'eccellente', 'perfetto', 'fantastico', 'grazie', 'soddisfatto'],
+  es: ['bueno', 'excelente', 'perfecto', 'genial', 'fantástico', 'gracias', 'satisfecho']
 };
 
 export const SENTIMENT_NEG: Record<Language, string[]> = {
-  fr: [
-    'mauvais', 'mauvaise', 'terrible', 'horrible', 'catastrophique',
-    'decu', 'decue', 'decevant', 'decevante', 'probleme', 'problemes',
-    'erreur', 'bug', 'panne', 'insatisfait', 'insatisfaite',
-    'dommage', 'nul', 'nulle', 'mediocre', 'sale', 'lent',
-    'retard', 'rude', 'impoli', 'arnaque', 'cher', 'honteux',
-  ],
-  en: [
-    'bad', 'awful', 'terrible', 'horrible', 'disappointing', 'disgusting',
-    'hate', 'hated', 'wrong', 'broken', 'problem', 'issue', 'error',
-    'slow', 'rude', 'dirty', 'expensive', 'overpriced', 'scam',
-    'unsatisfied', 'unhappy', 'disappointed', 'worst', 'never again',
-  ],
-  tn: [
-    'khaib', 'khayeb', 'khayba', 'mich mzyan', 'mich behi',
-    'wahesh', 'wahsha', 'khsar', 'tkhsir', 'ghali', 'ghalia',
-    'mich normal', 'mayeslach', 'ma3ajbnich', 'mat3ajbnich',
-    'batel', 'mayelzamch', 'mich e7la', 'khlasta', 'mziyenach',
-  ],
-  ar: [
-    'سيء', 'سيئة', 'ردئ', 'ردئية', 'سيء جداً', 'مزعج',
-    'خائب', 'مخيب للآمال', 'فاشل', 'مشكلة', 'خطأ',
-    'غير راضي', 'غير راضية', 'مش كويس', 'غير محترف',
-    'قذر', 'بطيء', 'غالي', 'مكلف', 'نصب', 'ما عجبنيش',
-  ],
+  fr: ['mauvais', 'nul', 'terrible', 'horrible', 'déçu', 'insatisfait', 'problème', 'erreur', 'lent', 'cher', 'arnaque', 'dommage'],
+  en: ['bad', 'terrible', 'horrible', 'awful', 'disappointed', 'unsatisfied', 'problem', 'error', 'slow', 'expensive', 'scam'],
+  tn: ['khayeb', 'khaib', 'mich mzyan', 'mich behi', 'wahesh', 'khsar', 'ghali', 'batel', 'mayeslach'],
+  ar: ['سيء', 'رديء', 'فظيع', 'مخيب', 'غير راضي', 'خطأ', 'بطيء', 'غالي', 'نصب'],
+  de: ['schlecht', 'furchtbar', 'enttäuscht', 'Problem', 'Fehler', 'langsam', 'teuer'],
+  it: ['cattivo', 'terribile', 'deluso', 'insoddisfatto', 'problema', 'errore', 'lento', 'caro'],
+  es: ['malo', 'terrible', 'decepcionado', 'insatisfecho', 'problema', 'error', 'lento', 'caro']
 };
 
-// ───────────────────────────────────────────────────────────────────────────
-// SECTION 4 — LOCALIZATION (UI responses)
-// ───────────────────────────────────────────────────────────────────────────
-
-export const LOCALIZED_RESPONSES: Record<string, Record<Language, string | string[]>> = {
-  search_no_results: {
-    fr: "😕 Aucun service trouvé pour votre recherche.\n\nEssayez d'autres mots-clés ou une autre ville.",
-    en: "😕 No services found for your search.\n\nTry different keywords or another city.",
-    tn: "😕 Ma lqit chay.\n\nJreb krara okhra wala blasa okhra.",
-    ar: "😕 لم يتم العثور على خدمات.\n\nجرب كلمات أخرى أو مدينة أخرى.",
+// ============================================
+// LOCALIZED RESPONSES MULTILINGUES
+// ============================================
+export const LOCALIZED_RESPONSES: Record<string, Record<Language, string>> = {
+  welcome: {
+    fr: '👋 Bonjour ! Je suis votre assistant Reservia. Comment puis-je vous aider ?',
+    en: '👋 Hello! I\'m your Reservia assistant. How can I help you?',
+    tn: '👋 Ahla bik! Ena m3awnek Reservia. Kifeh n3awnek?',
+    ar: '👋 مرحبا! أنا مساعدك في ريزيرفيا. كيف يمكنني مساعدتك؟',
+    de: '👋 Hallo! Ich bin Ihr Reservia-Assistent. Wie kann ich helfen?',
+    it: '👋 Ciao! Sono il tuo assistente Reservia. Come posso aiutarti?',
+    es: '👋 ¡Hola! Soy tu asistente de Reservia. ¿Cómo puedo ayudarte?'
   },
-  search_error: {
-    fr: "❌ Erreur lors de la recherche. Réessayez.",
-    en: "❌ Error during search. Please try again.",
-    tn: "❌ Mochkel fi el recherche. 3awed jareb.",
-    ar: "❌ خطأ في البحث. حاول مرة أخرى.",
+  booking_start: {
+    fr: '📝 Je vais vous aider à réserver "{serviceName}". Pour combien de personnes ?',
+    en: '📝 I\'ll help you book "{serviceName}". For how many people?',
+    tn: '📝 Na3awnek te7jez "{serviceName}". 3la qadech nafar?',
+    ar: '📝 سأساعدك في حجز "{serviceName}". لكم شخص؟',
+    de: '📝 Ich helfe Ihnen, "{serviceName}" zu buchen. Für wie viele Personen?',
+    it: '📝 Ti aiuto a prenotare "{serviceName}". Per quante persone?',
+    es: '📝 Te ayudaré a reservar "{serviceName}". ¿Para cuántas personas?'
   },
-  booking_no_login: {
-    fr: "🔐 Connectez-vous pour faire une réservation.",
-    en: "🔐 Please log in to make a reservation.",
-    tn: "🔐 A3mel login bech te7jez.",
-    ar: "🔐 سجل الدخول للحجز.",
+  ask_guests: {
+    fr: '👥 Combien de personnes serez-vous ? (dites un nombre : 1, 2, 3...)',
+    en: '👥 How many people? (say a number: 1, 2, 3...)',
+    tn: '👥 3la qadech nafar? (qol raqm: 1, 2, 3...)',
+    ar: '👥 كم شخص؟ (قل رقماً: 1، 2، 3...)',
+    de: '👥 Wie viele Personen? (Sagen Sie eine Zahl: 1, 2, 3...)',
+    it: '👥 Quante persone? (di\' un numero: 1, 2, 3...)',
+    es: '👥 ¿Cuántas personas? (diga un número: 1, 2, 3...)'
   },
-  booking_help: {
-    fr: "📅 Je vais vous aider à réserver !\n\nQuel type de service cherchez-vous ?\n(restaurant, hôtel, spa, salon, salle de sport...)",
-    en: "📅 Let me help you book!\n\nWhat type of service are you looking for?\n(restaurant, hotel, spa, salon, gym...)",
-    tn: "📅 Na3awnek te7jez!\n\nChnowa l khedma li t7eb?\n(restaurant, otil, spa, salon, salle sport...)",
-    ar: "📅 سأساعدك في الحجز!\n\nما نوع الخدمة التي تبحث عنها؟\n(مطعم، فندق، سبا، صالون، صالة رياضية...)",
+  ask_date: {
+    fr: '📅 Quelle date souhaitez-vous ? (ex: demain, 25/12/2024, lundi prochain)',
+    en: '📅 What date would you like? (ex: tomorrow, 12/25/2024, next Monday)',
+    tn: '📅 Wa9teh teb9a tji? (mthel: ghudwa, 25/12/2024, lundi jay)',
+    ar: '📅 ما التاريخ الذي تريده؟ (مثال: غداً، 25/12/2024، الاثنين القادم)',
+    de: '📅 Welches Datum wünschen Sie? (z.B. morgen, 25.12.2024, nächsten Montag)',
+    it: '📅 Che data desideri? (es: domani, 25/12/2024, lunedì prossimo)',
+    es: '📅 ¿Qué fecha desea? (ej: mañana, 25/12/2024, próximo lunes)'
   },
-  greeting: {
-    fr: ['👋 Bonjour ! Comment puis-je vous aider ?', '👋 Salut ! Besoin d\'aide pour trouver ou réserver un service ?', '👋 Bonjour ! Je suis votre assistant. Que puis-je faire pour vous ?'],
-    en: ['👋 Hello! How can I help you today?', '👋 Hi there! Looking for something to book?', '👋 Good to see you! How can I assist?'],
-    tn: ['👋 Ahla bik ! Kifeh n3awnek ?', '👋 Asslema ! T7eb t7ej wala tchouf chy ?', '👋 Marhba bik ! Chnowa t7eb ta3mel ?'],
-    ar: ['👋 أهلاً وسهلاً! كيف أساعدك؟', '👋 مرحبا بك! كيف يمكنني مساعدتك اليوم؟', '👋 أهلين! تريد حجز ولا بحث عن خدمة؟'],
+  ask_time: {
+    fr: '⏰ À quelle heure ? (ex: 20h, 14h30, 9h)',
+    en: '⏰ At what time? (ex: 8pm, 2:30pm, 9am)',
+    tn: '⏰ 3la waqteh? (mthel: 20h, 14h30, 9h)',
+    ar: '⏰ في أي ساعة؟ (مثال: 8 مساءً، 2:30 ظهراً، 9 صباحاً)',
+    de: '⏰ Um wie viel Uhr? (z.B. 20 Uhr, 14:30 Uhr, 9 Uhr)',
+    it: '⏰ A che ora? (es: 20:00, 14:30, 9:00)',
+    es: '⏰ ¿A qué hora? (ej: 20h, 14:30h, 9h)'
   },
-  goodbye: {
-    fr: ['👋 Au revoir ! Bonne journée !', '👋 À bientôt ! Prenez soin de vous !'],
-    en: ['👋 Goodbye! Have a nice day!', '👋 See you later! Take care!'],
-    tn: ['👋 Beslema! Nharek mabrouk!', '👋 Nrawahk! Yalla bkhir!'],
-    ar: ['👋 مع السلامة! يوم سعيد!', '👋 إلى اللقاء! في أمان الله!'],
+  booking_confirmed: {
+    fr: '✅ Réservation confirmée !\n\n📅 {date} à {time}\n👥 {guests} personne(s)\n\n📧 Un email de confirmation vous a été envoyé.',
+    en: '✅ Booking confirmed!\n\n📅 {date} at {time}\n👥 {guests} person(s)\n\n📧 A confirmation email has been sent.',
+    tn: '✅ Hejzek mzabt!\n\n📅 {date} 3la {time}\n👥 {guests} nafar\n\n📧 Email tawkid mchalk.',
+    ar: '✅ تم تأكيد الحجز!\n\n📅 {date} الساعة {time}\n👥 {guests} شخص\n\n📧 تم إرسال بريد تأكيد.',
+    de: '✅ Buchung bestätigt!\n\n📅 {date} um {time}\n👥 {guests} Person(en)\n\n📧 Eine Bestätigungs-E-Mail wurde gesendet.',
+    it: '✅ Prenotazione confermata!\n\n📅 {date} alle {time}\n👥 {guests} persona(e)\n\n📧 Un\'email di conferma è stata inviata.',
+    es: '✅ ¡Reserva confirmada!\n\n📅 {date} a las {time}\n👥 {guests} persona(s)\n\n📧 Se ha enviado un correo de confirmación.'
   },
-  help: {
-    fr: '🤖 **Je comprends le français, l\'anglais et la darija tunisienne**\n\n**Exemples :**\n🔍 "Cherche restaurant"\n📅 "Je veux réserver"\n❌ "Annuler ma réservation"\n⭐ "Donner mon avis"',
-    en: '🤖 **I understand French, English, and Tunisian Arabic**\n\n**Examples:**\n🔍 "Find a restaurant"\n📅 "I want to book"\n❌ "Cancel my reservation"\n⭐ "Leave a review"',
-    tn: '🤖 **Nafhem bel Faransawi, Anglais, w Tunisi**\n\n**Methal :**\n🔍 "Chouf restaurant"\n📅 "Nhejez"\n❌ "Batel hjezi"\n⭐ "A3ti ra2yek"',
-    ar: '🤖 **أفهم الفرنسية والإنجليزية والعربية التونسية**\n\n**أمثلة:**\n🔍 "ابحث عن مطعم"\n📅 "أريد حجز"\n❌ "الغ حجزي"\n⭐ "اترك تقييم"',
-  },
-  unknown: {
-    fr: "🤔 Je n'ai pas bien compris votre demande.\n\nEssayez :\n🔍 **Chercher** un service\n📅 **Réserver**\n❌ **Annuler**\n❓ **Aide**",
-    en: "🤔 I didn't understand your request.\n\nTry:\n🔍 **Search** for a service\n📅 **Book**\n❌ **Cancel**\n❓ **Help**",
-    tn: "🤔 Ma fhemtekch mizyana.\n\nJreb :\n🔍 **Chouf** service\n📅 **7ejjez**\n❌ **Batel**\n❓ **Mosa3da**",
-    ar: "🤔 لم أفهم طلبك جيداً.\n\nجرب:\n🔍 **ابحث** عن خدمة\n📅 **احجز**\n❌ **الغ**\n❓ **مساعدة**",
-  },
-  cancel_no_login: {
-    fr: "🔐 Connectez-vous pour annuler une réservation.",
-    en: "🔐 Please log in to cancel a reservation.",
-    tn: "🔐 A3mel login bech tbattel hejzek.",
-    ar: "🔐 سجل الدخول لإلغاء الحجز.",
-  },
-  cancel_no_reservations: {
-    fr: "✅ Vous n'avez aucune réservation active à annuler.",
-    en: "✅ You have no active reservations to cancel.",
-    tn: "✅ Ma3andekch 7ejz ta3tich.",
-    ar: "✅ ليس لديك أي حجز نشط للإلغاء.",
-  },
-  feedback: {
-    fr: "⭐ Merci de vouloir partager votre avis !\n\nPour quel service voulez-vous laisser un commentaire ?",
-    en: "⭐ Thank you for wanting to share your feedback!\n\nWhich service would you like to review?",
-    tn: "⭐ Chokran 3la ra2yek!\n\n3leh khidma tehb ta3ti ra2yek?",
-    ar: "⭐ شكراً لرغبتك في مشاركة رأيك!\n\nلأي خدمة تريد ترك تعليق؟",
-  },
-  rate_limited: {
-    fr: '⏳ Vous avez envoyé trop de messages. Attendez quelques secondes.',
-    en: '⏳ You sent too many messages. Please wait a few seconds.',
-    tn: '⏳ Barcha messages. Stanna chouya.',
-    ar: '⏳ أرسلت رسائل كثيرة. انتظر بضع ثوانٍ.',
-  },
-  error: {
-    fr: "😔 Désolé, une erreur s'est produite. Réessayez !",
-    en: "😔 Sorry, an error occurred. Please try again!",
-    tn: "😔 Désolé, mochkel. 3awed jareb!",
-    ar: "😔 عذراً، حدث خطأ. حاول مرة أخرى!",
-  },
-  confirm_booking: {
-    fr: "✅ Réservation confirmée ! Un email de confirmation vous a été envoyé.",
-    en: "✅ Reservation confirmed! A confirmation email has been sent to you.",
-    tn: "✅ Hejzek mzabt ! Email mcha 3andek.",
-    ar: "✅ تم تأكيد الحجز! تم إرسال بريد إلكتروني للتأكيد.",
-  },
+  login_required: {
+    fr: '🔐 Veuillez vous connecter pour effectuer cette action.',
+    en: '🔐 Please log in to perform this action.',
+    tn: '🔐 A3mel login bech ta3mel hethi.',
+    ar: '🔐 سجل الدخول للقيام بهذا الإجراء.',
+    de: '🔐 Bitte melden Sie sich an, um diese Aktion durchzuführen.',
+    it: '🔐 Effettua il login per eseguire questa azione.',
+    es: '🔐 Inicia sesión para realizar esta acción.'
+  }
 };
 
-// ───────────────────────────────────────────────────────────────────────────
-// SECTION 5 — LANGUAGE DETECTION FINGERPRINTS
-// ───────────────────────────────────────────────────────────────────────────
-
-export const LANG_FINGERPRINTS: Record<Language, string[]> = {
-  tn: [
-    // mots très spécifiques au dialecte tunisien
-    'mzyan', 'behi', 'bahi', 'ahla', 'beslema', 'nheb', 'wesh', 'kifesh',
-    'nheji', 'hejez', 'nakol', 'labes', 'marhba', 'batel',
-    '3aweni', 'chno', 'chnowa', 'kifash', 'nchouf', 'nchof',
-    'yalla', 'baraka', 'hawali', 'qrib', 'fama', 'fayn',
-    'mazyan', 'zorba', 'ta7i', '3andi', 'lazem',
-    'fehem', 'waqef', 'ktibli', 'warrini',
-  ],
-  fr: [
-    'bonjour', 'merci', 'reserver', 'cherche', 'comment', 'aide',
-    'je', 'vous', 'nous', 'est', 'les', 'des', 'une', 'pour',
-    'oui', 'non', 'avec', 'dans', 'plus', 'mais', 'bien',
-  ],
-  en: [
-    'hello', 'thanks', 'book', 'search', 'find', 'help', 'how', 'good',
-    'the', 'and', 'for', 'you', 'are', 'this', 'that', 'with',
-    'yes', 'no', 'please', 'can', 'would', 'like', 'need',
-  ],
-  ar: [
-    // mots arabes (détecté par le score Unicode principalement)
-    'مرحبا', 'شكرا', 'احجز', 'ابحث', 'مساعدة', 'موعد',
-    'الغاء', 'تقييم', 'اريد', 'كيف', 'اين', 'هل',
-  ],
+// ============================================
+// DATE & TIME PATTERNS MULTILINGUES
+// ============================================
+export const DATE_PATTERNS: Record<Language, RegExp[]> = {
+  fr: [/demain/i, /aujourd'hui/i, /ce soir/i, /lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche/i],
+  en: [/tomorrow/i, /today/i, /tonight/i, /monday|tuesday|wednesday|thursday|friday|saturday|sunday/i],
+  tn: [/ghudwa/i, /lyoum/i, /llila/i, /lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche/i],
+  ar: [/غداً/i, /اليوم/i, /الليلة/i, /الاثنين|الثلاثاء|الأربعاء|الخميس|الجمعة|السبت|الأحد/i],
+  de: [/morgen/i, /heute/i, /heute abend/i, /montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag/i],
+  it: [/domani/i, /oggi/i, /stasera/i, /lunedì|martedì|mercoledì|giovedì|venerdì|sabato|domenica/i],
+  es: [/mañana/i, /hoy/i, /esta noche/i, /lunes|martes|miércoles|jueves|viernes|sábado|domingo/i]
 };
 
-// ───────────────────────────────────────────────────────────────────────────
-// SECTION 6 — TUNISIAN CITIES + DISTRICTS
-// ───────────────────────────────────────────────────────────────────────────
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+export const ALL_INTENT_KEYWORDS = {
+  fr: INTENT_KEYWORDS_FR,
+  en: INTENT_KEYWORDS_EN,
+  tn: INTENT_KEYWORDS_TN,
+  ar: INTENT_KEYWORDS_AR,
+  de: INTENT_KEYWORDS_DE,
+  it: INTENT_KEYWORDS_IT,
+  es: INTENT_KEYWORDS_ES
+};
 
-export const TUNISIAN_CITIES: string[] = [
-  // Grandes villes / Gouvernorats
-  'tunis', 'sfax', 'sousse', 'monastir', 'bizerte', 'gabes',
-  'gafsa', 'kairouan', 'nabeul', 'hammamet', 'djerba', 'houmt souk',
-  'tozeur', 'nefta', 'mahdia', 'zaghouan', 'siliana', 'le kef',
-  'jendouba', 'beja', 'medenine', 'tataouine', 'kebili', 'douz',
-  // Banlieue de Tunis
-  'ariana', 'la marsa', 'carthage', 'sidi bou said', 'la goulette',
-  'manouba', 'ben arous', 'rades', 'hammam lif', 'hammam chott',
-  'borj louzir', 'el manar', 'cite olympique', 'bab bhar', 'bab souika',
-  'el menzah', 'el aouina', 'el ghazela', 'raoued', 'soukra',
-  // Sfax et environs
-  'sakiet eddaier', 'sakiet ezzit', 'chihia', 'thyna',
-  'sfax centre', 'sfax ville', 'el ain', 'el bustan', 'merkez sfax',
-  'la 15', 'la 16', 'lafrane', 'menzel chaker',
-  // Sousse et environs
-  'kantaoui', 'port el kantaoui', 'khezama', 'sahloul', 'msaken',
-  'kalaa kebira', 'kalaa seghira', 'kondar',
-  // Sahel
-  'moknine', 'ksar hellal', 'ksibet', 'teboulba', 'jammel',
-  'bembla', 'ouardanine',
-  // Centre / Sud
-  'sidi bouzid', 'kasserine', 'feriana', 'sbeitla',
-  'remada', 'ghomrassen', 'zarzis', 'ben gardane', 'jerba',
-  // Régions touristiques
-  'midoun', 'aghir', 'el kantara', 'erriadh', 'ksar ghilane',
-];
+export const ALL_CATEGORY_KEYWORDS = {
+  fr: CATEGORY_KEYWORDS_FR,
+  en: CATEGORY_KEYWORDS_EN,
+  tn: CATEGORY_KEYWORDS_TN,
+  ar: CATEGORY_KEYWORDS_AR
+};
 
-// ───────────────────────────────────────────────────────────────────────────
-// SECTION 7 — PRICE / TIME / NEARBY PATTERNS
-// ───────────────────────────────────────────────────────────────────────────
-
-export const PRICE_PATTERNS: RegExp[] = [
-  /(\d+(?:[.,]\d+)?)\s*(?:dt|dinar|dinars?|tnd)/i,
-  /(\d+(?:[.,]\d+)?)\s*(?:euro?s?|eur|€)/i,
-  /(\d+(?:[.,]\d+)?)\s*(?:dollar?s?|usd|\$)/i,
-  /(?:moins de|max|maximum|pas plus de|jusqu[''a]\s*)\s*(\d+)/i,
-  /(?:budget|environ|autour de)\s*(\d+)/i,
-  /(\d+)\s*(?:د\.ت|دينار|دنانير)/,
-  /(\d+)\s*(?:flousse?|flous)/i,
-];
-
-export const TIME_PATTERNS: RegExp[] = [
-  /(\d{1,2}\/\d{1,2}\/\d{2,4})/,
-  /(\d{1,2})-(\d{1,2})-(\d{2,4})/,
-  /(\d{1,2})\s*[h:]\s*(\d{0,2})/,
-  /(?:demain|tomorrow|ghudwa|غداً?)/i,
-  /(?:ce soir|tonight|llila|الليلة)/i,
-  /(?:aujourd'?hui|today|lyoum|اليوم)/i,
-  /(?:ce matin|this morning|الصباح)/i,
-  /(?:cet apres-midi?|this afternoon|بعد الظهر)/i,
-  /(?:cette semaine|this week|هذا الاسبوع)/i,
-  /(?:ce weekend|this weekend|نهاية الاسبوع)/i,
-  /(?:lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)/i,
-  /(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i,
-  /(\d+)\s*(?:jours?|days?|أيام)/i,
-];
-
-export const NEAR_ME_PATTERNS: string[] = [
-  'pres de moi', 'proche de moi', 'autour de moi', 'dans mon quartier',
-  'a proximite', 'dans ma zone', 'ma position', 'ma localisation', 'ici',
-  'near me', 'close to me', 'around me', 'nearby', 'in my area', 'my location',
-  'hawali', 'qrib meni', 'grib meni', 'blasi', 'fi hwali', 'fi blesti',
-  'قريب مني', 'حولي', 'بالقرب مني', 'في منطقتي', 'هنا',
-];
-
-export const PEOPLE_PATTERN =
-  /(\d+)\s*(?:personnes?|gens?|pax|convives?|nafar|nefar|نفر|اشخاص|شخص|أشخاص|people|persons?|guests?|covers?)/i;
+// Langues supportées
+export const SUPPORTED_LANGUAGES: Language[] = ['fr', 'en', 'tn', 'ar', 'de', 'it', 'es'];
+export const DEFAULT_LANGUAGE: Language = 'fr';

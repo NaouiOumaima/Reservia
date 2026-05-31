@@ -5,12 +5,16 @@ export type NotificationDocument = Notification & Document;
 
 export enum NotificationType {
   RESERVATION_CONFIRMED = 'reservation_confirmed',
+  RESERVATION_PENDING = 'reservation_pending',  
   RESERVATION_REMINDER = 'reservation_reminder',
   RESERVATION_CANCELLED = 'reservation_cancelled',
   RESERVATION_EXPIRED = 'reservation_expired',
   PROMOTION = 'promotion',
   ADVERTISEMENT = 'advertisement',
   SYSTEM = 'system',
+  SERVICE_PENDING = 'service_pending',    
+  SERVICE_APPROVED = 'service_approved',  
+  SERVICE_REJECTED = 'service_rejected',  
 }
 
 @Schema({ timestamps: true })

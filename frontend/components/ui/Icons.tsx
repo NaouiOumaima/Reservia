@@ -216,6 +216,18 @@ export function StarIcon({ className = "w-6 h-6", size }: IconProps) {
 // CATÉGORIES
 // ============================================
 
+
+
+export function TrophyIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M8 21l4-8 4 8"/>
+      <path d="M3 8l9-5 9 5"/>
+      <path d="M12 3v10"/>
+      <path d="M5 11.5l7 3.5 7-3.5"/>
+    </svg>
+  );
+}
 export function AllCategoriesIcon({ className = "w-6 h-6", size }: IconProps) {
   return (
     <svg {...base(className, size)}>
@@ -819,6 +831,452 @@ export function BedIcon({ className = "w-6 h-6", size }: IconProps) {
       <path d="M3 16h18" />
       <path d="M3 12V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7" />
       <rect x="7" y="9" width="4" height="3" rx="1" />
+    </svg>
+  );
+}
+export function XCircleIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="m15 9-6 6" strokeWidth={2} />
+      <path d="m9 9 6 6" strokeWidth={2} />
+    </svg>
+  );
+}
+export function DollarSignIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="M12 2v20" strokeWidth={1.8} />
+      <path d="M17 7H9.5a2.5 2.5 0 0 0 0 5h5a2.5 2.5 0 0 1 0 5H7" strokeWidth={1.8} />
+    </svg>
+  );
+}
+export function FilterIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M3 4.5h18M6 12h12M9.5 19.5h5" />
+    </svg>
+  );
+}
+
+export function RefreshIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M4 12a8 8 0 0 1 14.93-4H15" />
+      <path d="M20 12a8 8 0 0 1-14.93 4H9" />
+      <path d="M19 5l-.07 3.93-3.93-.07" />
+      <path d="M5 19l.07-3.93 3.93.07" />
+    </svg>
+  );
+}
+
+export function MoreVerticalIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <circle cx="12" cy="5" r="1" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="19" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function MoreHorizontalIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <circle cx="5" cy="12" r="1" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="12" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function DownloadIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M12 3v12M8 11l4 4 4-4" />
+      <path d="M20 17v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2" />
+    </svg>
+  );
+}
+
+export function ShareIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="M8.7 10.7l6.6-3.4M8.7 13.3l6.6 3.4" />
+    </svg>
+  );
+}
+
+export function CopyIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <rect x="9" y="9" width="13" height="13" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
+export function ExternalLinkIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <path d="M15 3h6v6" />
+      <path d="M10 14L21 3" />
+    </svg>
+  );
+}
+
+export function PlusIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+export function MinusIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M5 12h14" />
+    </svg>
+  );
+}
+
+export function LogoutIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="M16 17l5-5-5-5" />
+      <path d="M21 12H9" />
+    </svg>
+  );
+}
+
+export function LoginIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+      <path d="M10 17l5-5-5-5" />
+      <path d="M15 12H3" />
+    </svg>
+  );
+}
+
+export function ImageIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <rect x="3" y="3" width="18" height="18" rx="2.5" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="M21 15l-5-5L5 21" />
+    </svg>
+  );
+}
+
+export function MessageIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+export function SendIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M22 2L11 13" />
+      <path d="M22 2L15 22l-4-9-9-4 20-7z" />
+    </svg>
+  );
+}
+
+export function GlobeIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="M2.5 12h19" />
+      <path d="M12 2.5a15 15 0 0 1 4 9.5 15 15 0 0 1-4 9.5 15 15 0 0 1-4-9.5 15 15 0 0 1 4-9.5z" />
+    </svg>
+  );
+}
+
+export function SunIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+    </svg>
+  );
+}
+
+export function MoonIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z" />
+    </svg>
+  );
+}
+
+export function BarChartIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M3 21h18" />
+      <rect x="4" y="13" width="4" height="8" rx="1" />
+      <rect x="10" y="8" width="4" height="13" rx="1" />
+      <rect x="16" y="4" width="4" height="17" rx="1" />
+    </svg>
+  );
+}
+
+export function PieChartIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M21.2 15A9 9 0 1 1 9 2.8" />
+      <path d="M22 12A10 10 0 0 0 12 2v10z" />
+    </svg>
+  );
+}
+
+export function WifiIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M1.5 8.5a14.5 14.5 0 0 1 21 0" />
+      <path d="M5 12.5a9.5 9.5 0 0 1 14 0" />
+      <path d="M8.5 16.5a5 5 0 0 1 7 0" />
+      <circle cx="12" cy="20" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function KeyIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <circle cx="8" cy="8" r="5" />
+      <path d="M21 21l-4.35-4.35M13 13l8 8" />
+      <path d="M15.5 10.5l-2.5 2.5" />
+    </svg>
+  );
+}
+
+export function PackageIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M12 2l9 4.5v11L12 22l-9-4.5v-11L12 2z" />
+      <path d="M12 2v20" />
+      <path d="M3 6.5l9 4.5 9-4.5" />
+      <path d="M7.5 4.5l9 4.5" />
+    </svg>
+  );
+}
+
+export function ZapIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M13 2L4.5 13.5H12L11 22l8.5-11.5H12L13 2z" />
+    </svg>
+  );
+}
+
+// Ajoutez ces icônes à votre fichier Icons.tsx
+
+export function NavigationIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="M12 8v8M8 12h8" />
+      <polygon points="12,3 7,10 12,8 17,10" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function RouteIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <circle cx="6" cy="18" r="2.5" />
+      <circle cx="18" cy="6" r="2.5" />
+      <path d="M6 15.5L15.5 6" />
+      <path d="M8.5 12l3-3" />
+    </svg>
+  );
+}
+
+export function Compass({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="M16.5 7.5l-2.8 6.2-6.2 2.8 2.8-6.2 6.2-2.8z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function PlayIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function StopIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <rect x="4" y="4" width="16" height="16" rx="2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function CarIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <rect x="2" y="8" width="20" height="12" rx="2.5" />
+      <path d="M7 8V6.5A4.5 4.5 0 0 1 11.5 2h1A4.5 4.5 0 0 1 17 6.5V8" />
+      <circle cx="7" cy="15" r="2" />
+      <circle cx="17" cy="15" r="2" />
+      <path d="M2 12h20" />
+      <path d="M9 15h6" />
+    </svg>
+  );
+}
+
+export function FootprintsIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <circle cx="7" cy="15" r="2" />
+      <circle cx="17" cy="15" r="2" />
+      <path d="M7 13v-4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v4" />
+      <path d="M9 7l2-3" />
+      <path d="M15 7l-2-3" />
+      <path d="M9 7l1 2" />
+      <path d="M15 7l-1 2" />
+    </svg>
+  );
+}
+
+export function BikeIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <circle cx="5.5" cy="17.5" r="3.5" />
+      <circle cx="18.5" cy="17.5" r="3.5" />
+      <path d="M12 14L9 7l4-1 2.5 5.5" />
+      <path d="M9 7l-2 3" />
+      <path d="M13 6l2-2 3 2" />
+      <path d="M15.5 9h4" />
+    </svg>
+  );
+}
+
+export function LayersIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M12 2l7 4-7 4-7-4 7-4z" />
+      <path d="M5 9.5l7 4 7-4" />
+      <path d="M5 15l7 4 7-4" />
+    </svg>
+  );
+}
+
+export function SatelliteIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M6 20h12" />
+      <path d="M12 4v2" />
+      <path d="M4 4l2 2" />
+      <path d="M20 4l-2 2" />
+      <circle cx="12" cy="12" r="6" />
+      <path d="M12 8v4l3 2" />
+    </svg>
+  );
+}
+
+export function SparklesIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M12 4v2M12 18v2M4 12h2M18 12h2" />
+      <path d="M8.5 8.5l1 1" />
+      <path d="M14.5 14.5l1 1" />
+      <path d="M15.5 8.5l-1 1" />
+      <path d="M8.5 15.5l1-1" />
+    </svg>
+  );
+}
+// Ajoutez ces icônes à votre fichier components/ui/Icons.tsx
+
+// ============================================
+// ICÔNES MANQUANTES POUR LE FILTERBAR
+// ============================================
+
+export function ChevronUpIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M18 15l-6-6-6 6" />
+    </svg>
+  );
+}
+
+export function DogIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M10 8.5L8 6.5 5.5 9 7 10.5l2.5-2.5z" />
+      <path d="M14 8.5L16 6.5 18.5 9 17 10.5 14.5 8z" />
+      <path d="M12 4a4 4 0 0 0-4 4v4h8V8a4 4 0 0 0-4-4z" />
+      <path d="M8 12v3.5a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V12" />
+      <circle cx="8.5" cy="9.5" r="0.8" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="9.5" r="0.8" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function AccessibilityIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <circle cx="12" cy="12" r="9.5" />
+      <circle cx="12" cy="7" r="1.2" fill="currentColor" stroke="none" />
+      <path d="M12 10v4" />
+      <path d="M9 13l3 1 3-1" />
+      <path d="M9 17l3-3 3 3" />
+    </svg>
+  );
+}
+
+export function ParkingIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <rect x="3" y="3" width="18" height="18" rx="2.5" />
+      <path d="M10 16V8h3a2.5 2.5 0 0 1 0 5h-3" />
+      <path d="M13 13v3" />
+    </svg>
+  );
+}
+
+export function XIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M18 6L6 18" />
+      <path d="M6 6l12 12" />
+    </svg>
+  );
+}
+
+// Ajoutez cette icône à components/ui/Icons.tsx
+export function MicIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+      <path d="M19 10v1a7 7 0 0 1-14 0v-1" />
+      <path d="M12 19v3" />
+    </svg>
+  );
+}
+export function DashboardIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <rect x="3" y="3" width="8" height="8" rx="2" />
+      <rect x="13" y="3" width="8" height="5" rx="2" />
+      <rect x="13" y="10" width="8" height="11" rx="2" />
+      <rect x="3" y="13" width="8" height="8" rx="2" />
     </svg>
   );
 }

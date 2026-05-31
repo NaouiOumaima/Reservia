@@ -31,21 +31,34 @@ export class ReviewsController {
   }
 
   // ✅ Routes PROTÉGÉES (avec JwtAuthGuard)
-  @UseGuards(JwtAuthGuard)  // ← AJOUTÉ
-  @Post()
-  async createReview(@Request() req, @Body() createReviewDto: CreateReviewDto) {
+  // reviews.controller.ts
+@UseGuards(JwtAuthGuard)
+@Post()
+async createReview(@Request() req, @Body() createReviewDto: CreateReviewDto) {
+  try {
     console.log('=== CREATE REVIEW ===');
-    console.log('User from token:', req.user);
+    console.log('User:', req.user);
+    console.log('DTO reçu:', JSON.stringify(createReviewDto, null, 2));
     
     const user = req.user;
     
-    return this.reviewsService.createReview(
+    const result = await this.reviewsService.createReview(
       user._id || user.id,
       user.email,
       `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
       createReviewDto,
     );
+    
+    return result;
+  } catch (error: any) {
+    console.error('❌ ERROR CODE:', error.code);
+    console.error('❌ ERROR NAME:', error.name);
+    console.error('❌ ERROR MESSAGE:', error.message);
+    console.error('❌ ERROR KEYVALUE:', error.keyValue);  // MongoDB duplicate key info
+    console.error('❌ STACK:', error.stack);
+    throw error;
   }
+}
 
   @UseGuards(JwtAuthGuard)  // ← AJOUTÉ
   @Post(':id/report')

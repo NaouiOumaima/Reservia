@@ -1,3 +1,4 @@
+// backend/src/database/schemas/review.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
@@ -14,11 +15,9 @@ export class Review {
   @Prop({ required: true })
   userEmail: string;
 
-  // Type d'avis: 'service' ou 'app'
   @Prop({ required: true, enum: ['service', 'app'], default: 'service' })
   reviewType: string;
 
-  // Pour les avis sur service (optionnel)
   @Prop({ type: Types.ObjectId, ref: 'Service' })
   serviceId: Types.ObjectId;
 
@@ -64,8 +63,18 @@ export class Review {
 
 export const ReviewSchema = SchemaFactory.createForClass(Review);
 
-// Indexes
+// ✅ CORRECTION : Index conditionnel pour les avis sur service UNIQUEMENT
+// Cela permet à un utilisateur d'avoir plusieurs avis sur l'app
+ReviewSchema.index({ userId: 1, createdAt: -1 });
 ReviewSchema.index({ serviceId: 1, createdAt: -1 });
 ReviewSchema.index({ reviewType: 1, createdAt: -1 });
-ReviewSchema.index({ userId: 1, serviceId: 1 }, { unique: true, partialFilterExpression: { serviceId: { $exists: true } } });
 ReviewSchema.index({ isReported: 1, reportedAt: -1 });
+
+// ✅ Index unique seulement pour les avis sur service (serviceId existe)
+ReviewSchema.index(
+  { userId: 1, serviceId: 1 },
+  { 
+    unique: true, 
+    partialFilterExpression: { serviceId: { $exists: true, $ne: null } }
+  }
+);

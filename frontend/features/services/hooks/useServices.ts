@@ -1,32 +1,47 @@
 // features/services/hooks/useServices.ts
+
 import { useState, useCallback } from 'react';
 import { servicesApi } from '@/lib/api';
-import { Service, SearchFilters } from '@/types';
+import type { Service, CreateServiceData, ServiceFilters } from '@/lib/api/services/types';
+
+// Type étendu pour la recherche avec localisation + note min
+interface SearchFiltersExtended extends ServiceFilters {
+  location?: { lat: number; lng: number; radius?: number };
+  minRating?: number;
+}
 
 export const useServices = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ✅ Ajoutez cette fonction 'search' qui est utilisée par la page
-  const search = useCallback(async (query: string, filters?: SearchFilters) => {
+  // ─── search ───────────────────────────────────────────────────────────────
+  const search = useCallback(async (_query: string, filters?: SearchFiltersExtended) => {
     setLoading(true);
     setError(null);
     try {
       let results: Service[] = [];
-      
-      // Si on a une localisation, on utilise getNearby
+
       if (filters?.location?.lat && filters?.location?.lng) {
+        // 1. Récupère les services proches
         results = await servicesApi.getNearby(
           filters.location.lng,
           filters.location.lat,
-          filters.location.radius
+          filters.location.radius,
+          filters.category
         );
+
+        // 2. Filtrage côté client pour la note minimale
+        if (filters.minRating !== undefined && filters.minRating > 0) {
+          results = results.filter((s) => (s.avgRating ?? 0) >= filters.minRating!);
+        }
       } else {
-        // Sinon recherche normale
-        results = await servicesApi.getAll(filters);
+        // Pas de localisation → recherche classique
+        const response = await servicesApi.getAll(filters);
+        // ✅ Correction: extraire le tableau services de la réponse
+        results = Array.isArray(response) ? response : response.services || [];
       }
-      
+
       setServices(results);
       return results;
     } catch (err) {
@@ -38,12 +53,15 @@ export const useServices = () => {
     }
   }, []);
 
-  const fetchServices = useCallback(async (filters?: SearchFilters) => {
+  // ─── fetchServices ────────────────────────────────────────────────────────
+  const fetchServices = useCallback(async (filters?: ServiceFilters) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await servicesApi.getAll(filters);
-      setServices(data);
+      const response = await servicesApi.getAll(filters);
+      // ✅ Correction: extraire le tableau services de la réponse
+      const servicesArray = Array.isArray(response) ? response : response.services || [];
+      setServices(servicesArray);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement');
       console.error(err);
@@ -52,6 +70,7 @@ export const useServices = () => {
     }
   }, []);
 
+  // ─── fetchNearby ──────────────────────────────────────────────────────────
   const fetchNearby = useCallback(async (lng: number, lat: number, radius?: number) => {
     setLoading(true);
     setError(null);
@@ -66,12 +85,12 @@ export const useServices = () => {
     }
   }, []);
 
+  // ─── getService ───────────────────────────────────────────────────────────
   const getService = useCallback(async (id: string) => {
     setLoading(true);
     setError(null);
     try {
-      const service = await servicesApi.getById(id);
-      return service;
+      return await servicesApi.getById(id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement');
       console.error(err);
@@ -81,12 +100,13 @@ export const useServices = () => {
     }
   }, []);
 
-  const createService = useCallback(async (data: any) => {
+  // ─── createService ────────────────────────────────────────────────────────
+  const createService = useCallback(async (data: CreateServiceData) => {
     setLoading(true);
     setError(null);
     try {
       const newService = await servicesApi.create(data);
-      setServices(prev => [...prev, newService]);
+      setServices((prev) => [...prev, newService]);
       return newService;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la création');
@@ -97,12 +117,13 @@ export const useServices = () => {
     }
   }, []);
 
-  const updateService = useCallback(async (id: string, data: any) => {
+  // ─── updateService ────────────────────────────────────────────────────────
+  const updateService = useCallback(async (id: string, data: Partial<CreateServiceData>) => {
     setLoading(true);
     setError(null);
     try {
       const updated = await servicesApi.update(id, data);
-      setServices(prev => prev.map(s => s._id === id ? updated : s));
+      setServices((prev) => prev.map((s) => (s._id === id ? updated : s)));
       return updated;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour');
@@ -113,12 +134,13 @@ export const useServices = () => {
     }
   }, []);
 
+  // ─── deleteService ────────────────────────────────────────────────────────
   const deleteService = useCallback(async (id: string) => {
     setLoading(true);
     setError(null);
     try {
       await servicesApi.delete(id);
-      setServices(prev => prev.filter(s => s._id !== id));
+      setServices((prev) => prev.filter((s) => s._id !== id));
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la suppression');
@@ -129,12 +151,13 @@ export const useServices = () => {
     }
   }, []);
 
+  // ─── toggleActive ─────────────────────────────────────────────────────────
   const toggleActive = useCallback(async (id: string) => {
     setLoading(true);
     setError(null);
     try {
       const updated = await servicesApi.toggleActive(id);
-      setServices(prev => prev.map(s => s._id === id ? updated : s));
+      setServices((prev) => prev.map((s) => (s._id === id ? updated : s)));
       return updated;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du changement de statut');
@@ -149,7 +172,7 @@ export const useServices = () => {
     services,
     loading,
     error,
-    search,           // ✅ Ajoutez cette ligne
+    search,
     fetchServices,
     fetchNearby,
     getService,

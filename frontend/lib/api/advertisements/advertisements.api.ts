@@ -11,8 +11,21 @@ export const advertisementsApi = {
   },
 
   // Récupérer les annonces du fournisseur connecté
-  getMyAdvertisements: async (): Promise<Advertisement[]> => {
-    const response = await apiClient.get('/advertisements/provider');
+  getMyAdvertisements: async (status?: string): Promise<Advertisement[]> => {
+    const query = status ? `?status=${encodeURIComponent(status)}` : '';
+    const response = await apiClient.get(`/advertisements/provider${query}`);
+    return response.data;
+  },
+
+  // Archiver une annonce
+  archive: async (id: string): Promise<Advertisement> => {
+    const response = await apiClient.patch(`/advertisements/${id}/archive`);
+    return response.data;
+  },
+
+  // Réactiver une annonce archivée
+  unarchive: async (id: string): Promise<Advertisement> => {
+    const response = await apiClient.patch(`/advertisements/${id}/unarchive`);
     return response.data;
   },
 

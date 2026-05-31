@@ -1,12 +1,23 @@
+// frontend/features/chatbot/Chatbot.tsx
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { 
-  sendMessage, 
-  getRecommendations,
-  ChatResponse,
-  RecommendationsResponse 
-} from '@/lib/api';
+import { sendMessage, getRecommendations } from '@/lib/api';
+import type { ChatResponse, RecommendationsResponse } from '@/lib/api/chatbot/types';
+import {
+  AiIcon,
+  CloseIcon,
+  MicIcon,
+  SendIcon,
+  MessageIcon,
+  XMarkIcon,
+  SearchIcon,
+  MapPinIcon,
+  StarIcon,
+  CalendarIcon,
+  XCircleIcon,
+  CompassIcon
+} from '@/components/ui/Icons';
 
 interface Message {
   id: string;
@@ -23,7 +34,7 @@ export default function Chatbot() {
     { 
       id: '1', 
       role: 'assistant', 
-      content: 'Bonjour ! Je suis l\'assistant vocal de Reservia. Comment puis-je vous aider aujourd\'hui ?\n\nJe peux vous aider à :\n- Rechercher des services\n- Faire des reservations\n- Annuler des reservations\n- Vous recommander des services', 
+      content: 'Bonjour ! Je suis l\'assistant Reservia.\n\nJe peux vous aider à :\n• Rechercher des services\n• Faire des réservations\n• Annuler des réservations\n• Trouver des services près de chez vous\n• Trouver les meilleurs services\n• Recommandations personnalisées\n\nComment puis-je vous aider ?', 
       timestamp: new Date(),
       intent: 'welcome'
     }
@@ -31,10 +42,13 @@ export default function Chatbot() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [sessionId, setSessionId] = useState<string>();
   const [userId, setUserId] = useState<string>();
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [recommendations, setRecommendations] = useState<RecommendationsResponse>([]);
-  
+   const [sessionId, setSessionId] = useState<string>(() => {
+    // Générer un sessionId unique au chargement du composant
+    return `session_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -47,9 +61,19 @@ export default function Chatbot() {
     }
   }, []);
 
+  // Récupérer la géolocalisation
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => console.log('Géolocalisation non autorisée')
+      );
+    }
+  }, []);
+
   // Charger les recommandations si utilisateur connecté
   useEffect(() => {
-    if (userId && isOpen) {
+    if (userId && isOpen && messages.length < 3) {
       loadRecommendations();
     }
   }, [userId, isOpen]);
@@ -71,15 +95,15 @@ export default function Chatbot() {
     
     try {
       const recs = await getRecommendations(userId, 5);
-      if (recs.length > 0) {
+      if (recs && recs.length > 0) {
         setRecommendations(recs);
         
         const recMessage: Message = {
           id: Date.now().toString(),
           role: 'assistant',
-          content: `Recommandations pour vous :\n\n${recs.map(r => 
-            `- ${r.name} - ${r.basePrice} DT (${r.personalized.matchReason})`
-          ).join('\n')}\n\nSouhaitez-vous plus d'informations sur l'un de ces services ?`,
+          content: `Recommandations pour vous :\n\n${recs.map((r, i) => 
+            `${i+1}. ${r.name} - GRATUIT\n   ⭐ ${r.avgRating || 'Nouveau'}/5\n   📍 ${r.location?.address || 'Service disponible'}`
+          ).join('\n\n')}\n\nSouhaitez-vous réserver l'un de ces services ?`,
           timestamp: new Date(),
           intent: 'recommendation'
         };
@@ -91,24 +115,22 @@ export default function Chatbot() {
     }
   };
 
-  const startListening = () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Votre navigateur ne supporte pas la reconnaissance vocale. Utilisez Chrome, Edge ou Safari.');
-      return;
-    }
+  // Initialisation de la reconnaissance vocale
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
-    recognition.lang = 'fr-FR';
     recognition.continuous = false;
     recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
+    recognition.lang = 'fr-FR';
 
     let finalTranscript = '';
 
     recognition.onstart = () => {
       setIsListening(true);
-      setInput('Ecoute en cours...');
+      setInput('Écoute en cours...');
     };
 
     recognition.onresult = (event: any) => {
@@ -137,35 +159,61 @@ export default function Chatbot() {
       setInput('');
       
       if (event.error === 'not-allowed') {
-        alert('Veuillez autoriser l\'acces au microphone pour utiliser la reconnaissance vocale.');
+        alert('Veuillez autoriser l\'accès au microphone pour utiliser la reconnaissance vocale.');
       }
     };
 
     recognition.onend = () => {
       setIsListening(false);
       
-      if (finalTranscript) {
+      if (finalTranscript && finalTranscript !== 'Écoute en cours...') {
         setTimeout(() => {
           handleSend(finalTranscript);
+          finalTranscript = '';
         }, 100);
       }
     };
 
-    recognition.start();
     recognitionRef.current = recognition;
+    
+    return () => {
+      recognition.stop();
+      window.speechSynthesis?.cancel();
+    };
+  }, []);
+
+  const toggleListening = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      recognitionRef.current?.start();
+    }
   };
 
-  const stopListening = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
-    setIsListening(false);
+  const speakText = (text: string) => {
+    if (!('speechSynthesis' in window)) return;
+    
+    const cleanText = text
+      .replace(/\*\*/g, '')
+      .replace(/\n/g, '. ');
+    
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'fr-FR';
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    
+    window.speechSynthesis.speak(utterance);
   };
 
   const handleSend = async (text?: string) => {
     const messageToSend = text || input;
     
     if (!messageToSend.trim() || loading) return;
+
+    if (messageToSend === 'Écoute en cours...') return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -188,18 +236,16 @@ export default function Chatbot() {
     setMessages(prev => [...prev, typingIndicator]);
 
     try {
-      let response: ChatResponse;
-      
-      const result = await sendMessage({
+      const response = await sendMessage({
         query: messageToSend,
         userId,
         sessionId,
+        location: location || undefined,
         language: 'fr'
       });
-      response = result;
       
-      if (result.sessionId) {
-        setSessionId(result.sessionId);
+      if (response.sessionId) {
+        setSessionId(response.sessionId);
       }
 
       setMessages(prev => prev.filter(m => !m.isTyping));
@@ -213,19 +259,7 @@ export default function Chatbot() {
       };
       
       setMessages(prev => [...prev, assistantMessage]);
-      
       speakText(response.reply);
-
-      if (response.intent === 'help' && response.suggestedActions) {
-        const suggestionsMessage: Message = {
-          id: (Date.now() + 3).toString(),
-          role: 'assistant',
-          content: `Actions suggerees :\n${response.suggestedActions.map(a => `- ${a}`).join('\n')}`,
-          timestamp: new Date(),
-          intent: 'suggestions'
-        };
-        setMessages(prev => [...prev, suggestionsMessage]);
-      }
 
       if (response.intent === 'search' && userId) {
         setTimeout(() => loadRecommendations(), 2000);
@@ -237,9 +271,9 @@ export default function Chatbot() {
       const errorMessage: Message = {
         id: (Date.now() + 2).toString(),
         role: 'assistant',
-        content: error.message === 'Trop de requetes. Veuillez patienter.' 
-          ? 'Trop de requetes ! Veuillez patienter quelques secondes avant de continuer.'
-          : 'Desole, une erreur est survenue. Veuillez reessayer.',
+        content: error.message?.includes('429') 
+          ? 'Trop de requêtes. Veuillez patienter quelques secondes.'
+          : 'Désolé, une erreur est survenue. Veuillez réessayer.',
         timestamp: new Date(),
         intent: 'error'
       };
@@ -249,33 +283,17 @@ export default function Chatbot() {
     }
   };
 
-  const speakText = (text: string) => {
-    if (!('speechSynthesis' in window)) return;
-    
-    const cleanText = text
-      .replace(/\*\*/g, '')
-      .replace(/\n/g, '. ');
-    
-    window.speechSynthesis.cancel();
-    
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'fr-FR';
-    utterance.rate = 0.9;
-    utterance.pitch = 1;
-    utterance.volume = 1;
-    
-    window.speechSynthesis.speak(utterance);
-  };
-
   const quickActions = [
-    { label: 'Rechercher', action: 'Je cherche un restaurant' },
-    { label: 'Reserver', action: 'Je veux reserver' },
-    { label: 'Annuler', action: 'Annuler ma reservation' },
-    { label: 'Aide', action: 'Aide' }
+    { label: 'Rechercher', action: 'Je cherche un restaurant', icon: SearchIcon },
+    { label: 'Près de moi', action: 'Donne moi un restaurant près de moi', icon: MapPinIcon },
+    { label: 'Meilleurs', action: 'Donne moi un hôtel 5 étoiles à Sousse', icon: StarIcon },
+    { label: 'Réserver', action: 'Je veux réserver', icon: CalendarIcon },
+    { label: 'Annuler', action: 'Annuler ma réservation', icon: XCircleIcon },
+    { label: 'Recommandations', action: 'Recommande moi des services', icon: CompassIcon }
   ];
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey && !isListening) {
+    if (e.key === 'Enter' && !e.shiftKey && !isListening && !loading) {
       e.preventDefault();
       handleSend();
     }
@@ -293,56 +311,45 @@ export default function Chatbot() {
         className="chatbot-toggle-btn"
         aria-label="Ouvrir l'assistant"
       >
-        {isOpen ? (
-          <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        ) : (
-          <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-          </svg>
-        )}
+        {isOpen ? <CloseIcon className="w-6 h-6" /> : <MessageIcon className="w-6 h-6" />}
       </button>
 
       {/* Fenêtre de chat */}
       {isOpen && (
         <div className="chatbot-window">
           {/* En-tête */}
-<div className="chatbot-header">
-  <div className="chatbot-header-content">
-    <div className="chatbot-avatar">
-      <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-      </svg>
-    </div>
-    <div className="flex-1">
-      <h3 className="chatbot-title">Assistant IA Reservia</h3>
-      <p className="chatbot-subtitle">Toujours la pour vous aider</p>
-    </div>
-    {recommendations.length > 0 && (
-      <div className="chatbot-badge">
-        {recommendations.length} recommandations
-      </div>
-    )}
-    {/* BOUTON DE FERMETURE - AJOUTER ICI */}
-    <button
-      onClick={() => setIsOpen(false)}
-      className="chatbot-close-btn"
-      aria-label="Fermer l'assistant"
-    >
-      <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-      </svg>
-    </button>
-  </div>
-</div>
+          <div className="chatbot-header">
+            <div className="chatbot-header-content">
+              <div className="chatbot-avatar">
+                <AiIcon className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="chatbot-title">Assistant IA Reservia</h3>
+                <p className="chatbot-subtitle">
+                  {location ? '📍 Services à proximité' : '✨ Services gratuits'}
+                </p>
+              </div>
+              {recommendations.length > 0 && (
+                <div className="chatbot-badge">
+                  {recommendations.length}
+                </div>
+              )}
+              <button
+                onClick={() => setIsOpen(false)}
+                className="chatbot-close-btn"
+                aria-label="Fermer"
+              >
+                <CloseIcon className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
 
           {/* Messages */}
           <div className="chatbot-messages">
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={msg.role === 'user' ? 'chatbot-message-user' : 'chatbot-message-assistant'}
+                className={`chatbot-message ${msg.role === 'user' ? 'chatbot-message-user' : 'chatbot-message-assistant'}`}
               >
                 <div className="chatbot-bubble">
                   {msg.isTyping ? (
@@ -378,6 +385,7 @@ export default function Chatbot() {
                   disabled={loading}
                   className="chatbot-quick-action-btn"
                 >
+                  <action.icon className="w-3 h-3" />
                   {action.label}
                 </button>
               ))}
@@ -387,7 +395,11 @@ export default function Chatbot() {
           {/* Indicateur d'écoute */}
           {isListening && (
             <div className="chatbot-listening">
-              Ecoute en cours... Parlez maintenant
+              <span className="chatbot-listening-dot"></span>
+              Écoute en cours... Parlez maintenant
+              <span className="chatbot-listening-close" onClick={toggleListening}>
+                <XMarkIcon className="w-3 h-3" />
+              </span>
             </div>
           )}
 
@@ -395,14 +407,12 @@ export default function Chatbot() {
           <div className="chatbot-input-area">
             <div className="chatbot-input-group">
               <button
-                onClick={isListening ? stopListening : startListening}
+                onClick={toggleListening}
                 disabled={loading}
                 className={`chatbot-mic-btn ${isListening ? 'chatbot-mic-btn-active' : ''}`}
-                title={isListening ? "Arreter l'ecoute" : "Reconnaissance vocale"}
+                title={isListening ? "Arrêter l'écoute" : "Reconnaissance vocale"}
               >
-                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
+                <MicIcon className="w-4 h-4" />
               </button>
               
               <input
@@ -412,23 +422,21 @@ export default function Chatbot() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 disabled={loading || isListening}
-                placeholder={isListening ? 'Ecoute en cours...' : 'Tapez votre message...'}
+                placeholder={isListening ? 'Écoute en cours...' : 'Tapez votre message...'}
                 className="chatbot-input"
               />
               
               <button
                 onClick={() => handleSend()}
-                disabled={loading || !input.trim() || isListening}
+                disabled={loading || !input.trim() || isListening || input === 'Écoute en cours...'}
                 className="chatbot-send-btn"
               >
-                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
+                <SendIcon className="w-4 h-4" />
               </button>
             </div>
             
             <p className="chatbot-note">
-              Essayez : "Je cherche un restaurant" ou utilisez le microphone
+              Exemples: "restaurant près de moi", "hôtel 5 étoiles à Sousse", "réserver spa"
             </p>
           </div>
         </div>

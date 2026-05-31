@@ -1,9 +1,12 @@
+// backend/src/modules/notifications/notifications.service.ts
+
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Notification, NotificationDocument, NotificationType } from '../../database/schemas/notification.schema';
 import { Advertisement, AdvertisementDocument } from '../../database/schemas/advertisement.schema';
 import { NotificationsGateway } from '../websocket/notifications.gateway';
+import { User, UserDocument } from '../../database/schemas/user.schema';
 
 @Injectable()
 export class NotificationsService {
@@ -12,6 +15,7 @@ export class NotificationsService {
   constructor(
     @InjectModel(Notification.name) private notificationModel: Model<NotificationDocument>,
     @InjectModel(Advertisement.name) private advertisementModel: Model<AdvertisementDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
     private notificationsGateway: NotificationsGateway,
   ) {}
 
@@ -128,9 +132,11 @@ export class NotificationsService {
 
     const result = await this.notificationModel.insertMany(notifications);
     
-    userIds.forEach(userId => {
+    result.forEach((notificationDoc, index) => {
+      const userId = userIds[index];
+      if (!userId) return;
       this.notificationsGateway.sendNotificationToUser(userId, {
-        id: result[0]._id.toString(),
+        id: notificationDoc._id.toString(),
         type: NotificationType.ADVERTISEMENT,
         title: data.title,
         message: data.message,
@@ -138,7 +144,7 @@ export class NotificationsService {
         actionUrl: data.actionUrl,
         discountCode: data.discountCode,
         discountPercentage: data.discountPercentage,
-        createdAt: new Date(),
+        createdAt: (notificationDoc as any).createdAt || new Date(),
       });
     });
 
@@ -279,5 +285,84 @@ export class NotificationsService {
       userId: new Types.ObjectId(userId),
       isRead: true,
     });
+  }
+
+  async sendServicePendingToAdmins(service: any, provider: any) {
+    try {
+      const admins = await this.userModel.find({ role: 'admin' }).exec();
+      
+      if (admins.length === 0) {
+        this.logger.warn('Aucun admin trouvé pour la notification');
+        return;
+      }
+
+      this.logger.log(`Envoi de notification à ${admins.length} admin(s) pour le service ${service.name}`);
+
+      for (const admin of admins) {
+        await this.create(
+          admin._id.toString(),
+          'service_pending' as any,
+          'Nouveau service à valider 🆕',
+          `${provider.firstName} ${provider.lastName} a créé "${service.name}" qui nécessite votre validation.`,
+          undefined,
+          {
+            serviceId: service._id.toString(),
+            serviceName: service.name,
+            providerId: provider._id.toString(),
+            providerName: `${provider.firstName} ${provider.lastName}`,
+            actionUrl: `/admin/pending-services`,
+          }
+        );
+      }
+    } catch (error) {
+      // ✅ Correction: Typer l'erreur correctement
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      this.logger.error(`Erreur lors de l'envoi de notification aux admins: ${errorMessage}`);
+    }
+  }
+
+  async sendServiceApprovedToProvider(service: any, providerId: string) {
+    try {
+      await this.create(
+        providerId,
+        'service_approved' as any,
+        'Service approuvé ✅',
+        `Votre service "${service.name}" a été approuvé et est maintenant visible par les clients.`,
+        undefined,
+        {
+          serviceId: service._id.toString(),
+          serviceName: service.name,
+          actionUrl: `/provider/services`,
+        }
+      );
+      this.logger.log(`Notification d'approbation envoyée au provider ${providerId}`);
+    } catch (error) {
+      // ✅ Correction: Typer l'erreur correctement
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      this.logger.error(`Erreur lors de l'envoi de notification d'approbation: ${errorMessage}`);
+    }
+  }
+
+  async sendServiceRejectedToProvider(service: any, providerId: string, reason: string) {
+    try {
+      await this.create(
+        providerId,
+        'service_rejected' as any,
+        'Service refusé ❌',
+        `Votre service "${service.name}" a été refusé. Raison: ${reason}`,
+        undefined,
+        {
+          serviceId: service._id.toString(),
+          serviceName: service.name,
+          rejectionReason: reason,
+          actionUrl: `/provider/services`,
+        }
+      );
+      this.logger.log(`Notification de rejet envoyée au provider ${providerId}`);
+    } catch (error) {
+      // ✅ Correction: Typer l'erreur correctement
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      this.logger.error(`Erreur lors de l'envoi de notification de rejet: ${errorMessage}`);
+    }
   }
 }

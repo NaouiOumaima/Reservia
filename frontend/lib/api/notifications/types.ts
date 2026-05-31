@@ -3,6 +3,7 @@
 export enum NotificationType {
   RESERVATION_CONFIRMED = 'reservation_confirmed',
   RESERVATION_REMINDER = 'reservation_reminder',
+  RESERVATION_PENDING='reservation_pending',
   RESERVATION_CANCELLED = 'reservation_cancelled',
   RESERVATION_EXPIRED = 'reservation_expired',
   PROMOTION = 'promotion',

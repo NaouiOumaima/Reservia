@@ -1,10 +1,11 @@
 // app/admin/pending-services/page.tsx
+
 'use client';
 
 import { useEffect, useState } from 'react';
 import { Service } from '@/lib/api/services/types';
 import { servicesApi } from '@/lib/api/services/services.api';
-import { CATEGORIES, getCategoryFrenchLabel } from '@/lib/api/constants/categories.';
+import { CATEGORIES, getCategoryFrenchLabel } from '@/lib/api/constants/categories';
 
 export default function AdminServicesListPage() {
   const [services, setServices] = useState<Service[]>([]);
@@ -23,7 +24,11 @@ export default function AdminServicesListPage() {
       setServices(Array.isArray(data) ? data : []);
     } catch (error: any) {
       console.error('Erreur:', error);
-      alert('Impossible de charger les services');
+      if (error.response?.status === 403) {
+        alert('Accès non autorisé. Veuillez vous reconnecter.');
+      } else {
+        alert('Impossible de charger les services');
+      }
       setServices([]);
     } finally {
       setLoading(false);
@@ -38,7 +43,12 @@ export default function AdminServicesListPage() {
       ));
       alert(`Service ${!currentStatus ? 'activé' : 'désactivé'}`);
     } catch (error: any) {
-      alert('Erreur lors du changement de statut');
+      console.error('Erreur toggle:', error);
+      if (error.response?.status === 403) {
+        alert('Action non autorisée');
+      } else {
+        alert('Erreur lors du changement de statut');
+      }
     }
   };
 
@@ -49,19 +59,27 @@ export default function AdminServicesListPage() {
       setServices(services.filter(s => s._id !== serviceId));
       alert('Service supprimé');
     } catch (error: any) {
-      alert('Erreur lors de la suppression');
+      console.error('Erreur delete:', error);
+      if (error.response?.status === 403) {
+        alert('Action non autorisée');
+      } else {
+        alert('Erreur lors de la suppression');
+      }
     }
   };
 
-  const getProviderName = (service: any) => {
+  const getProviderName = (service: Service): string => {
     if (!service.providerId) return 'Inconnu';
-    if (typeof service.providerId === 'object') {
-      return service.providerId.businessName || 
-             `${service.providerId.firstName || ''} ${service.providerId.lastName || ''}`.trim() ||
-             service.providerId.email ||
+    
+    if (typeof service.providerId === 'object' && service.providerId !== null) {
+      const provider = service.providerId;
+      return provider.providerProfile?.businessName || 
+             `${provider.firstName || ''} ${provider.lastName || ''}`.trim() ||
+             provider.email ||
              'Inconnu';
     }
-    return service.providerId;
+    
+    return 'ID: ' + service.providerId;
   };
 
   const getCategoryColor = (categoryKey: string): string => {
@@ -167,7 +185,7 @@ export default function AdminServicesListPage() {
             >
               <option value="all">Toutes catégories</option>
               {CATEGORIES.map(cat => (
-                <option key={cat.key} value={cat.label}>
+                <option key={cat.key} value={cat.key}>
                   {cat.frenchLabel}
                 </option>
               ))}
@@ -214,9 +232,6 @@ export default function AdminServicesListPage() {
                 <div className="review-card-meta">
                   <div className="review-card-meta-item">
                     <span>📍</span> {service.location?.city}, {service.location?.governorate}
-                  </div>
-                  <div className="review-card-meta-item">
-                    <span>💰</span> {service.basePrice} DT
                   </div>
                   <div className="review-card-meta-item">
                     <span>⏱️</span> {service.duration} min

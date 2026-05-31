@@ -1,57 +1,129 @@
 // src/modules/services/dto/create-service.dto.ts
 
-import { IsString, IsNumber, IsOptional, IsArray, IsEnum, Min, Max, ValidateNested } from 'class-validator';
+import { 
+  IsNotEmpty, 
+  IsArray, 
+  IsString, 
+  IsObject, 
+  IsOptional, 
+  ValidateNested, 
+  IsNumber, 
+  Min,
+  Max,
+  IsLatitude,
+  IsLongitude
+} from 'class-validator';
 import { Type } from 'class-transformer';
-import { ServiceCategory } from '../../../database/schemas/service.schema';
+
+class LocationCoordinatesDto {
+  @IsNumber()
+  @IsLongitude()
+  lng: number;
+
+  @IsNumber()
+  @IsLatitude()
+  lat: number;
+}
 
 class LocationDto {
-  @IsArray()
-  coordinates!: [number, number];
+  @IsOptional()
+  @IsString()
+  type?: 'Point';
+
+  @ValidateNested()
+  @Type(() => LocationCoordinatesDto)
+  coordinates: LocationCoordinatesDto;
 
   @IsString()
-  address!: string;
+  @IsNotEmpty()
+  address: string;
 
   @IsString()
-  city!: string;
+  @IsNotEmpty()
+  city: string;
 
   @IsString()
-  governorate!: string;
+  @IsNotEmpty()
+  governorate: string;
 
   @IsOptional()
   @IsString()
   postalCode?: string;
 }
 
+class OpeningHoursSlotDto {
+  @IsString()
+  @IsNotEmpty()
+  open: string;
+
+  @IsString()
+  @IsNotEmpty()
+  close: string;
+}
+
+class ServiceSlotDto {
+  @IsNumber()
+  @Min(15)
+  duration: number;
+
+  @IsNumber()
+  @Min(1)
+  maxReservationsPerSlot: number;
+}
+
+class CancellationPolicyDto {
+  @IsNumber()
+  @Min(0)
+  minHoursBefore: number;
+
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  refundPercentage: number;
+}
+
 export class CreateServiceDto {
   @IsString()
-  name!: string;
-
-  @IsEnum(ServiceCategory)
-  category!: ServiceCategory;
+  @IsNotEmpty()
+  name: string;
 
   @IsString()
-  description!: string;
+  @IsNotEmpty()
+  description: string;
 
-  @IsNumber()
-  @Min(0)
-  basePrice!: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  discountPrice?: number;
-
-  @IsNumber()
-  @Min(5)
-  @Max(480)
-  duration!: number;
+  @IsString()
+  @IsNotEmpty()
+  category: string;  // ✅ Simple string, validation seulement présence
 
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   images?: string[];
 
+  @IsOptional()
   @ValidateNested()
   @Type(() => LocationDto)
-  location!: LocationDto;
+  location?: LocationDto;
+
+  @IsOptional()
+  @IsObject()
+  openingHours?: {
+    [key: string]: OpeningHoursSlotDto;
+  };
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ServiceSlotDto)
+  slots?: ServiceSlotDto[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CancellationPolicyDto)
+  cancellationPolicy?: CancellationPolicyDto;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(15)
+  duration?: number;
 }

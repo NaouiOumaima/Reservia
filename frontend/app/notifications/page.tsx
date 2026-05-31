@@ -3,8 +3,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { notificationsApi } from '@/lib/api/notifications';
+import { reservationsApi } from '@/lib/api/reservations';
 import { Notification, NotificationType } from '@/lib/api/notifications';
 import { useAuth } from '@/providers/AuthProvider';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import toast, { Toaster } from 'react-hot-toast';
 import {
@@ -20,6 +22,7 @@ import {
   Loader2Icon,
 } from '@/components/ui/Icons';
 import NotificationModal from '../components/NotificationModal';
+import RejectReasonModal from '@/components/RejectReasonModal';
 
 interface NotificationIconInfo {
   icon: React.ComponentType<{ className?: string }>;
@@ -37,7 +40,11 @@ export default function NotificationsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [processingAction, setProcessingAction] = useState(false);
   const { user } = useAuth();
+  const router = useRouter();
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [pendingReject, setPendingReject] = useState<{ reservationId: string; notificationId: string } | null>(null);
 
   const fetchNotifications = useCallback(async (pageNum: number, append: boolean = false) => {
     try {
@@ -119,6 +126,81 @@ export default function NotificationsPage() {
     }
   };
 
+  const handleAcceptReservation = async (reservationId: string, notificationId: string) => {
+    if (processingAction) return;
+    setProcessingAction(true);
+    
+    const toastId = toast.loading('Acceptation de la réservation...');
+    
+    try {
+      await reservationsApi.accept(reservationId);
+      
+      await notificationsApi.markAsRead(notificationId);
+      
+      setNotifications((prev: Notification[]) =>
+        prev.map((n: Notification) => 
+          n._id === notificationId 
+            ? { ...n, isRead: true, data: { ...n.data, status: 'accepted' } }
+            : n
+        )
+      );
+      
+      setUnreadCount((prev: number) => Math.max(0, prev - 1));
+      
+      toast.success('Réservation acceptée avec succès !', { id: toastId });
+      
+      setTimeout(() => {
+        router.push('/provider/reservations');
+      }, 1500);
+      
+    } catch (error: any) {
+      console.error('Erreur acceptation:', error);
+      toast.error(error.response?.data?.message || 'Erreur lors de l\'acceptation', { id: toastId });
+    } finally {
+      setProcessingAction(false);
+    }
+  };
+
+  const handleRejectReservation = async (reservationId: string, notificationId: string) => {
+    if (processingAction) return;
+    setPendingReject({ reservationId, notificationId });
+    setShowRejectModal(true);
+  };
+
+  const confirmReject = async (reason: string) => {
+    if (!pendingReject) return;
+    
+    setProcessingAction(true);
+    setShowRejectModal(false);
+    
+    const toastId = toast.loading('Refus de la réservation...');
+    
+    try {
+      await reservationsApi.reject(pendingReject.reservationId, reason || undefined);
+      
+      await notificationsApi.markAsRead(pendingReject.notificationId);
+      
+      setNotifications((prev: Notification[]) =>
+        prev.map((n: Notification) => 
+          n._id === pendingReject.notificationId 
+            ? { ...n, isRead: true, data: { ...n.data, status: 'rejected' } }
+            : n
+        )
+      );
+      
+      setUnreadCount((prev: number) => Math.max(0, prev - 1));
+      
+      toast.success('Réservation refusée', { id: toastId });
+      
+    } catch (error: any) {
+      console.error('Erreur refus:', error);
+      toast.error(error.response?.data?.message || 'Erreur lors du refus', { id: toastId });
+    } finally {
+      setProcessingAction(false);
+      setPendingReject(null);
+    }
+  };
+
   const handleNotificationClick = (notification: Notification) => {
     setSelectedNotification(notification);
     setModalOpen(true);
@@ -140,17 +222,19 @@ export default function NotificationsPage() {
   const getNotificationIcon = (type: NotificationType): NotificationIconInfo => {
     switch (type) {
       case NotificationType.RESERVATION_CONFIRMED:
-        return { icon: CheckCircleIcon, bgClass: 'bg-success/10', label: 'Réservation confirmée', colorClass: 'text-success' };
+        return { icon: CheckCircleIcon, bgClass: 'bg-success-soft', label: 'Réservation confirmée', colorClass: 'text-success' };
+      case NotificationType.RESERVATION_PENDING:
+        return { icon: BellIcon, bgClass: 'bg-primary-soft', label: 'Demande de réservation', colorClass: 'text-primary' };
       case NotificationType.RESERVATION_REMINDER:
-        return { icon: CalendarIcon, bgClass: 'bg-warning/10', label: 'Rappel', colorClass: 'text-warning' };
+        return { icon: CalendarIcon, bgClass: 'bg-warning-soft', label: 'Rappel', colorClass: 'text-warning' };
       case NotificationType.RESERVATION_CANCELLED:
-        return { icon: XMarkIcon, bgClass: 'bg-error/10', label: 'Annulation', colorClass: 'text-error' };
+        return { icon: XMarkIcon, bgClass: 'bg-error-soft', label: 'Annulation', colorClass: 'text-error' };
       case NotificationType.RESERVATION_EXPIRED:
-        return { icon: AlertTriangleIcon, bgClass: 'bg-orange-500/10', label: 'Expiration', colorClass: 'text-orange-500' };
+        return { icon: AlertTriangleIcon, bgClass: 'bg-warning-soft', label: 'Expiration', colorClass: 'text-warning' };
       case NotificationType.ADVERTISEMENT:
-        return { icon: MegaphoneIcon, bgClass: 'bg-purple-500/10', label: 'Promotion', colorClass: 'text-purple-500' };
+        return { icon: MegaphoneIcon, bgClass: 'bg-accent-soft', label: 'Promotion', colorClass: 'text-accent' };
       case NotificationType.PROMOTION:
-        return { icon: TagIcon, bgClass: 'bg-pink-500/10', label: 'Offre spéciale', colorClass: 'text-pink-500' };
+        return { icon: TagIcon, bgClass: 'bg-primary-soft', label: 'Offre spéciale', colorClass: 'text-primary' };
       default:
         return { icon: BellIcon, bgClass: 'bg-surface-raised', label: 'Information', colorClass: 'text-muted' };
     }
@@ -171,11 +255,17 @@ export default function NotificationsPage() {
     return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
   };
 
+  const isProvider = user?.role === 'provider' || user?.role === 'admin';
+  
+  const isReservationPending = (notification: Notification) => {
+    return notification.type === NotificationType.RESERVATION_PENDING;
+  };
+
   if (loading) {
     return (
       <div className="admin-loading">
         <div className="admin-loading-content">
-          <Loader2Icon className="w-8 h-8 animate-spin text-primary" />
+          <Loader2Icon className="spinner" />
           <p className="text-muted">Chargement des notifications...</p>
         </div>
       </div>
@@ -189,10 +279,10 @@ export default function NotificationsPage() {
       <div className="notifications-page">
         <div className="notifications-container">
           <div className="notifications-header">
-            <div className="flex justify-between items-center flex-wrap gap-4">
+            <div className="flex-between">
               <div>
                 <h1 className="notifications-header-title">
-                  <BellIcon className="w-6 h-6" />
+                  <BellIcon className="icon-md" />
                   Mes notifications
                 </h1>
                 {unreadCount > 0 && (
@@ -205,18 +295,18 @@ export default function NotificationsPage() {
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllAsRead}
-                    className="btn-sm bg-primary text-white hover:bg-primary-dark transition-colors"
+                    className="btn btn-primary btn-sm"
                   >
-                    <CheckIcon className="w-4 h-4" />
+                    <CheckIcon className="icon-xs" />
                     Tout lire
                   </button>
                 )}
                 {notifications.some((n: Notification) => n.isRead) && (
                   <button
                     onClick={handleDeleteAllRead}
-                    className="btn-sm bg-surface-raised hover:bg-error/10 text-muted hover:text-error transition-colors"
+                    className="btn btn-ghost btn-sm"
                   >
-                    <TrashIcon className="w-4 h-4" />
+                    <TrashIcon className="icon-xs" />
                     Supprimer lues
                   </button>
                 )}
@@ -227,22 +317,24 @@ export default function NotificationsPage() {
           {notifications.length === 0 ? (
             <div className="admin-reviews-empty">
               <div className="admin-reviews-empty-icon">
-                <BellIcon className="w-12 h-12" />
+                <BellIcon className="icon-xl" />
               </div>
               <h3 className="admin-reviews-empty-title">Aucune notification</h3>
               <p className="admin-reviews-empty-text">Vous n'avez pas encore de notifications</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="stack gap-3">
               {notifications.map((notification: Notification) => {
                 const { icon: Icon, bgClass, label, colorClass } = getNotificationIcon(notification.type);
                 const isUnread = !notification.isRead;
+                const reservationId = notification.reservationId;
+                const showActions = isProvider && isReservationPending(notification) && reservationId;
                 
                 return (
                   <div
                     key={notification._id}
-                    onClick={() => handleNotificationClick(notification)}
                     className={`notification-card ${isUnread ? 'notification-card-unread' : 'notification-card-read'}`}
+                    onClick={() => handleNotificationClick(notification)}
                   >
                     <div className="notification-card-content">
                       <div className={`notification-icon-wrapper ${bgClass}`}>
@@ -255,7 +347,7 @@ export default function NotificationsPage() {
                             className="rounded-full object-cover w-full h-full"
                           />
                         ) : (
-                          <Icon className={`w-6 h-6 ${colorClass}`} />
+                          <Icon className={`icon-md ${colorClass}`} />
                         )}
                       </div>
                       
@@ -275,16 +367,43 @@ export default function NotificationsPage() {
                           {notification.message}
                         </p>
                         
+                        {showActions && (
+                          <div className="notification-action-buttons">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAcceptReservation(reservationId, notification._id);
+                              }}
+                              disabled={processingAction}
+                              className="btn-success btn-sm"
+                            >
+                              <CheckCircleIcon className="icon-xs" />
+                              Accepter
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRejectReservation(reservationId, notification._id);
+                              }}
+                              disabled={processingAction}
+                              className="btn-error btn-sm"
+                            >
+                              <XMarkIcon className="icon-xs" />
+                              Refuser
+                            </button>
+                          </div>
+                        )}
+                        
                         {notification.type === NotificationType.ADVERTISEMENT && notification.data?.discountPercentage && (
                           <div className="notification-badge">
-                            <TagIcon className="w-3 h-3" />
+                            <TagIcon className="icon-xs" />
                             -{notification.data.discountPercentage}%
                           </div>
                         )}
                       </div>
                       
                       <div className="notification-actions">
-                        {isUnread && (
+                        {isUnread && !showActions && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -315,10 +434,10 @@ export default function NotificationsPage() {
                   <button
                     onClick={loadMore}
                     disabled={loadingMore}
-                    className="btn-ghost"
+                    className="btn btn-ghost"
                   >
                     {loadingMore ? (
-                      <Loader2Icon className="w-4 h-4 animate-spin" />
+                      <Loader2Icon className="icon-xs animate-spin" />
                     ) : (
                       'Charger plus'
                     )}
@@ -335,6 +454,15 @@ export default function NotificationsPage() {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onMarkAsRead={handleMarkAsReadFromModal}
+      />
+
+      <RejectReasonModal
+        isOpen={showRejectModal}
+        onClose={() => {
+          setShowRejectModal(false);
+          setPendingReject(null);
+        }}
+        onConfirm={confirmReject}
       />
     </>
   );

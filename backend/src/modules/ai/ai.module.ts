@@ -1,16 +1,17 @@
 // src/modules/ai/ai.module.ts
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { AiService } from './services/ai.service';           // ← Chemin corrigé
-import { NlpService } from './services/nlp.service';         // ← Chemin corrigé
-import { VoiceService } from './services/voice.service';     // ← Chemin corrigé
-import { RecommendationService } from './services/recommendation.service'; // ← Chemin corrigé
+import { AiService } from './services/ai.service';
+import { NlpService } from './services/nlp.service';
+import { VoiceService } from './services/voice.service';
+import { RecommendationService } from './services/recommendation.service';
 import { Service, ServiceSchema } from '../../database/schemas/service.schema';
 import { Reservation, ReservationSchema } from '../../database/schemas/reservation.schema';
 import { Review, ReviewSchema } from '../../database/schemas/review.schema';
-import { AiController } from './controllers/ai.controller';   // ← Chemin corrigé
+import { AiController } from './controllers/ai.controller';
 import { EmailModule } from '../email/email.module';
 import { User, UserSchema } from '../../database/schemas/user.schema';
+import { NotificationsModule } from '../notifications/notifications.module';  // ← AJOUTER
 
 @Module({
   imports: [
@@ -20,11 +21,11 @@ import { User, UserSchema } from '../../database/schemas/user.schema';
       { name: Review.name, schema: ReviewSchema },
       { name: User.name, schema: UserSchema }, 
     ]),
-      EmailModule,
+    EmailModule,
+    NotificationsModule,  // ← AJOUTER CETTE LIGNE
   ],
   controllers: [AiController],
   providers: [AiService, NlpService, VoiceService, RecommendationService],
   exports: [AiService],
-
 })
 export class AiModule {}

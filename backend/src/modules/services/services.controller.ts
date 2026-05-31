@@ -1,4 +1,5 @@
-// services.controller.ts - Version complète
+// backend/src/modules/services/services.controller.ts
+
 import {
   Controller,
   Get,
@@ -16,7 +17,6 @@ import {
 } from '@nestjs/common';
 import { ServicesService } from './services.service';
 import { CreateServiceDto } from './dto/create-service.dto';
-import { ServiceCategory } from '../../database/schemas/service.schema';
 import { UpdateServiceDto } from './dto/update-service.dto';
 import { UpsertLocationDto } from './dto/upsert-location.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -25,28 +25,20 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class ServicesController {
   constructor(private servicesService: ServicesService) {}
 
-  @Post()
-  @UseGuards(JwtAuthGuard)
-  async create(@Request() req, @Body() createServiceDto: CreateServiceDto) {
-    return this.servicesService.create(req.user._id, createServiceDto);
-  }
+  // ==================== ROUTES PUBLIQUES (Clients) ====================
 
   @Get()
   async findAll(
-    @Query('category') category?: ServiceCategory,
-    @Query('minPrice') minPrice?: number,
-    @Query('maxPrice') maxPrice?: number,
+    @Query('category') category?: string,
     @Query('minRating') minRating?: number,
     @Query('limit') limit?: number,
     @Query('skip') skip?: number,
   ) {
     return this.servicesService.findAll({
       category,
-      minPrice,
-      maxPrice,
       minRating,
-      limit,
-      skip,
+      limit: limit ? parseInt(limit.toString()) : 50,
+      skip: skip ? parseInt(skip.toString()) : 0,
     });
   }
 
@@ -55,18 +47,37 @@ export class ServicesController {
     @Query('lng') lng: string,
     @Query('lat') lat: string,
     @Query('radius') radius?: string,
+    @Query('category') category?: string,
   ) {
+    if (!lng || !lat) {
+      throw new BadRequestException('lng et lat sont requis');
+    }
     return this.servicesService.findNearby(
       parseFloat(lng),
       parseFloat(lat),
       radius ? parseFloat(radius) : 10,
+      category,
     );
   }
 
-  @Get('provider')
-  @UseGuards(JwtAuthGuard)
-  async findByProvider(@Request() req) {
-    return this.servicesService.findByProvider(req.user._id);
+  @Get('search/text')
+  async searchByText(
+    @Query('q') searchTerm: string,
+    @Query('lng') lng?: string,
+    @Query('lat') lat?: string,
+    @Query('radius') radius?: string,
+    @Query('category') category?: string,
+  ) {
+    if (!searchTerm || searchTerm.trim() === '') {
+      throw new BadRequestException('Le terme de recherche est requis');
+    }
+    return this.servicesService.searchByText(
+      searchTerm.trim(),
+      lng ? parseFloat(lng) : undefined,
+      lat ? parseFloat(lat) : undefined,
+      radius ? parseFloat(radius) : undefined,
+      category,
+    );
   }
 
   @Get(':id')
@@ -74,49 +85,17 @@ export class ServicesController {
     return this.servicesService.findById(id);
   }
 
-  @Put('location/upsert')
+  // ==================== ROUTES ADMIN ====================
+
+  @Get('admin/all')
   @UseGuards(JwtAuthGuard)
-  async upsertLocation(@Request() req, @Body() upsertLocationDto: UpsertLocationDto) {
-    return this.servicesService.upsertLocation(req.user._id, upsertLocationDto);
+  async getAllServicesAdmin(@Request() req) {
+    if (req.user.role !== 'admin') {
+      throw new ForbiddenException('Accès réservé aux administrateurs');
+    }
+    return this.servicesService.findAllAdmin();
   }
 
-  @Put(':id')
-  @UseGuards(JwtAuthGuard)
-  async update(
-    @Param('id') id: string,
-    @Request() req,
-    @Body() updateServiceDto: UpdateServiceDto,
-  ) {
-    return this.servicesService.update(id, req.user._id, updateServiceDto);
-  }
-
-  @Delete(':id')
-  @UseGuards(JwtAuthGuard)
-  async delete(@Param('id') id: string, @Request() req) {
-    return this.servicesService.delete(id, req.user._id);
-  }
-
-  @Patch(':id/toggle-active')
-  @UseGuards(JwtAuthGuard)
-  async toggleActive(@Param('id') id: string, @Request() req) {
-    return this.servicesService.toggleActive(id, req.user._id);
-  }
-
-  // ==================== ENDPOINTS ADMIN ====================
-
-
-  // Dans getAllServicesAdmin, ajoutez un log
-@Get('admin/all')
-@UseGuards(JwtAuthGuard)
-async getAllServicesAdmin(@Request() req) {
-  console.log('User role:', req.user?.role); // Debug
-  console.log('User object:', req.user); // Debug
-  
-  if (req.user.role !== 'admin') {
-    throw new ForbiddenException('Accès réservé aux administrateurs. Votre rôle: ' + req.user?.role);
-  }
-  return this.servicesService.findAllAdmin();
-}
   @Get('admin/pending')
   @UseGuards(JwtAuthGuard)
   async getPendingServices(@Request() req) {
@@ -150,7 +129,7 @@ async getAllServicesAdmin(@Request() req) {
   async rejectService(
     @Param('id') id: string,
     @Body('reason') reason: string,
-    @Request() req
+    @Request() req,
   ) {
     if (req.user.role !== 'admin') {
       throw new ForbiddenException('Accès réservé aux administrateurs');
@@ -159,5 +138,77 @@ async getAllServicesAdmin(@Request() req) {
       throw new BadRequestException('La raison du rejet est requise');
     }
     return this.servicesService.rejectService(id, reason);
+  }
+
+  // ==================== ROUTES PROVIDER (authentifiées) ====================
+
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  async create(@Request() req, @Body() createServiceDto: CreateServiceDto) {
+    return this.servicesService.create(req.user._id, createServiceDto);
+  }
+
+// backend/src/modules/services/services.controller.ts
+
+@Get('provider')
+@UseGuards(JwtAuthGuard)
+async findByProvider(@Request() req) {
+  console.log('Finding services for provider:', req.user._id);
+  return this.servicesService.findByProvider(req.user._id);
+}
+
+  @Patch(':id/location')
+  @UseGuards(JwtAuthGuard)
+  async updateLocation(
+    @Param('id') id: string,
+    @Request() req,
+    @Body() upsertLocationDto: UpsertLocationDto,
+  ) {
+    return this.servicesService.updateLocation(id, req.user._id, upsertLocationDto);
+  }
+
+  @Patch(':id/availability')
+  @UseGuards(JwtAuthGuard)
+  async updateAvailability(
+    @Param('id') id: string,
+    @Request() req,
+    @Body() body: {
+      slots?: { duration: number; maxReservationsPerSlot: number }[];
+      openingHours?: { [key: string]: { open: string; close: string } };
+      duration?: number;
+      cancellationPolicy?: { minHoursBefore: number; refundPercentage: number };
+    },
+  ) {
+    return this.servicesService.updateAvailability(id, req.user._id, body);
+  }
+
+  @Patch(':id/toggle-active')
+  @UseGuards(JwtAuthGuard)
+  async toggleActive(@Param('id') id: string, @Request() req) {
+    return this.servicesService.toggleActive(id, req.user._id);
+  }
+
+  @Put(':id')
+  @UseGuards(JwtAuthGuard)
+  async update(
+    @Param('id') id: string,
+    @Request() req,
+    @Body() updateServiceDto: UpdateServiceDto,
+  ) {
+    return this.servicesService.update(id, req.user._id, updateServiceDto);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  async delete(@Param('id') id: string, @Request() req) {
+    return this.servicesService.delete(id, req.user._id);
+  }
+
+  // ==================== ROUTE LEGACY ====================
+
+  @Put('location/upsert')
+  @UseGuards(JwtAuthGuard)
+  async upsertLocation(@Request() req, @Body() upsertLocationDto: UpsertLocationDto) {
+    return this.servicesService.upsertLocation(req.user._id, upsertLocationDto);
   }
 }

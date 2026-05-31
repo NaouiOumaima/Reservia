@@ -1,31 +1,26 @@
-import { IsNotEmpty, IsNumber, IsString, IsOptional, Min, Max, IsIn } from 'class-validator';
+// backend/src/reviews/dto/review.dto.ts
+import { IsOptional, IsString, IsInt, Min, Max, IsArray, IsIn } from 'class-validator';
+import { Types } from 'mongoose';
 
 export class CreateReviewDto {
   @IsOptional()
-  @IsString()
   serviceId?: string;
 
-  @IsNotEmpty()
-  @IsNumber()
+  @IsInt()
   @Min(1)
   @Max(5)
   rating: number;
 
-  @IsNotEmpty()
   @IsString()
   comment: string;
 
   @IsOptional()
+  @IsArray()
   images?: string[];
-
-  // Type d'avis: 'service' ou 'app'
-  @IsOptional()
-  @IsIn(['service', 'app'])
-  type?: 'service' | 'app';
 }
 
 export class ReportReviewDto {
-  @IsNotEmpty()
+  @IsString()
   @IsIn(['spam', 'offensive', 'fake', 'inappropriate', 'other'])
   reason: string;
 
@@ -35,7 +30,6 @@ export class ReportReviewDto {
 }
 
 export class RespondToReviewDto {
-  @IsNotEmpty()
   @IsString()
-  response: string;
+  text: string;
 }

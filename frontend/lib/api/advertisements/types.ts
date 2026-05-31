@@ -10,7 +10,7 @@ export interface Advertisement {
   discountCode?: string;
   discountPercentage?: number;
   validUntil?: string;
-  status: 'active' | 'expired' | 'draft' | 'paused';
+  status: 'active' | 'inactive' | 'expired' | 'draft' | 'paused' | 'archived';
   targetAudience: string;
   targetCategory?: string;
   targetCity?: string;
@@ -28,9 +28,9 @@ export interface CreateAdvertisementData {
   discountCode?: string;
   discountPercentage?: number;
   validUntil?: string;
-  targetAudience: string;
-  targetCategory?: string;
-  targetCity?: string;
+  targetAudience?: string;   // ← ajouter ?
+  targetCategory?: string;   // ← déjà optionnel ou ajouter ?
+  targetCity?: string;       // ← déjà optionnel ou ajouter ?
 }
 
 export interface AdvertisementsResponse {

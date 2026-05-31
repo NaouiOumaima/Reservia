@@ -1,5 +1,4 @@
 // src/database/schemas/reservation.schema.ts
-
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
@@ -21,17 +20,17 @@ export class Reservation {
   @Prop({ required: true, type: Types.ObjectId, ref: 'Service' })
   serviceId!: Types.ObjectId;
 
-  @Prop({ required: true })
-  startTime!: Date;
+  @Prop({ required: true, type: Types.ObjectId, ref: 'User' })
+  providerId!: Types.ObjectId;
+
+  @Prop({ required: true, default: 1, min: 1 })
+  numberOfPersons!: number;
 
   @Prop({ required: true })
-  endTime!: Date;
+  reservationDateTime!: Date;  // ✅ Date et heure exacte
 
-  @Prop({ required: true })
-  duration!: number;
-
-  @Prop({ required: true })
-  price!: number;
+  @Prop({ required: true, default: 0 })
+  price!: number;  // Prix calculé ou défini par le service
 
   @Prop({ required: true, enum: ReservationStatus, default: ReservationStatus.PENDING })
   status!: ReservationStatus;
@@ -54,8 +53,7 @@ export class Reservation {
 
 export const ReservationSchema = SchemaFactory.createForClass(Reservation);
 
-// Index pour les requêtes fréquentes
 ReservationSchema.index({ clientId: 1, createdAt: -1 });
-ReservationSchema.index({ serviceId: 1, startTime: 1 });
 ReservationSchema.index({ serviceId: 1, status: 1 });
 ReservationSchema.index({ expiresAt: 1 });
+ReservationSchema.index({ reservationDateTime: 1 }); // Pour les recherches par date

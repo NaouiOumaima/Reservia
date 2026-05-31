@@ -1,5 +1,5 @@
 // backend/src/modules/advertisements/advertisements.controller.ts
-import { Controller, Get, Post, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Patch, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { AdvertisementsService } from './advertisements.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ForbiddenException } from '@nestjs/common';
@@ -31,8 +31,24 @@ export class AdvertisementsController {
   }
 
   @Get('provider')
-  async getProviderAds(@Request() req) {
-    return this.advertisementsService.findByProvider(req.user._id);
+  async getProviderAds(@Request() req, @Query('status') status?: string) {
+    return this.advertisementsService.findByProvider(req.user._id, status);
+  }
+
+  @Patch(':id/archive')
+  async archive(@Param('id') id: string, @Request() req) {
+    if (req.user.role !== 'provider') {
+      throw new ForbiddenException('Accès refusé');
+    }
+    return this.advertisementsService.archive(id, req.user._id);
+  }
+
+  @Patch(':id/unarchive')
+  async unarchive(@Param('id') id: string, @Request() req) {
+    if (req.user.role !== 'provider') {
+      throw new ForbiddenException('Accès refusé');
+    }
+    return this.advertisementsService.unarchive(id, req.user._id);
   }
 
   @Get(':id')

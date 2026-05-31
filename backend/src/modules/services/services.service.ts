@@ -1,99 +1,258 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+// backend/src/modules/services/services.service.ts
+
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Service, ServiceDocument, ServiceCategory } from '../../database/schemas/service.schema';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
 import { UpsertLocationDto } from './dto/upsert-location.dto';
+import { Service, ServiceDocument } from '../../database/schemas/service.schema';
+import { User, UserDocument } from '../../database/schemas/user.schema';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ServicesService {
+  private readonly logger = new Logger(ServicesService.name);
+
   constructor(
     @InjectModel(Service.name) private serviceModel: Model<ServiceDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @Inject(forwardRef(() => NotificationsService))
+    private notificationsService: NotificationsService,
   ) {}
 
-  async create(providerId: string, createServiceDto: CreateServiceDto) {
-    const service = new this.serviceModel({
-      ...createServiceDto,
+  // ==================== CRUD POUR PROVIDER ====================
+
+  async create(providerId: string, createServiceDto: CreateServiceDto): Promise<ServiceDocument> {
+    const serviceData: any = {
+      name: createServiceDto.name,
+      description: createServiceDto.description,
+      category: createServiceDto.category,
       providerId: new Types.ObjectId(providerId),
-      location: {
+      isActive: false,
+      isPendingApproval: true,
+      images: createServiceDto.images || [],
+      duration: createServiceDto.duration || 60,
+    };
+
+    if (createServiceDto.location) {
+      serviceData.location = {
         type: 'Point',
-        coordinates: createServiceDto.location.coordinates as [number, number],
+        coordinates: [
+          createServiceDto.location.coordinates.lng,
+          createServiceDto.location.coordinates.lat,
+        ] as [number, number],
         address: createServiceDto.location.address,
         city: createServiceDto.location.city,
         governorate: createServiceDto.location.governorate,
         postalCode: createServiceDto.location.postalCode,
-      },
-    });
+      };
+    }
+
+    if (createServiceDto.slots) {
+      serviceData.slots = createServiceDto.slots;
+    }
+
+    if (createServiceDto.openingHours) {
+      serviceData.openingHours = createServiceDto.openingHours;
+    }
+
+    if (createServiceDto.cancellationPolicy) {
+      serviceData.cancellationPolicy = createServiceDto.cancellationPolicy;
+    }
+
+    const service = new this.serviceModel(serviceData);
+    await service.save();
+
+    // 🔔 NOTIFICATION: Envoyer une notification aux admins
+    await this.notifyAdminsNewService(service, providerId);
+
+    return service;
+  }
+
+  // Nouvelle méthode pour notifier tous les admins
+  private async notifyAdminsNewService(service: ServiceDocument, providerId: string) {
+    try {
+      // Récupérer tous les admins
+      const admins = await this.userModel.find({ role: 'admin' }).exec();
+      
+      if (admins.length === 0) {
+        this.logger.warn('Aucun admin trouvé pour la notification');
+        return;
+      }
+
+      // Récupérer les infos du provider
+      const provider = await this.userModel.findById(providerId).exec();
+      const providerName = provider 
+        ? `${provider.firstName} ${provider.lastName}` 
+        : 'Un prestataire';
+
+      this.logger.log(`Envoi de notification à ${admins.length} admin(s) pour le service ${service.name}`);
+
+      // Créer une notification pour chaque admin
+      for (const admin of admins) {
+        await this.notificationsService.create(
+          admin._id.toString(),
+          'service_pending' as any,
+          'Nouveau service à valider 🆕',
+          `${providerName} a créé un nouveau service "${service.name}" qui nécessite votre validation.`,
+          undefined,
+          {
+            serviceId: service._id.toString(),
+            serviceName: service.name,
+            providerId: providerId,
+            providerName: providerName,
+            actionUrl: `/admin/pending-services`,
+          }
+        );
+      }
+
+      this.logger.log(`Notification envoyée à ${admins.length} admin(s) pour le service ${service._id}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      this.logger.error(`Erreur lors de l'envoi de notification aux admins: ${errorMessage}`);
+    }
+  }
+
+  // ✅ Provider peut modifier SES services
+  async update(
+    id: string,
+    providerId: string,
+    updateServiceDto: UpdateServiceDto,
+  ): Promise<ServiceDocument> {
+    const service = await this.findById(id);
+
+    if (service.providerId.toString() !== providerId) {
+      throw new ForbiddenException('Vous n\'êtes pas autorisé à modifier ce service');
+    }
+
+    if (updateServiceDto.location) {
+      const location = updateServiceDto.location as any;
+      if (location.coordinates && !Array.isArray(location.coordinates)) {
+        updateServiceDto.location = {
+          ...location,
+          coordinates: [location.coordinates.lng, location.coordinates.lat],
+        };
+      }
+    }
+
+    Object.assign(service, updateServiceDto);
+
+    if (updateServiceDto.name || updateServiceDto.description || updateServiceDto.location) {
+      service.isPendingApproval = true;
+      service.isActive = false;
+    }
 
     return service.save();
   }
 
-  // ✅ Méthode UPSERT corrigée
-  async upsertLocation(providerId: string, upsertLocationDto: UpsertLocationDto) {
-    const existingService = await this.serviceModel.findOne({ 
-      providerId: new Types.ObjectId(providerId) 
-    }).exec();
+  // ✅ Provider peut supprimer SES services
+  async delete(id: string, providerId: string): Promise<void> {
+    const service = await this.findById(id);
 
-    // S'assurer que les coordonnées sont au bon format [lng, lat]
-    const coordinates: [number, number] = [
-      upsertLocationDto.location.coordinates.lng, 
-      upsertLocationDto.location.coordinates.lat
-    ];
-
-    const locationData = {
-      type: 'Point',
-      coordinates: coordinates,
-      address: upsertLocationDto.location.address,
-      city: upsertLocationDto.location.city,
-      governorate: upsertLocationDto.location.governorate,
-      postalCode: upsertLocationDto.location.postalCode,
-    };
-
-    if (existingService) {
-      // UPDATE: mettre à jour le service existant
-      existingService.location = locationData;
-      // Note: updatedAt est géré automatiquement par Mongoose grâce à timestamps: true
-      await existingService.save();
-      return {
-        action: 'updated',
-        service: existingService
-      };
-    } else {
-      // CREATE: créer un nouveau service avec localisation minimale
-      const newService = new this.serviceModel({
-        providerId: new Types.ObjectId(providerId),
-        name: 'Mon Service',
-        category: ServiceCategory.OTHER,
-        description: 'Service créé via la localisation',
-        basePrice: 0,
-        duration: 60,
-        location: locationData,
-        isActive: true,
-        isPendingApproval: true, // En attente d'approbation
-      });
-      await newService.save();
-      return {
-        action: 'created',
-        service: newService
-      };
+    if (service.providerId.toString() !== providerId) {
+      throw new ForbiddenException('Vous n\'êtes pas autorisé à supprimer ce service');
     }
+
+    await this.serviceModel.findByIdAndDelete(id);
   }
 
+  // ✅ Provider peut activer/désactiver SES services
+  async toggleActive(id: string, providerId: string): Promise<ServiceDocument> {
+    const service = await this.findById(id);
+
+    if (service.providerId.toString() !== providerId) {
+      throw new ForbiddenException('Vous n\'êtes pas autorisé à modifier ce service');
+    }
+
+    if (!service.isActive && service.isPendingApproval) {
+      throw new BadRequestException('Ce service est en attente d\'approbation par un administrateur');
+    }
+
+    service.isActive = !service.isActive;
+    return service.save();
+  }
+
+  // ✅ Provider peut modifier la localisation de SES services
+  async updateLocation(
+    id: string,
+    providerId: string,
+    dto: UpsertLocationDto,
+  ): Promise<ServiceDocument> {
+    const service = await this.serviceModel.findById(id).exec();
+
+    if (!service) {
+      throw new NotFoundException('Service non trouvé');
+    }
+
+    if (service.providerId.toString() !== providerId) {
+      throw new ForbiddenException('Vous n\'êtes pas autorisé à modifier ce service');
+    }
+
+    service.location = {
+      type: 'Point',
+      coordinates: [
+        dto.location.coordinates.lng,
+        dto.location.coordinates.lat,
+      ] as [number, number],
+      address: dto.location.address,
+      city: dto.location.city,
+      governorate: dto.location.governorate,
+      postalCode: dto.location.postalCode,
+    };
+
+    return service.save();
+  }
+
+  // ✅ Provider peut modifier les disponibilités de SES services
+  async updateAvailability(
+    id: string,
+    providerId: string,
+    data: {
+      slots?: { duration: number; maxReservationsPerSlot: number }[];
+      openingHours?: { [key: string]: { open: string; close: string } };
+      duration?: number;
+      cancellationPolicy?: { minHoursBefore: number; refundPercentage: number };
+    },
+  ): Promise<ServiceDocument> {
+    const service = await this.findById(id);
+
+    if (service.providerId.toString() !== providerId) {
+      throw new ForbiddenException('Vous n\'êtes pas autorisé à modifier ce service');
+    }
+
+    if (data.slots !== undefined) {
+      // Convertir les slots du frontend vers le format backend
+      service.slots = data.slots.map(slot => ({
+        duration: slot.duration || 60,
+        maxReservationsPerSlot: slot.maxReservationsPerSlot || 1,
+      }));
+    }
+    if (data.openingHours !== undefined) service.openingHours = data.openingHours;
+    if (data.duration !== undefined) service.duration = data.duration;
+    if (data.cancellationPolicy !== undefined) service.cancellationPolicy = data.cancellationPolicy;
+
+    return service.save();
+  }
+
+  // ==================== MÉTHODES DE LECTURE ====================
+
+  // ✅ Public - services actifs uniquement
   async findAll(query?: {
-    category?: ServiceCategory;
-    minPrice?: number;
-    maxPrice?: number;
+    category?: string;
     minRating?: number;
     limit?: number;
     skip?: number;
   }) {
-    const filter: any = { isActive: true };
+    const filter: any = {
+      isActive: true,
+      isPendingApproval: false,
+    };
 
     if (query?.category) filter.category = query.category;
-    if (query?.minPrice !== undefined) filter.basePrice = { $gte: query.minPrice };
-    if (query?.maxPrice !== undefined) filter.basePrice = { ...filter.basePrice, $lte: query.maxPrice };
-    if (query?.minRating !== undefined) filter.avgRating = { $gte: query.minRating };
+    if (query?.minRating !== undefined) {
+      filter.avgRating = { $gte: query.minRating };
+    }
 
     const services = await this.serviceModel
       .find(filter)
@@ -108,7 +267,7 @@ export class ServicesService {
     return { services, total };
   }
 
-  async findById(id: string) {
+  async findById(id: string): Promise<ServiceDocument> {
     const service = await this.serviceModel
       .findById(id)
       .populate('providerId', 'firstName lastName email providerProfile.businessName phone')
@@ -121,31 +280,52 @@ export class ServicesService {
     return service;
   }
 
-  async findByProvider(providerId: string) {
-    return this.serviceModel
-      .find({ providerId: new Types.ObjectId(providerId) })
-      .sort({ createdAt: -1 })
-      .exec();
-  }
-
-  async findNearby(lng: number, lat: number, radius: number = 10) {
+  // ✅ Provider - récupérer SES services
+  async findByProvider(providerId: string): Promise<ServiceDocument[]> {
     try {
       const services = await this.serviceModel
-        .find({
-          isActive: true,
-          location: {
-            $near: {
-              $geometry: {
-                type: 'Point',
-                coordinates: [lng, lat],
-              },
-              $maxDistance: radius * 1000,
-            },
-          },
-        })
-        .limit(50)
+        .find({ providerId: new Types.ObjectId(providerId) })
+        .sort({ createdAt: -1 })
         .exec();
       
+      console.log(`Found ${services.length} services for provider ${providerId}`);
+      return services;
+    } catch (error) {
+      console.error('Error in findByProvider:', error);
+      throw error;
+    }
+  }
+
+  async findNearby(
+    lng: number,
+    lat: number,
+    radius: number = 10,
+    category?: string,
+  ): Promise<ServiceDocument[]> {
+    try {
+      const filter: any = {
+        isActive: true,
+        isPendingApproval: false,
+        location: {
+          $near: {
+            $geometry: {
+              type: 'Point',
+              coordinates: [lng, lat],
+            },
+            $maxDistance: radius * 1000,
+          },
+        },
+      };
+
+      if (category && category !== '') {
+        filter.category = category;
+      }
+
+      const services = await this.serviceModel
+        .find(filter)
+        .limit(50)
+        .exec();
+
       return services;
     } catch (error) {
       console.error('Erreur findNearby:', error);
@@ -153,132 +333,199 @@ export class ServicesService {
     }
   }
 
-  async update(id: string, providerId: string, updateServiceDto: UpdateServiceDto) {
-    const service = await this.findById(id);
+  async searchByText(
+    searchTerm: string,
+    lng?: number,
+    lat?: number,
+    radius?: number,
+    category?: string,
+  ): Promise<ServiceDocument[]> {
+    try {
+      const filter: any = {
+        isActive: true,
+        isPendingApproval: false,
+        $or: [
+          { name: { $regex: searchTerm, $options: 'i' } },
+          { description: { $regex: searchTerm, $options: 'i' } },
+        ],
+      };
 
-    if (service.providerId.toString() !== providerId) {
-      throw new ForbiddenException('Vous n\'êtes pas autorisé à modifier ce service');
-    }
-
-    // Si la location est mise à jour, s'assurer que les coordonnées sont au bon format
-    if (updateServiceDto.location) {
-      const location = updateServiceDto.location as any;
-      if (location.coordinates && Array.isArray(location.coordinates)) {
-        location.coordinates = [location.coordinates[0], location.coordinates[1]] as [number, number];
+      if (category && category !== '') {
+        filter.category = category;
       }
+
+      if (lng !== undefined && lat !== undefined && radius) {
+        filter.location = {
+          $near: {
+            $geometry: {
+              type: 'Point',
+              coordinates: [lng, lat],
+            },
+            $maxDistance: radius * 1000,
+          },
+        };
+      }
+
+      const services = await this.serviceModel
+        .find(filter)
+        .sort({ smartScore: -1 })
+        .limit(50)
+        .exec();
+
+      return services;
+    } catch (error) {
+      console.error('Erreur searchByText:', error);
+      return [];
     }
-
-    Object.assign(service, updateServiceDto);
-    return service.save();
   }
 
-  async delete(id: string, providerId: string) {
-    const service = await this.findById(id);
+  // ==================== MÉTHODES ADMIN ====================
 
-    if (service.providerId.toString() !== providerId) {
-      throw new ForbiddenException('Vous n\'êtes pas autorisé à supprimer ce service');
-    }
-
-    return this.serviceModel.findByIdAndDelete(id);
+  async findAllAdmin(): Promise<ServiceDocument[]> {
+    return this.serviceModel
+      .find()
+      .populate('providerId', 'firstName lastName email providerProfile.businessName phone')
+      .sort({ createdAt: -1 })
+      .exec();
   }
 
-  async toggleActive(id: string, providerId: string) {
-    const service = await this.findById(id);
-
-    if (service.providerId.toString() !== providerId) {
-      throw new ForbiddenException('Vous n\'êtes pas autorisé à modifier ce service');
-    }
-
-    service.isActive = !service.isActive;
-    return service.save();
+  async findPending(): Promise<ServiceDocument[]> {
+    return this.serviceModel
+      .find({
+        isPendingApproval: true,
+        isActive: false,
+      })
+      .populate('providerId', 'firstName lastName email providerProfile.businessName phone')
+      .sort({ createdAt: 1 })
+      .exec();
   }
 
-  async updateSmartScore(serviceId: string, score: number) {
-    return this.serviceModel.findByIdAndUpdate(serviceId, { smartScore: score });
-  }
-
-  async incrementPopularity(serviceId: string) {
-    return this.serviceModel.findByIdAndUpdate(serviceId, { $inc: { popularity: 1 } });
-  }
-
-// Admin methods - Complétez celles qui manquent
-
-// Méthode pour récupérer tous les services (admin seulement)
-async findAllAdmin(): Promise<ServiceDocument[]> {
-  // Récupérer TOUS les services sans aucun filtre
-  return this.serviceModel
-    .find()
-    .populate('providerId', 'firstName lastName email providerProfile.businessName phone')
-    .sort({ createdAt: -1 })
-    .exec();
-}
-// services.service.ts - Ajoutez ces méthodes à la fin de votre classe
-
-// Admin methods
-async findPending(): Promise<ServiceDocument[]> {
-  return this.serviceModel
-    .find({ 
-      isPendingApproval: true, 
-      isActive: false 
-    })
-    .populate('providerId', 'firstName lastName email providerProfile.businessName phone')
-    .sort({ createdAt: 1 }) // Les plus anciens d'abord
-    .exec();
-}
-
-async approveService(serviceId: string): Promise<ServiceDocument> {
-  const service = await this.serviceModel.findByIdAndUpdate(
-    serviceId,
-    { 
-      isActive: true, 
-      isPendingApproval: false,
-      rejectionReason: null // Effacer toute raison de rejet précédente
-    },
-    { new: true },
-  ).exec();
-  
-  if (!service) {
-    throw new NotFoundException('Service non trouvé');
-  }
-  
-  return service;
-}
-
-async rejectService(serviceId: string, reason: string): Promise<ServiceDocument> {
-  const service = await this.serviceModel.findByIdAndUpdate(
-    serviceId,
-    { 
-      isPendingApproval: false, 
+  async getPendingCount(): Promise<number> {
+    return this.serviceModel.countDocuments({
+      isPendingApproval: true,
       isActive: false,
-      rejectionReason: reason 
-    },
-    { new: true },
-  ).exec();
-  
-  if (!service) {
-    throw new NotFoundException('Service non trouvé');
+    });
   }
-  
-  return service;
-}
 
-async getPendingCount(): Promise<number> {
-  return this.serviceModel.countDocuments({ 
-    isPendingApproval: true, 
-    isActive: false 
-  });
-}
+  async approveService(serviceId: string): Promise<ServiceDocument> {
+    const service = await this.serviceModel.findByIdAndUpdate(
+      serviceId,
+      {
+        isActive: true,
+        isPendingApproval: false,
+        rejectionReason: null,
+      },
+      { new: true },
+    ).exec();
 
-// Optionnel: Méthode pour voir les services rejetés
-async findRejected(): Promise<ServiceDocument[]> {
-  return this.serviceModel
-    .find({ 
-      isPendingApproval: false, 
-      isActive: false, 
-      rejectionReason: { $ne: null, $exists: true } 
-    })
-    .populate('providerId', 'firstName lastName email')
-    .sort({ updatedAt: -1 })
-    .exec();
-}
+    if (!service) {
+      throw new NotFoundException('Service non trouvé');
+    }
+
+    // 🔔 NOTIFICATION: Informer le provider que son service est approuvé
+    await this.notifyProviderServiceApproved(service);
+
+    return service;
+  }
+
+  async rejectService(serviceId: string, reason: string): Promise<ServiceDocument> {
+    const service = await this.serviceModel.findByIdAndUpdate(
+      serviceId,
+      {
+        isPendingApproval: false,
+        isActive: false,
+        rejectionReason: reason,
+      },
+      { new: true },
+    ).exec();
+
+    if (!service) {
+      throw new NotFoundException('Service non trouvé');
+    }
+
+    // 🔔 NOTIFICATION: Informer le provider que son service est rejeté
+    await this.notifyProviderServiceRejected(service, reason);
+
+    return service;
+  }
+
+  // Nouvelle méthode pour notifier le provider d'une approbation
+  private async notifyProviderServiceApproved(service: ServiceDocument) {
+    try {
+      const providerId = service.providerId.toString();
+      const provider = await this.userModel.findById(providerId).exec();
+      
+      if (!provider) {
+        this.logger.warn(`Provider ${providerId} non trouvé pour la notification d'approbation`);
+        return;
+      }
+
+      await this.notificationsService.sendServiceApprovedToProvider(service, providerId);
+      
+      this.logger.log(`Notification d'approbation envoyée au provider ${providerId} pour le service ${service._id}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      this.logger.error(`Erreur lors de l'envoi de notification d'approbation: ${errorMessage}`);
+    }
+  }
+
+  // Nouvelle méthode pour notifier le provider d'un rejet
+  private async notifyProviderServiceRejected(service: ServiceDocument, reason: string) {
+    try {
+      const providerId = service.providerId.toString();
+      const provider = await this.userModel.findById(providerId).exec();
+      
+      if (!provider) {
+        this.logger.warn(`Provider ${providerId} non trouvé pour la notification de rejet`);
+        return;
+      }
+
+      await this.notificationsService.sendServiceRejectedToProvider(service, providerId, reason);
+      
+      this.logger.log(`Notification de rejet envoyée au provider ${providerId} pour le service ${service._id}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      this.logger.error(`Erreur lors de l'envoi de notification de rejet: ${errorMessage}`);
+    }
+  }
+
+  // ==================== MÉTHODES COMPATIBILITÉ ====================
+
+  async upsertLocation(providerId: string, upsertLocationDto: UpsertLocationDto) {
+    const existingService = await this.serviceModel.findOne({
+      providerId: new Types.ObjectId(providerId),
+    }).exec();
+
+    if (!existingService) {
+      throw new NotFoundException(
+        'Aucun service trouvé pour ce prestataire. Veuillez d\'abord créer un service.',
+      );
+    }
+
+    existingService.location = {
+      type: 'Point',
+      coordinates: [
+        upsertLocationDto.location.coordinates.lng,
+        upsertLocationDto.location.coordinates.lat,
+      ] as [number, number],
+      address: upsertLocationDto.location.address,
+      city: upsertLocationDto.location.city,
+      governorate: upsertLocationDto.location.governorate,
+      postalCode: upsertLocationDto.location.postalCode,
+    };
+
+    await existingService.save();
+    return {
+      action: 'updated',
+      service: existingService,
+    };
+  }
+
+  async updateSmartScore(serviceId: string, score: number): Promise<void> {
+    await this.serviceModel.findByIdAndUpdate(serviceId, { smartScore: score });
+  }
+
+  async incrementPopularity(serviceId: string): Promise<void> {
+    await this.serviceModel.findByIdAndUpdate(serviceId, { $inc: { popularity: 1 } });
+  }
 }

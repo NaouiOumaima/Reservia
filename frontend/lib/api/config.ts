@@ -29,21 +29,18 @@ apiClient.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {
-        // ✅ Vérifier qu'on n'est pas déjà sur /login pour éviter la boucle
+        const token = getAccessToken();
         const isOnLoginPage = window.location.pathname === '/login';
-        
-        // Nettoyer les tokens
+
+        // Nettoyer les tokens locaux
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
-        
-        // ✅ Supprimer aussi les cookies
         document.cookie = 'accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-        
-        // ✅ Rediriger seulement si pas déjà sur login
-        if (!isOnLoginPage) {
-          // Utiliser replace au lieu de href pour éviter la boucle
+
+        // Redirection uniquement si on avait un token et qu'on n'est pas déjà sur /login
+        if (token && !isOnLoginPage) {
           window.location.replace('/login?session=expired');
         }
       }

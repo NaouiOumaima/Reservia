@@ -13,6 +13,7 @@ import {
   CalendarIcon,
   StarIcon,
 } from '@/components/ui/Icons';
+import UnifiedReviewForm from '@/components/avis/UnifiedReviewForm';
 
 export default function ClientDashboard() {
   const { user, isLoading } = useAuth();
@@ -89,6 +90,11 @@ export default function ClientDashboard() {
             </div>
             <span className="font-semibold text-[rgb(var(--foreground))]">Favoris</span>
           </Link>
+        </div>
+
+        {/* ✅ AJOUT UNIQUEMENT : Formulaire d'avis sur l'application */}
+        <div className="mb-8">
+          <UnifiedReviewForm type="app" />
         </div>
 
         {/* Deux colonnes */}

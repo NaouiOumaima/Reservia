@@ -1,18 +1,16 @@
-/**
- * Index des constantes pour les catégories
- * Exporte toutes les fonctions et objets liés aux catégories
- */
+// lib/api/constants/index.ts
 
 export {
-  CategoryKey,
-  Category,
   CATEGORIES,
   CATEGORIES_MAP,
-  FRENCH_TO_KEY,
+  CategoryKey,
+  getCategoryBgColor,
+  getCategoryByKey,
   getCategoryByLabel,
-  getCategoryByFrenchLabel,
-  getCategoryIcon,
+  getCategoryColor,
   getCategoryFrenchLabel,
-  getAllCategoryLabels,
-  getAllCategoryKeys,
-} from './categories.';
+  getCategoryIconComponent,
+  renderCategoryIcon,
+} from './categories';
+
+export type { Category } from './categories';

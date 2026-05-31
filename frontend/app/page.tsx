@@ -3,8 +3,7 @@
 import Link from 'next/link';
 import { useAuth } from '@/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
-import { CATEGORIES } from '@/lib/api/constants/categories.';
-import { useEffect, useState } from 'react';
+import { CATEGORIES, CategoryKey, getCategoryByKey } from '@/lib/api/constants/categories';import { useEffect, useState } from 'react';
 import { dashboardApi, HomePageStats } from '@/lib/api/dash/index';
 import {
   SearchIcon, MapIcon, AiIcon, BookingIcon, ReviewIcon,
@@ -22,7 +21,10 @@ type CategoryStat = {
 };
 
 const CATEGORY_ICONS: Record<string, JSX.Element> = Object.fromEntries(
-  CATEGORIES.map(cat => [cat.frenchLabel, cat.icon])
+  CATEGORIES.map(cat => {
+    const IconComponent = cat.IconComponent;
+    return [cat.frenchLabel, <IconComponent key={cat.key} className="w-8 h-8" />];
+  })
 );
 
 const FEATURES = [

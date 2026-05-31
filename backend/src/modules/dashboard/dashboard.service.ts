@@ -1,4 +1,5 @@
 // src/modules/dashboard/dashboard.service.ts
+
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -124,9 +125,8 @@ export class DashboardService {
       const pendingReservations = reservations.filter(r => r.status === 'pending').length;
       const confirmedReservations = reservations.filter(r => r.status === 'confirmed').length;
 
-      const totalRevenue = reservations
-        .filter(r => r.status === 'completed' || r.status === 'confirmed')
-        .reduce((sum, r) => sum + r.price, 0);
+      // ✅ Les services sont gratuits, donc revenu = 0
+      const totalRevenue = 0;
 
       const avgRating = reviews.length > 0
         ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
@@ -175,6 +175,9 @@ export class DashboardService {
           ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
           : 0;
 
+        // ✅ Les services sont gratuits, donc revenu = 0
+        const revenue = 0;
+
         stats.push({
           serviceId: service._id.toString(),
           serviceName: service.name,
@@ -183,7 +186,7 @@ export class DashboardService {
           cancelledReservations: cancelled,
           cancellationRate: total > 0 ? Math.round((cancelled / total) * 1000) / 10 : 0,
           avgRating: Math.round(avgRating * 10) / 10,
-          revenue: completed * (service.basePrice || 0),
+          revenue,
         });
       }
 
@@ -245,15 +248,16 @@ export class DashboardService {
         const data = trendsMap.get(dateKey)!;
         data.reservations++;
 
+        // ✅ Les services sont gratuits, donc revenu = 0
         if (reservation.status === 'completed') {
-          data.revenue += reservation.price;
+          data.revenue += 0;
         }
       }
 
       return Array.from(trendsMap.entries()).map(([date, data]) => ({
         date,
         reservations: data.reservations,
-        revenue: data.revenue,
+        revenue: 0, // ✅ Revenu toujours 0 pour les services gratuits
       }));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -274,9 +278,6 @@ export class DashboardService {
       const activeUsers = totalUsers;
       this.logger.log(`✅ Total users (excluding admin): ${activeUsers}`);
 
-      // Alternative: Compter seulement les clients
-      // const totalClients = await this.userModel.countDocuments({ role: 'client', isBanned: false });
-      
       // 2. Services disponibles
       const availableServices = await this.serviceModel.countDocuments({ isActive: true });
       this.logger.log(`✅ Available services: ${availableServices}`);
@@ -291,24 +292,22 @@ export class DashboardService {
       const totalReservations = allReservations.length;
       this.logger.log(`✅ Total reservations: ${totalReservations}`);
 
-      // 5. Revenu total
-      const totalRevenue = allReservations
-        .filter(r => r.status === 'completed' || r.status === 'confirmed')
-        .reduce((sum, r) => sum + (r.price || 0), 0);
-      this.logger.log(`✅ Total revenue: ${totalRevenue} TND`);
+      // 5. Revenu total - ✅ Services gratuits = 0
+      const totalRevenue = 0;
+      this.logger.log(`✅ Total revenue: ${totalRevenue} TND (services gratuits)`);
 
-// 6. Satisfaction moyenne générale
-const allReviews = await this.reviewModel.find().lean();
-let averageSatisfaction = 0;
+      // 6. Satisfaction moyenne générale
+      const allReviews = await this.reviewModel.find().lean();
+      let averageSatisfaction = 0;
 
-if (allReviews.length > 0) {
-  const totalRating = allReviews.reduce((sum, r) => sum + (r.rating || 0), 0);
-  averageSatisfaction = Math.round((totalRating / allReviews.length) * 10) / 10;
-} else {
-  // ✅ Si pas d'avis, on met 0 pour indiquer qu'il n'y a pas encore d'évaluations
-  averageSatisfaction = 0;
-}
-this.logger.log(`✅ Average satisfaction: ${averageSatisfaction} (basé sur ${allReviews.length} avis)`);
+      if (allReviews.length > 0) {
+        const totalRating = allReviews.reduce((sum, r) => sum + (r.rating || 0), 0);
+        averageSatisfaction = Math.round((totalRating / allReviews.length) * 10) / 10;
+      } else {
+        averageSatisfaction = 0;
+      }
+      this.logger.log(`✅ Average satisfaction: ${averageSatisfaction} (basé sur ${allReviews.length} avis)`);
+      
       // 7. Récupérer tous les services actifs
       const services = await this.serviceModel.find({ isActive: true }).lean();
       
@@ -363,7 +362,8 @@ this.logger.log(`✅ Average satisfaction: ${averageSatisfaction} (basé sur ${a
             
             if (reservation.status === 'completed') {
               catStats.completedReservations++;
-              catStats.totalRevenue += reservation.price || 0;
+              // ✅ Revenu toujours 0
+              catStats.totalRevenue += 0;
             }
           }
         }
@@ -394,7 +394,7 @@ this.logger.log(`✅ Average satisfaction: ${averageSatisfaction} (basé sur ${a
           reservationCount: data.reservationCount,
           completedReservations: data.completedReservations,
           averageRating: avgRating,
-          totalRevenue: data.totalRevenue,
+          totalRevenue: 0, // ✅ Revenu toujours 0
         };
       }).sort((a, b) => b.reservationCount - a.reservationCount);
 
@@ -424,10 +424,10 @@ this.logger.log(`✅ Average satisfaction: ${averageSatisfaction} (basé sur ${a
       
       // Fallback avec données réalistes
       return {
-        activeUsers: 12, // Valeur par défaut
+        activeUsers: 12,
         availableServices: 1,
         governoratesCovered: 1,
-        averageSatisfaction: 4.8,
+        averageSatisfaction: 0,
         totalReservations: 0,
         totalRevenue: 0,
         satisfactionByService: this.allCategories.map(name => ({

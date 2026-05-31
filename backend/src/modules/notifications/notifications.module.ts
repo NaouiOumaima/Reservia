@@ -6,6 +6,7 @@ import { NotificationsController } from './notifications.controller';
 import { Notification, NotificationSchema } from '../../database/schemas/notification.schema';
 import { Advertisement, AdvertisementSchema } from '../../database/schemas/advertisement.schema';
 import { WebsocketModule } from '../websocket/websocket.module';
+import { NotificationsGateway } from '../websocket/notifications.gateway';
 
 @Module({
   imports: [
@@ -17,6 +18,6 @@ import { WebsocketModule } from '../websocket/websocket.module';
   ],
   controllers: [NotificationsController],
   providers: [NotificationsService],
-  exports: [NotificationsService],
+  exports: [NotificationsService, WebsocketModule],
 })
 export class NotificationsModule {}

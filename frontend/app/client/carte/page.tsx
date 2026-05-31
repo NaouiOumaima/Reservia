@@ -1,3 +1,4 @@
+// app/client/carte/page.tsx
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
@@ -5,24 +6,8 @@ import { useSearchParams } from 'next/navigation';
 import FilterBar from './FilterBar';
 import ServiceMap from './ServiceMap';
 import { MenuIcon } from '@/components/ui/Icons';
-
-interface Service {
-  _id: string;
-  name: string;
-  category: string;
-  basePrice: number;
-  avgRating: number;
-  reviewCount: number;
-  location: {
-    type: string;
-    coordinates: [number, number];
-    address: string;
-    city: string;
-    governorate: string;
-  };
-  images: string[];
-  duration: number;
-}
+import { servicesApi } from '@/lib/api/services/services.api';
+import { Service } from '@/lib/api/services/types';
 
 function CarteContent() {
   const searchParams = useSearchParams();
@@ -32,125 +17,161 @@ function CarteContent() {
   const [filteredServices, setFilteredServices] = useState<Service[]>([]);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const [filters, setFilters] = useState({
     category: categoryParam || '',
-    minPrice: 0,
-    maxPrice: 500,
     radius: 10,
   });
-  const [loading, setLoading] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(true);      // pour desktop
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Géolocalisation
   useEffect(() => {
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setUserLocation([pos.coords.longitude, pos.coords.latitude]),
-        () => setUserLocation([10.1815, 36.8065])
+        () => setUserLocation([10.1815, 36.8065]) // Centre Tunis par défaut
       );
     } else {
       setUserLocation([10.1815, 36.8065]);
     }
   }, []);
 
-  // Récupération des services
-  useEffect(() => {
+  // Récupération des services - l'API gère maintenant la catégorie
+  const fetchServices = async () => {
     if (!userLocation) return;
-    const fetchServices = async () => {
-      setLoading(true);
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-        const res = await fetch(
-          `${apiUrl}/services/nearby?lng=${userLocation[0]}&lat=${userLocation[1]}&distance=${filters.radius}`
-        );
-        const data = await res.json();
-        const arr = Array.isArray(data) ? data : [];
-        setServices(arr);
-        setFilteredServices(arr);
-      } catch {
-        setServices([]);
-        setFilteredServices([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchServices();
-  }, [userLocation, filters.radius]);
+    
+    setLoading(true);
+    try {
+      // ✅ Appel API avec les deux filtres (rayon + catégorie)
+      const nearbyServices = await servicesApi.getNearby(
+        userLocation[0],  // lng
+        userLocation[1],  // lat
+        filters.radius,   // radius en km
+        filters.category || undefined // catégorie (optionnelle)
+      );
+      
+      setServices(nearbyServices);
+      setFilteredServices(nearbyServices); // Plus besoin de filtrer côté frontend
+    } catch (error) {
+      console.error('Erreur chargement services:', error);
+      setServices([]);
+      setFilteredServices([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Filtrage local
+  // Effet déclenché quand la localisation ou les filtres changent
   useEffect(() => {
-    let filtered = [...services];
-    if (filters.category) filtered = filtered.filter((s) => s.category === filters.category);
-    filtered = filtered.filter((s) => s.basePrice >= filters.minPrice && s.basePrice <= filters.maxPrice);
-    setFilteredServices(filtered);
-  }, [filters, services]);
+    fetchServices();
+  }, [userLocation, filters.radius, filters.category]); // ✅ category déclenche aussi le fetch
 
   const handleMarkerClick = (service: Service) => setSelectedService(service);
   const closeMobileSidebar = () => setMobileMenuOpen(false);
 
   return (
-    <div className="client-carte-page">
+    <div className="carte-page">
+
+      {/* Overlay mobile */}
+      {mobileMenuOpen && (
+        <div
+          className="carte-overlay"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className={`client-carte-sidebar ${sidebarOpen ? 'open' : ''}`}>
-        <div className="client-carte-sidebar-header">
-          <div className="client-carte-sidebar-header-top">
-            <h2>Services à proximité</h2>
+      <aside
+        className={[
+          'carte-sidebar',
+          sidebarOpen ? 'carte-sidebar--open' : '',
+          mobileMenuOpen ? 'carte-sidebar--mobile-open' : '',
+        ].join(' ')}
+      >
+        <div className="carte-sidebar__header">
+          <div className="carte-sidebar__header-top">
+            <h2 className="carte-sidebar__title">Services à proximité</h2>
             <button
-              className="client-carte-sidebar-toggle"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              aria-label="Réduire la sidebar"
+              className="carte-sidebar__toggle"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Fermer la sidebar"
             >
-              {sidebarOpen ? '◀' : '▶'}
+              ◀
             </button>
           </div>
-          <p>{filteredServices.length} résultat(s)</p>
+          <p className="carte-sidebar__count">{filteredServices.length} résultat(s)</p>
         </div>
 
-        <div className="client-carte-services-list">
+        <div className="carte-sidebar__list">
           {loading ? (
-            <div className="client-carte-loading">
-              <div className="spinner" />
-              <span>Chargement…</span>
+            <div className="carte-sidebar__loading">
+              <div className="carte-spinner" />
+              <span>Chargement des services...</span>
             </div>
           ) : filteredServices.length === 0 ? (
-            <div className="client-carte-empty">
-              <span>🔍</span>
+            <div className="carte-sidebar__empty">
+              <span className="carte-sidebar__empty-icon">🔍</span>
               <span>Aucun service trouvé</span>
+              <span className="carte-sidebar__empty-hint">
+                Essayez d'élargir votre rayon de recherche
+              </span>
             </div>
           ) : (
             filteredServices.map((service) => (
               <div
                 key={service._id}
-                className={`client-carte-service-item ${selectedService?._id === service._id ? 'active' : ''}`}
+                className={[
+                  'carte-service-card',
+                  selectedService?._id === service._id ? 'carte-service-card--active' : '',
+                ].join(' ')}
                 onClick={() => {
                   handleMarkerClick(service);
-                  closeMobileSidebar();
+                  setMobileMenuOpen(false);
                 }}
               >
-                <h3>{service.name}</h3>
-                <p>{service.location.address}</p>
-                <div className="client-carte-service-info">
-                  <span className="price">{service.basePrice} DT</span>
-                  <div className="rating">
+                <h3 className="carte-service-card__name">{service.name}</h3>
+                <p className="carte-service-card__address">{service.location.address}</p>
+                <div className="carte-service-card__meta">
+                  <span className="carte-service-card__price">Gratuit</span>
+                  <div className="carte-service-card__rating">
                     <span>★</span>
                     <span>{service.avgRating}</span>
-                    <span>({service.reviewCount})</span>
+                    <span className="carte-service-card__rating-count">
+                      ({service.reviewCount})
+                    </span>
                   </div>
                 </div>
+                {service.duration && (
+                  <div className="carte-service-card__duration">
+                    ⏱️ {service.duration} min
+                  </div>
+                )}
               </div>
             ))
           )}
         </div>
       </aside>
 
-      {/* Overlay mobile */}
-      {mobileMenuOpen && <div className="client-carte-overlay" onClick={closeMobileSidebar} />}
+      {/* Main content */}
+      <div className="carte-main">
+        {!sidebarOpen && (
+          <button
+            className="carte-toggle-btn"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Ouvrir la sidebar"
+          >
+            ▶
+          </button>
+        )}
 
-      {/* Contenu principal */}
-      <div className="client-carte-main">
-        <FilterBar filters={filters} onFilterChange={setFilters} />
-        <div className="client-carte-map-container">
+        <FilterBar
+          filters={filters}
+          onFilterChange={setFilters}
+        />
+
+        <div className="carte-map-container">
           <ServiceMap
             services={filteredServices}
             userLocation={userLocation}
@@ -160,13 +181,13 @@ function CarteContent() {
         </div>
       </div>
 
-      {/* Bouton burger mobile */}
+      {/* Bouton mobile */}
       <button
-        className="client-carte-mobile-menu-btn"
+        className="carte-mobile-btn"
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         aria-label="Ouvrir la liste des services"
       >
-        <MenuIcon className="w-5 h-5" />
+        <MenuIcon className="icon-md" />
       </button>
     </div>
   );
@@ -174,7 +195,7 @@ function CarteContent() {
 
 export default function ClientCartePage() {
   return (
-    <Suspense fallback={<div className="client-carte-suspense">Chargement de la carte…</div>}>
+    <Suspense fallback={<div className="carte-suspense">Chargement de la carte…</div>}>
       <CarteContent />
     </Suspense>
   );
