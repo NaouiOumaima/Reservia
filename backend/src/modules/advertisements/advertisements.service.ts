@@ -1,5 +1,4 @@
-// backend/src/modules/advertisements/advertisements.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -7,72 +6,51 @@ import { Advertisement, AdvertisementDocument } from '../../database/schemas/adv
 
 @Injectable()
 export class AdvertisementsService {
+  private readonly logger = new Logger(AdvertisementsService.name);
+
   constructor(
     @InjectModel(Advertisement.name) private adModel: Model<AdvertisementDocument>,
-    @InjectModel('User') private userModel: Model<any>, // ✅ Injecter le modèle User
+    @InjectModel('User') private userModel: Model<any>,
     private notificationsService: NotificationsService,
   ) {}
 
   async create(providerId: string, data: any): Promise<AdvertisementDocument> {
+    this.logger.log(`Creating advertisement for provider ${providerId}`);
+    
     const advertisement = new this.adModel({
-      ...data,
+      title: data.title,
+      description: data.description,
+      imageBase64: data.imageBase64,
       providerId: new Types.ObjectId(providerId),
+      providerName: data.providerName,
+      discountCode: data.discountCode,
+      discountPercentage: data.discountPercentage,
+      validUntil: data.validUntil ? new Date(data.validUntil) : undefined,
       status: 'active',
     });
+    
     const saved = await advertisement.save();
+    this.logger.log(`Advertisement created with ID: ${saved._id}`);
     return saved;
   }
 
-  async sendNotificationsToTarget(advertisement: AdvertisementDocument): Promise<void> {
-    try {
-      const ad = advertisement as any;
-      const adId = ad._id;
-      
-      if (!adId) {
-        console.error('Advertisement ID not found');
-        return;
-      }
-      
-      // ✅ Récupérer TOUS les clients de la base de données
-      const clients = await this.userModel.find({ role: 'client' }).select('_id').exec();
-      
-      if (!clients || clients.length === 0) {
-        console.log('No clients found to send notifications');
-        return;
-      }
-      
-      console.log(`📢 Sending notifications to ${clients.length} clients for advertisement: ${advertisement.title}`);
-      
-      // Envoyer les notifications à chaque client
-      let sentCount = 0;
-      for (const client of clients) {
-        try {
-          await this.notificationsService.sendAdvertisementNotification(client._id.toString(), {
-            title: advertisement.title,
-            message: advertisement.description,
-            advertisementId: adId.toString(),
-            imageUrl: advertisement.imageUrl,
-            actionUrl: `/ads/${adId}`,
-            discountCode: advertisement.discountCode,
-            discountPercentage: advertisement.discountPercentage,
-          });
-          sentCount++;
-        } catch (err) {
-          console.error(`Failed to send notification to client ${client._id}:`, err);
-        }
-      }
-      
-      console.log(`✅ Successfully sent ${sentCount} notifications out of ${clients.length} clients`);
-    } catch (error) {
-      console.error('Error sending notifications:', error);
-    }
-  }
-
-  async findByProvider(providerId: string): Promise<AdvertisementDocument[]> {
-    return this.adModel
+  async findByProvider(providerId: string): Promise<any[]> {
+    this.logger.log(`Finding ALL advertisements for provider ${providerId}`);
+    
+    // Récupérer TOUTES les annonces sans filtre
+    const ads = await this.adModel
       .find({ providerId: new Types.ObjectId(providerId) })
       .sort({ createdAt: -1 })
+      .lean()
       .exec();
+    
+    this.logger.log(`Found ${ads.length} total advertisements`);
+    
+    return ads.map(ad => ({
+      ...ad,
+      _id: ad._id.toString(),
+      providerId: ad.providerId.toString(),
+    }));
   }
 
   async findById(id: string, userId?: string): Promise<AdvertisementDocument> {

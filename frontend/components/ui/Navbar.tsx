@@ -1,4 +1,5 @@
 // frontend/components/Navbar.tsx
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -435,7 +436,7 @@ export default function Navbar({ user: propUser }: NavbarProps) {
   }
 
   // ============================================
-  // ADMIN
+  // ADMIN - AJOUT DU BOUTON NOTIFICATION
   // ============================================
   if (user.role === 'admin') {
     const adminNavLinks = [
@@ -467,8 +468,9 @@ export default function Navbar({ user: propUser }: NavbarProps) {
               </div>
 
               <div className="navbar-actions">
-                {/* Version Desktop */}
+                {/* Version Desktop - AJOUT DE NotificationDropdown */}
                 <div className="navbar-desktop-actions">
+                  <NotificationDropdown />  {/* ← AJOUTÉ */}
                   <ThemeToggle />
                   <div className="relative" ref={profileRefDesktop}>
                     <button
@@ -484,8 +486,9 @@ export default function Navbar({ user: propUser }: NavbarProps) {
                   </div>
                 </div>
 
-                {/* Version Mobile */}
+                {/* Version Mobile - AJOUT DE NotificationDropdown */}
                 <div className="navbar-mobile-actions">
+                  <NotificationDropdown />  {/* ← AJOUTÉ */}
                   <ThemeToggle />
                   <div className="relative" ref={profileRefMobile}>
                     <button

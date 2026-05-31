@@ -1,3 +1,5 @@
+// lib/api/services/types.ts
+
 export interface Location {
   type: 'Point';
   coordinates: [number, number];
@@ -16,7 +18,6 @@ export interface Service {
   description: string;
   basePrice: number;
   discountPrice?: number;
-  price?: number;
   duration: number;
   images: string[];
   location: Location;
@@ -29,22 +30,6 @@ export interface Service {
   updatedAt: string;
 }
 
-export interface Review {
-  _id: string;
-  userId: string;
-  userName?: string;
-  serviceId: string;
-  serviceName?: string;
-  rating: number;
-  comment: string;
-  images?: string[];
-  response?: string;
-  responseDate?: string;
-  isApproved: boolean;
-  isReported: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
 export interface CreateServiceData {
   name: string;
   category: string;
@@ -82,4 +67,11 @@ export interface ServiceFilters {
   minRating?: number;
   limit?: number;
   skip?: number;
+}
+
+export interface PaginatedServicesResponse {
+  services: Service[];
+  total: number;
+  page: number;
+  totalPages: number;
 }

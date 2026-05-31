@@ -19,6 +19,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { UploadModule } from './modules/upload/upload.module'; // ✅ CHANGEMENT: Importer le module, pas le controller
 import { AdvertisementsModule } from './modules/advertisements/advertisements.module';
+import { FavoritesModule } from './modules/favorites/favorites.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { AdvertisementsModule } from './modules/advertisements/advertisements.mo
     WebsocketModule,
     UploadModule,
     AdvertisementsModule, 
+    FavoritesModule,
   ],
   controllers: [],
   providers: [],

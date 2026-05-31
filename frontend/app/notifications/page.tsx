@@ -1,182 +1,137 @@
-// frontend/app/notifications/page.tsx
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { notificationsApi } from '@/lib/api/notifications';
-import { Notification, NotificationType } from '@/lib/api/notifications';
+import { notificationsApi, Notification, NotificationType } from '@/lib/api/notifications';
 import { useAuth } from '@/providers/AuthProvider';
 import Image from 'next/image';
 import toast, { Toaster } from 'react-hot-toast';
 import {
-  BellIcon,
-  CheckIcon,
-  TrashIcon,
-  CheckCircleIcon,
-  XMarkIcon,
-  CalendarIcon,
-  AlertTriangleIcon,
-  MegaphoneIcon,
-  TagIcon,
-  Loader2Icon,
+  BellIcon, CheckIcon, TrashIcon, CheckCircleIcon, XMarkIcon,
+  CalendarIcon, AlertTriangleIcon, MegaphoneIcon, TagIcon, Loader2Icon,
 } from '@/components/ui/Icons';
 import NotificationModal from '../components/NotificationModal';
 
-interface NotificationIconInfo {
-  icon: React.ComponentType<{ className?: string }>;
-  bgClass: string;
-  label: string;
-  colorClass: string;
+function getIconInfo(type: NotificationType) {
+  switch (type) {
+    case NotificationType.RESERVATION_CONFIRMED: return { Icon: CheckCircleIcon,  cls: 'notif-icon-confirmed', label: 'Réservation confirmée' };
+    case NotificationType.RESERVATION_REMINDER:  return { Icon: CalendarIcon,     cls: 'notif-icon-reminder',  label: 'Rappel' };
+    case NotificationType.RESERVATION_CANCELLED: return { Icon: XMarkIcon,        cls: 'notif-icon-cancelled', label: 'Annulation' };
+    case NotificationType.RESERVATION_EXPIRED:   return { Icon: AlertTriangleIcon,cls: 'notif-icon-expired',   label: 'Expirée' };
+    case NotificationType.ADVERTISEMENT:         return { Icon: MegaphoneIcon,    cls: 'notif-icon-ad',        label: 'Promotion' };
+    case NotificationType.PROMOTION:             return { Icon: TagIcon,          cls: 'notif-icon-promo',     label: 'Offre spéciale' };
+    default:                                     return { Icon: BellIcon,         cls: 'notif-icon-default',   label: 'Information' };
+  }
 }
 
-export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const { user } = useAuth();
+function formatDate(dateString: string) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const minutes = Math.floor(diff / 60000);
+  const hours   = Math.floor(diff / 3600000);
+  const days    = Math.floor(diff / 86400000);
+  if (minutes < 1) return 'À l\'instant';
+  if (minutes < 60) return `Il y a ${minutes} min`;
+  if (hours < 24) return `Il y a ${hours} h`;
+  if (days < 7)  return `Il y a ${days} j`;
+  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
 
-  const fetchNotifications = useCallback(async (pageNum: number, append: boolean = false) => {
+type FilterType = 'all' | 'unread' | NotificationType;
+
+export default function NotificationsPage() {
+  const [notifications, setNotifications]       = useState<Notification[]>([]);
+  const [loading, setLoading]                   = useState(true);
+  const [unreadCount, setUnreadCount]           = useState(0);
+  const [page, setPage]                         = useState(1);
+  const [hasMore, setHasMore]                   = useState(true);
+  const [loadingMore, setLoadingMore]           = useState(false);
+  const [selectedNotif, setSelectedNotif]       = useState<Notification | null>(null);
+  const [modalOpen, setModalOpen]               = useState(false);
+  const [filter, setFilter]                     = useState<FilterType>('all');
+
+  const fetchNotifications = useCallback(async (pageNum: number, append = false) => {
     try {
-      const response = await notificationsApi.getMyNotifications(pageNum, 20);
-      
-      if (append) {
-        setNotifications((prev: Notification[]) => [...prev, ...response.notifications]);
-      } else {
-        setNotifications(response.notifications);
-      }
-      
-      setHasMore(response.hasMore);
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error);
-      toast.error('Impossible de charger les notifications');
-    }
+      const res = await notificationsApi.getMyNotifications(pageNum, 20);
+      setNotifications(prev => append ? [...prev, ...res.notifications] : res.notifications);
+      setHasMore(res.hasMore);
+    } catch { toast.error('Impossible de charger les notifications'); }
   }, []);
 
-  const fetchUnreadCount = useCallback(async () => {
-    try {
-      const count = await notificationsApi.getUnreadCount();
-      setUnreadCount(count);
-    } catch (error) {
-      console.error('Failed to fetch unread count:', error);
-    }
+  const fetchUnread = useCallback(async () => {
+    try { setUnreadCount(await notificationsApi.getUnreadCount()); } catch {}
   }, []);
 
   useEffect(() => {
-    Promise.all([
-      fetchNotifications(1, false),
-      fetchUnreadCount(),
-    ]).finally(() => setLoading(false));
-  }, [fetchNotifications, fetchUnreadCount]);
+    Promise.all([fetchNotifications(1), fetchUnread()]).finally(() => setLoading(false));
+  }, [fetchNotifications, fetchUnread]);
 
-  const handleMarkAsRead = async (notificationId: string) => {
+  const markAsRead = async (id: string) => {
     try {
-      await notificationsApi.markAsRead(notificationId);
-      setNotifications((prev: Notification[]) =>
-        prev.map((n: Notification) => (n._id === notificationId ? { ...n, isRead: true } : n))
-      );
-      setUnreadCount((prev: number) => Math.max(0, prev - 1));
-    } catch (error) {
-      toast.error('Erreur lors du marquage');
-    }
+      await notificationsApi.markAsRead(id);
+      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch { toast.error('Erreur lors du marquage'); }
   };
 
-  const handleMarkAllAsRead = async () => {
-    const toastId = toast.loading('Marquage en cours...');
+  const markAllAsRead = async () => {
+    const tid = toast.loading('Marquage en cours…');
     try {
       await notificationsApi.markAllAsRead();
-      setNotifications((prev: Notification[]) => prev.map((n: Notification) => ({ ...n, isRead: true })));
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
-      toast.success('Toutes les notifications ont été marquées comme lues', { id: toastId });
-    } catch (error) {
-      toast.error('Erreur lors du marquage', { id: toastId });
-    }
+      toast.success('Toutes les notifications marquées comme lues', { id: tid });
+    } catch { toast.error('Erreur', { id: tid }); }
   };
 
-  const handleDeleteNotification = async (notificationId: string) => {
-    const toastId = toast.loading('Suppression...');
+  const deleteNotif = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const tid = toast.loading('Suppression…');
     try {
-      await notificationsApi.deleteNotification(notificationId);
-      setNotifications((prev: Notification[]) => prev.filter((n: Notification) => n._id !== notificationId));
-      toast.success('Notification supprimée', { id: toastId });
-    } catch (error) {
-      toast.error('Erreur lors de la suppression', { id: toastId });
-    }
+      await notificationsApi.deleteNotification(id);
+      setNotifications(prev => prev.filter(n => n._id !== id));
+      toast.success('Notification supprimée', { id: tid });
+    } catch { toast.error('Erreur', { id: tid }); }
   };
 
-  const handleDeleteAllRead = async () => {
+  const deleteAllRead = async () => {
     if (!confirm('Supprimer toutes les notifications lues ?')) return;
-    const toastId = toast.loading('Suppression...');
+    const tid = toast.loading('Suppression…');
     try {
       await notificationsApi.deleteAllReadNotifications();
-      setNotifications((prev: Notification[]) => prev.filter((n: Notification) => !n.isRead));
-      toast.success('Notifications lues supprimées', { id: toastId });
-    } catch (error) {
-      toast.error('Erreur lors de la suppression', { id: toastId });
-    }
-  };
-
-  const handleNotificationClick = (notification: Notification) => {
-    setSelectedNotification(notification);
-    setModalOpen(true);
-  };
-
-  const handleMarkAsReadFromModal = async (id: string) => {
-    await handleMarkAsRead(id);
+      setNotifications(prev => prev.filter(n => !n.isRead));
+      toast.success('Notifications lues supprimées', { id: tid });
+    } catch { toast.error('Erreur', { id: tid }); }
   };
 
   const loadMore = async () => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
-    const nextPage = page + 1;
-    await fetchNotifications(nextPage, true);
-    setPage(nextPage);
+    const next = page + 1;
+    await fetchNotifications(next, true);
+    setPage(next);
     setLoadingMore(false);
   };
 
-  const getNotificationIcon = (type: NotificationType): NotificationIconInfo => {
-    switch (type) {
-      case NotificationType.RESERVATION_CONFIRMED:
-        return { icon: CheckCircleIcon, bgClass: 'bg-success/10', label: 'Réservation confirmée', colorClass: 'text-success' };
-      case NotificationType.RESERVATION_REMINDER:
-        return { icon: CalendarIcon, bgClass: 'bg-warning/10', label: 'Rappel', colorClass: 'text-warning' };
-      case NotificationType.RESERVATION_CANCELLED:
-        return { icon: XMarkIcon, bgClass: 'bg-error/10', label: 'Annulation', colorClass: 'text-error' };
-      case NotificationType.RESERVATION_EXPIRED:
-        return { icon: AlertTriangleIcon, bgClass: 'bg-orange-500/10', label: 'Expiration', colorClass: 'text-orange-500' };
-      case NotificationType.ADVERTISEMENT:
-        return { icon: MegaphoneIcon, bgClass: 'bg-purple-500/10', label: 'Promotion', colorClass: 'text-purple-500' };
-      case NotificationType.PROMOTION:
-        return { icon: TagIcon, bgClass: 'bg-pink-500/10', label: 'Offre spéciale', colorClass: 'text-pink-500' };
-      default:
-        return { icon: BellIcon, bgClass: 'bg-surface-raised', label: 'Information', colorClass: 'text-muted' };
-    }
-  };
+  const displayed = notifications.filter(n => {
+    if (filter === 'all') return true;
+    if (filter === 'unread') return !n.isRead;
+    return n.type === filter;
+  });
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (minutes < 1) return 'À l\'instant';
-    if (minutes < 60) return `Il y a ${minutes} min`;
-    if (hours < 24) return `Il y a ${hours} h`;
-    if (days < 7) return `Il y a ${days} j`;
-    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-  };
+  const filters: { key: FilterType; label: string }[] = [
+    { key: 'all',    label: 'Toutes' },
+    { key: 'unread', label: 'Non lues' },
+    { key: NotificationType.RESERVATION_CONFIRMED, label: 'Confirmations' },
+    { key: NotificationType.ADVERTISEMENT,         label: 'Promotions' },
+  ];
 
   if (loading) {
     return (
       <div className="admin-loading">
         <div className="admin-loading-content">
           <Loader2Icon className="w-8 h-8 animate-spin text-primary" />
-          <p className="text-muted">Chargement des notifications...</p>
+          <p className="text-muted">Chargement…</p>
         </div>
       </div>
     );
@@ -185,37 +140,33 @@ export default function NotificationsPage() {
   return (
     <>
       <Toaster position="top-right" />
-      
+
       <div className="notifications-page">
         <div className="notifications-container">
+
+          {/* ── Header ── */}
           <div className="notifications-header">
-            <div className="flex justify-between items-center flex-wrap gap-4">
-              <div>
-                <h1 className="notifications-header-title">
+            <div className="notifications-header-top">
+              <div className="notifications-header-left">
+                <h1>
                   <BellIcon className="w-6 h-6" />
                   Mes notifications
                 </h1>
                 {unreadCount > 0 && (
                   <p className="notifications-header-count">
-                    {unreadCount} notification{unreadCount > 1 ? 's' : ''} non lue{unreadCount > 1 ? 's' : ''}
+                    {unreadCount} non lue{unreadCount > 1 ? 's' : ''}
                   </p>
                 )}
               </div>
-              <div className="notifications-actions">
+              <div className="notifications-header-actions">
                 {unreadCount > 0 && (
-                  <button
-                    onClick={handleMarkAllAsRead}
-                    className="btn-sm bg-primary text-white hover:bg-primary-dark transition-colors"
-                  >
+                  <button onClick={markAllAsRead} className="btn btn-primary btn-sm">
                     <CheckIcon className="w-4 h-4" />
                     Tout lire
                   </button>
                 )}
-                {notifications.some((n: Notification) => n.isRead) && (
-                  <button
-                    onClick={handleDeleteAllRead}
-                    className="btn-sm bg-surface-raised hover:bg-error/10 text-muted hover:text-error transition-colors"
-                  >
+                {notifications.some(n => n.isRead) && (
+                  <button onClick={deleteAllRead} className="btn btn-ghost btn-sm">
                     <TrashIcon className="w-4 h-4" />
                     Supprimer lues
                   </button>
@@ -224,104 +175,111 @@ export default function NotificationsPage() {
             </div>
           </div>
 
-          {notifications.length === 0 ? (
-            <div className="admin-reviews-empty">
-              <div className="admin-reviews-empty-icon">
-                <BellIcon className="w-12 h-12" />
+          {/* ── Filters ── */}
+          <div className="notifications-filters">
+            {filters.map(f => (
+              <button
+                key={f.key}
+                onClick={() => setFilter(f.key)}
+                className={`filter-chip ${filter === f.key ? 'active' : ''}`}
+              >
+                {f.label}
+                {f.key === 'unread' && unreadCount > 0 && (
+                  <span className="badge badge-primary" style={{ fontSize: '0.6rem', padding: '0.1rem 0.4rem' }}>
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* ── List or Empty ── */}
+          {displayed.length === 0 ? (
+            <div className="notifications-empty">
+              <div className="notifications-empty-icon">
+                <BellIcon className="w-8 h-8" />
               </div>
-              <h3 className="admin-reviews-empty-title">Aucune notification</h3>
-              <p className="admin-reviews-empty-text">Vous n'avez pas encore de notifications</p>
+              <h3 className="notifications-empty-title">Aucune notification</h3>
+              <p className="notifications-empty-text">
+                {filter !== 'all' ? 'Aucune notification dans cette catégorie.' : 'Vous n\'avez pas encore de notifications.'}
+              </p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {notifications.map((notification: Notification) => {
-                const { icon: Icon, bgClass, label, colorClass } = getNotificationIcon(notification.type);
-                const isUnread = !notification.isRead;
-                
+            <div className="notifications-list">
+              {displayed.map((notif, i) => {
+                const { Icon, cls, label } = getIconInfo(notif.type);
+                const isUnread = !notif.isRead;
+
                 return (
                   <div
-                    key={notification._id}
-                    onClick={() => handleNotificationClick(notification)}
-                    className={`notification-card ${isUnread ? 'notification-card-unread' : 'notification-card-read'}`}
+                    key={notif._id}
+onClick={() => {
+  setSelectedNotif(notif);
+  setModalOpen(true);
+}}                    className={`notif-card ${isUnread ? 'notif-card-unread' : 'notif-card-read'} animate-fadeInUp`}
+                    style={{ animationDelay: `${i * 40}ms` }}
                   >
-                    <div className="notification-card-content">
-                      <div className={`notification-icon-wrapper ${bgClass}`}>
-                        {notification.imageUrl ? (
-                          <Image
-                            src={notification.imageUrl}
-                            alt=""
-                            width={48}
-                            height={48}
-                            className="rounded-full object-cover w-full h-full"
-                          />
-                        ) : (
-                          <Icon className={`w-6 h-6 ${colorClass}`} />
-                        )}
+                    <div className="notif-card-inner">
+                      {/* Icon */}
+                      <div className={`notif-icon-wrap ${cls}`}>
+                        {notif.imageUrl
+                          ? <Image src={notif.imageUrl} alt="" width={44} height={44} className="rounded-full object-cover" />
+                          : <Icon className="w-5 h-5" />}
                       </div>
-                      
-                      <div className="notification-info">
-                        <div className="notification-header">
-                          <div>
-                            <h3 className={`notification-title ${isUnread ? 'notification-title-unread' : 'notification-title-read'}`}>
-                              {notification.title}
-                            </h3>
-                            <span className="notification-type">{label}</span>
+
+                      {/* Body */}
+                      <div className="notif-body">
+                        <div className="notif-body-top">
+                          <div className="notif-title-row">
+                            <p className="notif-title">{notif.title}</p>
+                            <span className="notif-type-label">{label}</span>
                           </div>
-                          <span className="notification-date">
-                            {formatDate(notification.createdAt)}
-                          </span>
+                          <span className="notif-date">{formatDate(notif.createdAt)}</span>
                         </div>
-                        <p className={`notification-message ${isUnread ? 'notification-message-unread' : 'notification-message-read'}`}>
-                          {notification.message}
-                        </p>
-                        
-                        {notification.type === NotificationType.ADVERTISEMENT && notification.data?.discountPercentage && (
-                          <div className="notification-badge">
+                        <p className="notif-message">{notif.message}</p>
+
+                        {notif.type === NotificationType.ADVERTISEMENT && notif.data?.discountPercentage && (
+                          <span className="notif-promo-badge">
                             <TagIcon className="w-3 h-3" />
-                            -{notification.data.discountPercentage}%
-                          </div>
+                            -{notif.data.discountPercentage}%
+                          </span>
                         )}
                       </div>
-                      
-                      <div className="notification-actions">
-                        {isUnread && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleMarkAsRead(notification._id);
-                            }}
-                            className="notification-mark-read"
-                          >
-                            Marquer lu
-                          </button>
-                        )}
+
+                      {/* Unread dot */}
+                      {isUnread && <span className="notif-unread-dot" />}
+                    </div>
+
+                    {/* Card actions */}
+                    <div className="notif-card-actions">
+                      {isUnread && (
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteNotification(notification._id);
-                          }}
-                          className="notification-delete"
+                          onClick={(e) => { e.stopPropagation(); markAsRead(notif._id); }}
+                          className="notif-action-btn notif-action-btn-read"
                         >
-                          Supprimer
+                          <CheckIcon className="w-3 h-3" />
+                          Marquer lu
                         </button>
-                      </div>
+                      )}
+                      <button
+                        onClick={(e) => deleteNotif(e, notif._id)}
+                        className="notif-action-btn notif-action-btn-delete"
+                      >
+                        <TrashIcon className="w-3 h-3" />
+                        Supprimer
+                      </button>
                     </div>
                   </div>
                 );
               })}
-              
+
+              {/* Load more */}
               {hasMore && (
                 <div className="notifications-load-more">
-                  <button
-                    onClick={loadMore}
-                    disabled={loadingMore}
-                    className="btn-ghost"
-                  >
-                    {loadingMore ? (
-                      <Loader2Icon className="w-4 h-4 animate-spin" />
-                    ) : (
-                      'Charger plus'
-                    )}
+                  <button onClick={loadMore} disabled={loadingMore} className="btn btn-ghost">
+                    {loadingMore
+                      ? <Loader2Icon className="w-4 h-4 animate-spin" />
+                      : 'Charger plus'}
                   </button>
                 </div>
               )}
@@ -331,10 +289,10 @@ export default function NotificationsPage() {
       </div>
 
       <NotificationModal
-        notification={selectedNotification}
+        notification={selectedNotif}
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        onMarkAsRead={handleMarkAsReadFromModal}
+        onMarkAsRead={markAsRead}
       />
     </>
   );

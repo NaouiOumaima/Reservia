@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { servicesApi, reviewsApi, reservationsApi } from '@/lib/api';
-import { Service, Review } from '@/types';
-import { StarIcon, LocationIcon, ClockIcon, CalendarIcon } from '@/components/ui/Icons';
+import type { Service } from '@/lib/api/services/types';
+import type { Review } from '@/lib/api/reviews/types';
+import { StarIcon, LocationIcon } from '@/components/ui/Icons';
 
 export default function ServiceDetailPage() {
   const params = useParams();
@@ -71,30 +72,30 @@ export default function ServiceDetailPage() {
     return slots;
   };
 
+  const displayPrice = service.discountPrice || service.basePrice;
+  const hasDiscount = !!service.discountPrice && service.discountPrice < service.basePrice;
+
   return (
     <div className="min-h-screen bg-surface">
       <div className="max-w-4xl mx-auto py-8 px-4">
-        {/* Image */}
         {service.images?.[0] && (
           <img src={service.images[0]} alt={service.name} className="w-full h-64 object-cover rounded-lg mb-6" />
         )}
 
-        {/* Titre et infos */}
         <h1 className="text-3xl font-bold text-foreground mb-2">{service.name}</h1>
         <div className="flex items-center gap-4 mb-4">
           <div className="flex items-center gap-1 text-warning">
             <StarIcon className="w-5 h-5 fill-current" />
             <span className="font-medium">{service.avgRating?.toFixed(1) || '0.0'}</span>
-            <span className="text-muted">({service.reviewCount} avis)</span>
+            <span className="text-muted">({service.reviewCount || 0} avis)</span>
           </div>
           <div className="flex items-center gap-1 text-muted">
             <LocationIcon className="w-4 h-4" />
-            <span>{service.location.city}, {service.location.governorate}</span>
+            <span>{service.location?.city}, {service.location?.governorate}</span>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Colonne gauche - Description */}
           <div className="md:col-span-2">
             <div className="card mb-6">
               <h2 className="text-xl font-semibold mb-3">Description</h2>
@@ -124,11 +125,18 @@ export default function ServiceDetailPage() {
             </div>
           </div>
 
-          {/* Colonne droite - Réservation */}
           <div>
             <div className="card sticky top-24">
               <div className="text-center mb-4">
-                <span className="text-3xl font-bold text-primary">{service.basePrice} DT</span>
+                {hasDiscount ? (
+                  <div>
+                    <span className="text-2xl font-bold text-primary">{displayPrice} DT</span>
+                    <span className="text-sm text-muted line-through ml-2">{service.basePrice} DT</span>
+                    <span className="text-xs text-green-600 ml-2">Promo</span>
+                  </div>
+                ) : (
+                  <span className="text-3xl font-bold text-primary">{displayPrice} DT</span>
+                )}
                 <span className="text-muted"> / {service.duration} min</span>
               </div>
               <div className="space-y-4">

@@ -4,13 +4,14 @@ export interface Advertisement {
   _id: string;
   title: string;
   description: string;
-  imageUrl: string;
+  imageBase64?: string;  // Nouveau format (base64)
+  imageUrl?: string;     // Ancien format (URL)
   providerId: string;
   providerName: string;
   discountCode?: string;
   discountPercentage?: number;
   validUntil?: string;
-  status: 'active' | 'expired' | 'draft' | 'paused';
+  status: 'active' | 'expired' | 'draft' | 'paused' | 'inactive';
   targetAudience: string;
   targetCategory?: string;
   targetCity?: string;
@@ -24,16 +25,8 @@ export interface Advertisement {
 export interface CreateAdvertisementData {
   title: string;
   description: string;
-  imageUrl: string;
+  imageBase64: string;
   discountCode?: string;
   discountPercentage?: number;
   validUntil?: string;
-  targetAudience: string;
-  targetCategory?: string;
-  targetCity?: string;
-}
-
-export interface AdvertisementsResponse {
-  advertisements: Advertisement[];
-  total: number;
 }

@@ -19,15 +19,16 @@ export interface Notification {
   reservationId?: string;
   advertisementId?: string;
   data?: {
-    startTime?: string;
-    serviceName?: string;
-    hoursBefore?: number;
-    discountCode?: string;
-    discountPercentage?: number;
-    imageUrl?: string;
-    actionUrl?: string;
-    advertisementId?: string;
-  };
+  startTime?: string;
+  serviceName?: string;
+  hoursBefore?: number;
+  discountCode?: string;
+  discountPercentage?: number;
+  validUntil?: string;        
+  imageUrl?: string;
+  actionUrl?: string;
+  advertisementId?: string;
+};
   imageUrl?: string;
   actionUrl?: string;
   isRead: boolean;

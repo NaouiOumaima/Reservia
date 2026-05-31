@@ -1,8 +1,7 @@
 // frontend/lib/api/advertisements/advertisements.api.ts
 
 import { apiClient } from '../config';
-import { Advertisement, CreateAdvertisementData, AdvertisementsResponse } from './types';
-
+import { Advertisement, CreateAdvertisementData } from './types';
 export const advertisementsApi = {
   // Créer une annonce
   create: async (data: CreateAdvertisementData): Promise<Advertisement> => {

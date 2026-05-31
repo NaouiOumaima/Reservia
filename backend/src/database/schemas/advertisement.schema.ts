@@ -1,22 +1,18 @@
-// backend/src/database/schemas/advertisement.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
-// ✅ Définir l'interface complète
 export interface AdvertisementDocument extends Document {
   _id: Types.ObjectId;
   title: string;
   description: string;
-  imageUrl: string;
+  imageBase64?: string;
+  imageUrl?: string;
   providerId: Types.ObjectId;
   providerName: string;
   discountCode?: string;
   discountPercentage?: number;
   validUntil?: Date;
   status: string;
-  targetAudience: string;
-  targetCategory?: string;
-  targetCity?: string;
   viewsCount: number;
   clicksCount: number;
   viewedBy: Array<{ userId: string; viewedAt: Date }>;
@@ -32,8 +28,11 @@ export class Advertisement {
   @Prop({ required: true })
   description!: string;
 
-  @Prop({ required: true })
-  imageUrl!: string;
+  @Prop()
+  imageBase64?: string;
+
+  @Prop()
+  imageUrl?: string;
 
   @Prop({ required: true, type: Types.ObjectId, ref: 'User' })
   providerId!: Types.ObjectId;
@@ -52,15 +51,6 @@ export class Advertisement {
 
   @Prop({ default: 'active' })
   status!: string;
-
-  @Prop({ default: 'all' })
-  targetAudience!: string;
-
-  @Prop()
-  targetCategory?: string;
-
-  @Prop()
-  targetCity?: string;
 
   @Prop({ default: 0 })
   viewsCount!: number;

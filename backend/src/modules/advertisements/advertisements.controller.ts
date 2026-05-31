@@ -1,5 +1,8 @@
-// backend/src/modules/advertisements/advertisements.controller.ts
-import { Controller, Get, Post, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller, Get, Post, Delete, Body, Param,
+  UseGuards, Request, UseInterceptors, UploadedFile,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AdvertisementsService } from './advertisements.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ForbiddenException } from '@nestjs/common';
@@ -10,22 +13,40 @@ export class AdvertisementsController {
   constructor(private advertisementsService: AdvertisementsService) {}
 
   @Post()
-  async create(@Request() req, @Body() data: any) {
+  @UseInterceptors(FileInterceptor('image', {
+    limits: { fileSize: 10 * 1024 * 1024 },
+  }))
+  async create(
+    @Request() req,
+    @Body() data: any,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
     if (req.user.role !== 'provider') {
       throw new ForbiddenException('Seuls les fournisseurs peuvent créer des annonces');
     }
 
-    // ✅ Correction: Vérifier les champs qui existent
-    const providerName = req.user.businessName || 
-                         (req.user.firstName && req.user.lastName ? `${req.user.firstName} ${req.user.lastName}` : req.user.email || 'Fournisseur');
+    const providerName = req.user.providerProfile?.businessName ||
+      (req.user.firstName && req.user.lastName
+        ? `${req.user.firstName} ${req.user.lastName}`
+        : req.user.email || 'Fournisseur');
+
+    let imageBase64 = data.imageBase64;
+    
+    if (file) {
+      const mime = file.mimetype;
+      const b64 = file.buffer.toString('base64');
+      imageBase64 = `data:${mime};base64,${b64}`;
+    }
 
     const advertisement = await this.advertisementsService.create(req.user._id, {
-      ...data,
-      providerName: providerName,
+      title: data.title,
+      description: data.description,
+      imageBase64,
+      discountCode: data.discountCode,
+      discountPercentage: data.discountPercentage ? Number(data.discountPercentage) : undefined,
+      validUntil: data.validUntil,
+      providerName,
     });
-
-    // Envoyer les notifications aux clients ciblés
-    await this.advertisementsService.sendNotificationsToTarget(advertisement);
 
     return advertisement;
   }

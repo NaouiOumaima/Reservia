@@ -57,6 +57,7 @@ export class NotificationsService {
       actionUrl?: string;
       discountCode?: string;
       discountPercentage?: number;
+      validUntil?: string;
     }
   ) {
     const notification = new this.notificationModel({
@@ -71,6 +72,7 @@ export class NotificationsService {
         actionUrl: data.actionUrl,
         discountCode: data.discountCode,
         discountPercentage: data.discountPercentage,
+        validUntil: data.validUntil,
       },
       imageUrl: data.imageUrl,
       actionUrl: data.actionUrl,
@@ -89,6 +91,7 @@ export class NotificationsService {
       actionUrl: data.actionUrl,
       discountCode: data.discountCode,
       discountPercentage: data.discountPercentage,
+      validUntil: data.validUntil,
       createdAt: (notification as any).createdAt || new Date(),
     });
 
@@ -105,6 +108,7 @@ export class NotificationsService {
       actionUrl?: string;
       discountCode?: string;
       discountPercentage?: number;
+      validUntil?: string;
     }
   ): Promise<number> {
     const notifications = userIds.map(userId => ({
@@ -119,6 +123,7 @@ export class NotificationsService {
         actionUrl: data.actionUrl,
         discountCode: data.discountCode,
         discountPercentage: data.discountPercentage,
+        validUntil: data.validUntil,
       },
       imageUrl: data.imageUrl,
       actionUrl: data.actionUrl,
@@ -127,7 +132,7 @@ export class NotificationsService {
     }));
 
     const result = await this.notificationModel.insertMany(notifications);
-    
+
     userIds.forEach(userId => {
       this.notificationsGateway.sendNotificationToUser(userId, {
         id: result[0]._id.toString(),
@@ -138,6 +143,7 @@ export class NotificationsService {
         actionUrl: data.actionUrl,
         discountCode: data.discountCode,
         discountPercentage: data.discountPercentage,
+        validUntil: data.validUntil,
         createdAt: new Date(),
       });
     });
@@ -211,8 +217,8 @@ export class NotificationsService {
   }
 
   async findByUserIdWithPagination(
-    userId: string, 
-    page: number = 1, 
+    userId: string,
+    page: number = 1,
     limit: number = 20,
     unreadOnly: boolean = false
   ) {
@@ -266,11 +272,11 @@ export class NotificationsService {
       _id: notificationId,
       userId: new Types.ObjectId(userId),
     });
-    
+
     if (!result) {
       throw new NotFoundException('Notification non trouvée');
     }
-    
+
     return result;
   }
 

@@ -822,3 +822,87 @@ export function BedIcon({ className = "w-6 h-6", size }: IconProps) {
     </svg>
   );
 }
+  export function HeartIconFilled({ className = "w-6 h-6", size, filled = false }: IconProps & { filled?: boolean }) {
+  return (
+    <svg
+      className={className}
+      style={size ? { width: size, height: size } : undefined}
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M20.5 4.6a5 5 0 0 0-7.07 0L12 6.07l-1.43-1.47a5 5 0 0 0-7.07 7.07L12 20.5l8.5-8.83a5 5 0 0 0 0-7.07z" />
+    </svg>
+  );
+}
+// ============================================
+// ICÔNES MANQUANTES POUR LES ANNONCES
+// ============================================
+
+export function ImageIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <rect x="2" y="3" width="20" height="18" rx="2.5" />
+      <path d="M7.5 7.5h.01" strokeWidth={2} strokeLinecap="round" />
+      <path d="M3 17l5-4 3 2.5 4-5 5 6.5" />
+    </svg>
+  );
+}
+
+export function DiscountIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M12.5 2H7a1 1 0 0 0-.7.3L2.3 6.3A1 1 0 0 0 2 7v5.6a1 1 0 0 0 .3.7l8.4 8.4a2 2 0 0 0 2.8 0l7-7a2 2 0 0 0 0-2.8L12.5 2z" />
+      <circle cx="7.5" cy="7.5" r="1.2" fill="currentColor" stroke="none" />
+      <path d="M15.5 8.5L8.5 15.5" strokeWidth={1.8} />
+    </svg>
+  );
+}
+
+export function ArchiveIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <rect x="3" y="19" width="18" height="3" rx="1" />
+      <path d="M5 19V8h14v11" />
+      <path d="M8 19V5h8v14" />
+      <path d="M11 8v6M13 8v6" />
+    </svg>
+  );
+}
+
+export function RefreshIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.36 2.64L21 8" />
+      <path d="M21 3v5h-5" />
+      <path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-6.36-2.64L3 16" />
+      <path d="M3 21v-5h5" />
+    </svg>
+  );
+}
+
+
+export function DashboardIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <rect x="3" y="3" width="7.5" height="7.5" rx="1.5" />
+      <rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5" />
+      <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5" />
+      <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5" />
+      <path d="M6.75 6.75h.01" strokeWidth={2} strokeLinecap="round" />
+      <path d="M17.25 6.75h.01" strokeWidth={2} strokeLinecap="round" />
+      <path d="M6.75 17.25h.01" strokeWidth={2} strokeLinecap="round" />
+      <path d="M17.25 17.25h.01" strokeWidth={2} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+
+
+
+
+
