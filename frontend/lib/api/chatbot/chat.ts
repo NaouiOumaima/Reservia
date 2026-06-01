@@ -10,8 +10,9 @@ import { ChatRequest, ChatResponse, StreamingChunk } from './types';
  */
 export async function sendMessage(request: ChatRequest): Promise<ChatResponse> {
   try {
-    const response = await apiClient.post<ChatResponse>('/ai/chatbot', request);
-    
+const response = await apiClient.post<ChatResponse>('/ai/chatbot', request, {
+  timeout: 180000, // 3 minutes pour Ollama
+});    
     // S'assurer que la réponse contient un sessionId
     const data = response.data;
     if (!data.sessionId && request.sessionId) {

@@ -307,6 +307,16 @@ export class NlpService {
           return r + ': إليك النتائج.';
         },
       },
+      ranking: {
+  fr: () => {
+    let r = 'Voici le classement ';
+    if (entities.category) r += `des ${entities.category}s `;
+    return r + 'selon les avis clients.';
+  },
+  en: () => 'Here is the ranking based on customer reviews.',
+  tn: () => 'Haw el classement b ra2yet el clients.',
+  ar: () => 'إليك الترتيب حسب تقييمات العملاء.',
+},
       booking: {
         fr: () => {
           let r = 'Je vous aide à réserver. ';

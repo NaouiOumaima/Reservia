@@ -7,6 +7,7 @@ import {
   ChatResponse,
   RecommendationsResponse 
 } from '@/lib/api';
+import { useAuth } from '@/providers/AuthProvider';
 
 interface Message {
   id: string;
@@ -18,6 +19,7 @@ interface Message {
 }
 
 export default function Chatbot() {
+  const { user } = useAuth(); // Récupérer l'utilisateur connecté
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { 
@@ -39,17 +41,33 @@ export default function Chatbot() {
   const recognitionRef = useRef<any>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Vérifier si l'utilisateur peut accéder au chatbot (client ou visiteur)
+  const canAccessChatbot = () => {
+    if (!user) return true; // Visiteur (non connecté)
+    const userRole = user.role?.toLowerCase();
+    return userRole === 'client' || userRole === 'visiteur' || userRole === 'customer';
+  };
+
+  // Ne pas afficher le chatbot si l'utilisateur est admin ou provider
+  if (!canAccessChatbot()) {
+    return null;
+  }
+
   // Charger l'utilisateur connecté
   useEffect(() => {
-    const storedUserId = localStorage.getItem('userId');
-    if (storedUserId) {
-      setUserId(storedUserId);
+    if (user) {
+      setUserId(user._id);
+    } else {
+      const storedUserId = localStorage.getItem('userId');
+      if (storedUserId) {
+        setUserId(storedUserId);
+      }
     }
-  }, []);
+  }, [user]);
 
   // Charger les recommandations si utilisateur connecté
   useEffect(() => {
-    if (userId && isOpen) {
+    if (userId && isOpen && canAccessChatbot()) {
       loadRecommendations();
     }
   }, [userId, isOpen]);
@@ -137,7 +155,7 @@ export default function Chatbot() {
       setInput('');
       
       if (event.error === 'not-allowed') {
-        alert('Veuillez autoriser l\'acces au microphone pour utiliser la reconnaissance vocale.');
+        alert('Veuillez autoriser l\'accès au microphone pour utiliser la reconnaissance vocale.');
       }
     };
 
@@ -177,14 +195,13 @@ export default function Chatbot() {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setLoading(true);
-
-    const typingIndicator: Message = {
-      id: (Date.now() + 1).toString(),
-      role: 'assistant',
-      content: '...',
-      timestamp: new Date(),
-      isTyping: true
-    };
+const typingIndicator: Message = {
+  id: (Date.now() + 1).toString(),
+  role: 'assistant',
+  content: '⏳ Llama3 réfléchit... (première réponse ~30-60s, les suivantes seront rapides)',
+  timestamp: new Date(),
+  isTyping: true
+};
     setMessages(prev => [...prev, typingIndicator]);
 
     try {
@@ -220,7 +237,7 @@ export default function Chatbot() {
         const suggestionsMessage: Message = {
           id: (Date.now() + 3).toString(),
           role: 'assistant',
-          content: `Actions suggerees :\n${response.suggestedActions.map(a => `- ${a}`).join('\n')}`,
+          content: `Actions suggérées :\n${response.suggestedActions.map(a => `- ${a}`).join('\n')}`,
           timestamp: new Date(),
           intent: 'suggestions'
         };
@@ -232,19 +249,21 @@ export default function Chatbot() {
       }
 
     } catch (error: any) {
-      setMessages(prev => prev.filter(m => !m.isTyping));
-      
-      const errorMessage: Message = {
-        id: (Date.now() + 2).toString(),
-        role: 'assistant',
-        content: error.message === 'Trop de requetes. Veuillez patienter.' 
-          ? 'Trop de requetes ! Veuillez patienter quelques secondes avant de continuer.'
-          : 'Desole, une erreur est survenue. Veuillez reessayer.',
-        timestamp: new Date(),
-        intent: 'error'
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
+  setMessages(prev => prev.filter(m => !m.isTyping));
+  
+  const errorMessage: Message = {
+    id: (Date.now() + 2).toString(),
+    role: 'assistant',
+    content: error.message === 'Trop de requêtes. Veuillez patienter.' 
+      ? 'Trop de requêtes ! Veuillez patienter quelques secondes avant de continuer.'
+      : error.message === 'timeout'
+      ? '⏳ Ollama met du temps à répondre.\n\nVérifiez que Ollama tourne bien, puis réessayez. La première réponse prend ~60s.'
+      : 'Désolé, une erreur est survenue. Veuillez réessayer.',
+    timestamp: new Date(),
+    intent: 'error'
+  };
+  setMessages(prev => [...prev, errorMessage]);
+}finally {
       setLoading(false);
     }
   };
@@ -267,13 +286,12 @@ export default function Chatbot() {
     window.speechSynthesis.speak(utterance);
   };
 
-  const quickActions = [
-    { label: 'Rechercher', action: 'Je cherche un restaurant' },
-    { label: 'Reserver', action: 'Je veux reserver' },
-    { label: 'Annuler', action: 'Annuler ma reservation' },
-    { label: 'Aide', action: 'Aide' }
-  ];
-
+ const quickActions = [
+  { label: '🏆 Top services', action: 'Quels sont les meilleurs services ?' },
+  { label: '🔍 Rechercher', action: 'Je cherche un restaurant' },
+  { label: '📅 Réserver', action: 'Je veux réserver' },
+  { label: '❌ Annuler', action: 'Annuler ma réservation' },
+];
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey && !isListening) {
       e.preventDefault();
@@ -308,34 +326,34 @@ export default function Chatbot() {
       {isOpen && (
         <div className="chatbot-window">
           {/* En-tête */}
-<div className="chatbot-header">
-  <div className="chatbot-header-content">
-    <div className="chatbot-avatar">
-      <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-      </svg>
-    </div>
-    <div className="flex-1">
-      <h3 className="chatbot-title">Assistant IA Reservia</h3>
-      <p className="chatbot-subtitle">Toujours la pour vous aider</p>
-    </div>
-    {recommendations.length > 0 && (
-      <div className="chatbot-badge">
-        {recommendations.length} recommandations
-      </div>
-    )}
-    {/* BOUTON DE FERMETURE - AJOUTER ICI */}
-    <button
-      onClick={() => setIsOpen(false)}
-      className="chatbot-close-btn"
-      aria-label="Fermer l'assistant"
-    >
-      <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-      </svg>
-    </button>
-  </div>
-</div>
+          <div className="chatbot-header">
+            <div className="chatbot-header-content">
+              <div className="chatbot-avatar">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="chatbot-title">Assistant IA Reservia</h3>
+                <p className="chatbot-subtitle">Toujours là pour vous aider</p>
+              </div>
+              {recommendations.length > 0 && (
+                <div className="chatbot-badge">
+                  {recommendations.length} recommandations
+                </div>
+              )}
+              {/* Bouton de fermeture */}
+              <button
+                onClick={() => setIsOpen(false)}
+                className="chatbot-close-btn"
+                aria-label="Fermer l'assistant"
+              >
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
 
           {/* Messages */}
           <div className="chatbot-messages">
@@ -387,7 +405,7 @@ export default function Chatbot() {
           {/* Indicateur d'écoute */}
           {isListening && (
             <div className="chatbot-listening">
-              Ecoute en cours... Parlez maintenant
+              Écoute en cours... Parlez maintenant
             </div>
           )}
 
@@ -398,7 +416,7 @@ export default function Chatbot() {
                 onClick={isListening ? stopListening : startListening}
                 disabled={loading}
                 className={`chatbot-mic-btn ${isListening ? 'chatbot-mic-btn-active' : ''}`}
-                title={isListening ? "Arreter l'ecoute" : "Reconnaissance vocale"}
+                title={isListening ? "Arrêter l'écoute" : "Reconnaissance vocale"}
               >
                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
@@ -412,7 +430,7 @@ export default function Chatbot() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 disabled={loading || isListening}
-                placeholder={isListening ? 'Ecoute en cours...' : 'Tapez votre message...'}
+                placeholder={isListening ? 'Écoute en cours...' : 'Tapez votre message...'}
                 className="chatbot-input"
               />
               

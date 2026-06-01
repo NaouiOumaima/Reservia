@@ -7,7 +7,7 @@ export * from './auth';
 
 // Services
 export { servicesApi } from './services';
-export type { CreateServiceData, ServiceFilters } from './services';
+export type * from './services';
 
 // Reservations
 export { reservationsApi } from './reservations';

@@ -38,6 +38,16 @@ export const INTENT_KEYWORDS_FR: Record<string, string[]> = {
     'je veux savoir', 'je cherche a savoir', 'j aimerais voir',
     'j aimerais connaitre', 'j aimerais savoir',
   ],
+  ranking: [
+  'meilleur', 'meilleurs', 'meilleures', 'top', 'classement',
+  'mieux note', 'mieux notes', 'les mieux notes', 'les mieux notés',
+  'recommande', 'recommandes', 'populaire', 'populaires',
+  'le plus populaire', 'les plus populaires', 'tendance',
+  'bien note', 'bien notes', 'note', 'notes', 'avis',
+  'par avis', 'selon avis', 'selon les avis', 'classé par',
+  'classés par avis', 'les mieux évalués', 'evaluation',
+  'rang', 'ranking', 'top service', 'top services',
+],
   booking: [
     // verbes de réservation
     'reserver', 'reservation', 'reservations', 'reservez', 'je veux reserver',
@@ -182,6 +192,13 @@ export const INTENT_KEYWORDS_EN: Record<string, string[]> = {
     'what do you recommend', 'what would you suggest',
     'i want to know', 'i d like to know', 'i would like to know',
   ],
+  ranking: [
+  'best', 'top', 'highest rated', 'best rated', 'most popular',
+  'popular', 'trending', 'recommended', 'top rated',
+  'by rating', 'by reviews', 'ranked', 'ranking',
+  'highest reviews', 'most reviewed', 'well rated',
+  'top services', 'best services', 'by score',
+],
   booking: [
     // book
     'book', 'booking', 'reserve', 'reservation', 'reservations',
@@ -302,6 +319,14 @@ export const INTENT_KEYWORDS_TN: Record<string, string[]> = {
     'ktibli', '7ottli', 'hab', 'habb', 'hatli', 'hebbili',
     'aawedhli', 'wriha', 'wurini',
   ],
+  ranking: [
+  'a7san', 'ahsen', 'ahsan', 'a7sen', 'el a7san', 'el ahsen',
+  'mzyan barsha', 'mzyaneen', 'kbir beli', 'el top',
+  'popular', 'populaires', 'mashhour', 'machhoura',
+  'b nota', 'b ra2y', 'b ra2yet', 'mnajjem',
+  'a7la khidma', 'a7la khidmet', 'el best',
+  'b taqyim', 'taqyim', 'b avis',
+],
   booking: [
     // réserver — toutes variations phonétiques
     'hejez', 'hejiz', 'hajez', 'hjez', 'hjiz', 'heji', 'haji', 'hji',
@@ -452,6 +477,12 @@ export const INTENT_KEYWORDS_AR: Record<string, string[]> = {
     'اقترح', 'اقترح لي', 'انصحني', 'انصح لي',
     'ماذا تنصح', 'ماذا تقترح', 'ماذا توصي',
   ],
+  ranking: [
+  'الأفضل', 'أفضل', 'الأعلى تقييماً', 'الأعلى تقييما', 'أعلى تقييم',
+  'الأكثر شعبية', 'شعبية', 'مشهور', 'مشهورة', 'موصى به',
+  'حسب التقييم', 'حسب الآراء', 'ترتيب', 'تصنيف',
+  'الأفضل تقييماً', 'الخدمات المميزة', 'أحسن خدمة',
+],
   booking: [
     // حجز
     'احجز', 'احجز لي', 'حجز', 'حجوزة', 'الحجز', 'اريد حجز',
@@ -894,6 +925,18 @@ export const LOCALIZED_RESPONSES: Record<string, Record<Language, string | strin
     tn: "❌ Mochkel fi el recherche. 3awed jareb.",
     ar: "❌ خطأ في البحث. حاول مرة أخرى.",
   },
+  ranking_results: {
+  fr: '🏆 **Top services classés par avis clients :**\n\n',
+  en: '🏆 **Top services ranked by customer reviews:**\n\n',
+  tn: '🏆 **Hethem a7sen Services 7aseb les avis mete3 el clients:**\n\n',
+  ar: '🏆 **أفضل الخدمات حسب تقييمات العملاء:**\n\n',
+},
+ranking_no_results: {
+  fr: "😕 Aucun service avec des avis pour le moment.",
+  en: "😕 No reviewed services found at the moment.",
+  tn: "😕 Désole mefemch ",
+  ar: "😕 لا توجد خدمات مقيّمة حالياً.",
+},
   booking_no_login: {
     fr: "🔐 Connectez-vous pour faire une réservation.",
     en: "🔐 Please log in to make a reservation.",
