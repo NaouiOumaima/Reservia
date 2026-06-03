@@ -900,7 +900,23 @@ export function DashboardIcon({ className = "w-6 h-6", size }: IconProps) {
     </svg>
   );
 }
+export function FilterIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <path d="M3 4.5h18M6 12h12M9.5 19.5h5" />
+    </svg>
+  );
+}
 
+export function XCircleIcon({ className = "w-6 h-6", size }: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="M15 9l-6 6" />
+      <path d="M9 9l6 6" />
+    </svg>
+  );
+}
 
 
 
