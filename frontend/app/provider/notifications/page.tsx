@@ -50,7 +50,6 @@ interface Advertisement {
 
 type TabType = 'create' | 'active' | 'archived';
 
-// Fonction pour compresser l'image
 const compressImage = (file: File, maxWidth: number = 800, quality: number = 0.7): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -83,38 +82,23 @@ const compressImage = (file: File, maxWidth: number = 800, quality: number = 0.7
   });
 };
 
-// Fonction pour obtenir l'URL de l'image
 const getImageUrl = (ad: Advertisement): string | null => {
   const imageValue = ad.imageBase64 || ad.imageUrl;
-  
-  if (!imageValue) {
-    return null;
-  }
-  
-  if (imageValue.startsWith('http://') || imageValue.startsWith('https://')) {
-    return imageValue;
-  }
-  
-  if (imageValue.startsWith('data:')) {
-    return imageValue;
-  }
-  
-  if (imageValue.startsWith('/uploads/')) {
-    return `http://localhost:3001${imageValue}`;
-  }
-  
+  if (!imageValue) return null;
+  if (imageValue.startsWith('http://') || imageValue.startsWith('https://')) return imageValue;
+  if (imageValue.startsWith('data:')) return imageValue;
+  if (imageValue.startsWith('/uploads/')) return `http://localhost:3001${imageValue}`;
   return imageValue;
 };
 
-// Composant Carte d'annonce
 function AdvertisementCard({ ad, onDelete, onRefresh }: { ad: Advertisement; onDelete: (id: string) => void; onRefresh: () => void }) {
   const [deleting, setDeleting] = useState(false);
   const [imageError, setImageError] = useState(false);
   const imageUrl = getImageUrl(ad);
+  const isActive = ad.status === 'active';
 
   const handleDelete = async () => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cette annonce ?')) return;
-    
     setDeleting(true);
     try {
       await apiClient.delete(`/advertisements/${ad._id}`);
@@ -127,77 +111,61 @@ function AdvertisementCard({ ad, onDelete, onRefresh }: { ad: Advertisement; onD
     }
   };
 
-  const isActive = ad.status === 'active';
-
   return (
-    <div className="card hover:shadow-lg transition-all duration-300 animate-fadeInUp">
-      <div className="flex flex-col md:flex-row gap-4">
-        {/* Image */}
-        <div className="md:w-48 h-32 bg-surface-raised rounded-lg overflow-hidden flex-shrink-0">
+    <div className="ad-card">
+      <div className="flex flex-col md:flex-row">
+        <div className="md:w-48 flex-shrink-0">
           {imageUrl && !imageError ? (
-            <img
-              src={imageUrl}
-              alt={ad.title}
-              className="w-full h-full object-cover"
-              onError={() => setImageError(true)}
-            />
+            <img src={imageUrl} alt={ad.title} className="ad-card-image" onError={() => setImageError(true)} />
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-surface-overlay gap-1">
-              <ImageIcon className="w-8 h-8 text-muted" />
-              <span className="text-xs text-muted">Pas d'image</span>
+            <div className="ad-card-image-placeholder">
+              <ImageIcon className="w-8 h-8" />
+              <span className="text-xs text-subtle">Pas d'image</span>
             </div>
           )}
         </div>
         
-        {/* Contenu */}
-        <div className="flex-1">
+        <div className="ad-card-content flex-1">
           <div className="flex items-start justify-between flex-wrap gap-2">
             <div>
-              <h3 className="font-semibold text-foreground text-lg">{ad.title}</h3>
-              <p className="text-muted text-sm mt-1 line-clamp-2">{ad.description}</p>
+              <h3 className="ad-card-title">{ad.title}</h3>
+              <p className="ad-card-description">{ad.description}</p>
             </div>
-            <div className="flex gap-2">
-              <span className={`badge ${isActive ? 'badge-success' : 'badge-secondary'}`}>
-                {isActive ? 'Actif' : 'Inactif'}
-              </span>
-            </div>
+            <span className={`badge ${isActive ? 'badge-success' : 'badge-secondary'}`}>
+              {isActive ? 'Actif' : 'Inactif'}
+            </span>
           </div>
           
-          <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted">
+          <div className="ad-card-meta">
             {ad.discountCode && (
-              <div className="flex items-center gap-1">
+              <div className="ad-card-meta-item">
                 <DiscountIcon className="w-3 h-3" />
                 <span>Code: {ad.discountCode}</span>
                 {ad.discountPercentage && <span>(-{ad.discountPercentage}%)</span>}
               </div>
             )}
             {ad.validUntil && (
-              <div className="flex items-center gap-1">
+              <div className="ad-card-meta-item">
                 <CalendarIcon className="w-3 h-3" />
-                <span>Expire le: {new Date(ad.validUntil).toLocaleDateString('fr-FR')}</span>
+                <span>Expire: {new Date(ad.validUntil).toLocaleDateString('fr-FR')}</span>
               </div>
             )}
-            <div className="flex items-center gap-1">
+            <div className="ad-card-meta-item">
               <EyeIcon className="w-3 h-3" />
               <span>{ad.viewsCount} vues</span>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="ad-card-meta-item">
               <ClockIcon className="w-3 h-3" />
-              <span>Créée le: {new Date(ad.createdAt).toLocaleDateString('fr-FR')}</span>
+              <span>Créée: {new Date(ad.createdAt).toLocaleDateString('fr-FR')}</span>
             </div>
           </div>
-        </div>
-        
-        {/* Actions */}
-        <div className="flex flex-row md:flex-col gap-2">
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="btn btn-sm bg-error/10 text-error hover:bg-error hover:text-white transition-colors"
-          >
-            {deleting ? <Loader2Icon className="w-4 h-4 animate-spin" /> : <TrashIcon className="w-4 h-4" />}
-            Supprimer
-          </button>
+          
+          <div className="ad-card-actions">
+            <button onClick={handleDelete} disabled={deleting} className="btn btn-sm bg-error/10 text-error hover:bg-error hover:text-white">
+              {deleting ? <Loader2Icon className="w-4 h-4 animate-spin" /> : <TrashIcon className="w-4 h-4" />}
+              Supprimer
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -211,6 +179,7 @@ export default function ProviderNotificationsPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [advertisements, setAdvertisements] = useState<Advertisement[]>([]);
   const [loadingAds, setLoadingAds] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [formData, setFormData] = useState<FormData>({
     title: '',
     description: '',
@@ -219,28 +188,27 @@ export default function ProviderNotificationsPage() {
     validUntil: '',
   });
 
-  // Charger les annonces
   const loadAdvertisements = useCallback(async () => {
     setLoadingAds(true);
     try {
       const timestamp = Date.now();
       const response = await apiClient.get(`/advertisements/provider?t=${timestamp}`);
-      console.log('Annonces reçues:', response.data);
       setAdvertisements(response.data);
     } catch (error) {
       console.error('Erreur chargement annonces:', error);
       toast.error('Erreur lors du chargement des annonces');
     } finally {
       setLoadingAds(false);
+      setInitialLoading(false);
     }
   }, []);
 
-  // Recharger quand on change d'onglet
   useEffect(() => {
-    if (activeTab === 'active' || activeTab === 'archived') {
-      loadAdvertisements();
-    }
-  }, [activeTab, loadAdvertisements]);
+    loadAdvertisements();
+  }, [loadAdvertisements]);
+
+  const activeAds = advertisements.filter(ad => ad.status === 'active');
+  const archivedAds = advertisements.filter(ad => ad.status !== 'active');
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -295,7 +263,6 @@ export default function ProviderNotificationsPage() {
         validUntil: '',
       });
       setImagePreview(null);
-      
       loadAdvertisements();
     } catch (error: any) {
       console.error('Erreur:', error);
@@ -308,117 +275,140 @@ export default function ProviderNotificationsPage() {
   const set = (key: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setFormData(p => ({ ...p, [key]: e.target.value }));
 
-  // Filtrer les annonces
-  const activeAds = advertisements.filter(ad => ad.status === 'active');
-  const archivedAds = advertisements.filter(ad => ad.status !== 'active');
-
   return (
     <>
       <Toaster position="top-right" />
 
-      <div className="admin-users-page">
-        <div className="admin-users-container max-w-4xl">
+      <div className="provider-notifications-page">
+        <div className="notifications-container">
 
           {/* Header */}
-          <div className="admin-users-header animate-fadeIn">
+          <div className="notifications-header">
             <button onClick={() => router.back()} className="btn btn-ghost btn-sm mb-4">
               <ChevronLeftIcon className="w-4 h-4" />
               Retour
             </button>
-            <h1 className="admin-users-title">Gestion des annonces</h1>
-            <p className="admin-users-subtitle">Créez et gérez vos annonces publicitaires</p>
+            <h1>Gestion des annonces</h1>
+            <p className="notifications-subtitle">Créez et gérez vos annonces publicitaires</p>
+          </div>
+
+          {/* Stats Row */}
+          <div className="stats-row animate-fadeInUp">
+            <div className="stat-card-mini">
+              <div className="stat-card-mini-value">{activeAds.length}</div>
+              <div className="stat-card-mini-label">Actives</div>
+            </div>
+            <div className="stat-card-mini">
+              <div className="stat-card-mini-value">{archivedAds.length}</div>
+              <div className="stat-card-mini-label">Archivées</div>
+            </div>
+            <div className="stat-card-mini">
+              <div className="stat-card-mini-value">{advertisements.length}</div>
+              <div className="stat-card-mini-label">Total</div>
+            </div>
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-2 mb-6 border-b border-[rgb(var(--border))]">
+          <div className="notifications-tabs">
             <button
               onClick={() => setActiveTab('create')}
-              className={`px-4 py-2 font-medium transition-all ${
-                activeTab === 'create'
-                  ? 'text-primary border-b-2 border-primary'
-                  : 'text-muted hover:text-foreground'
-              }`}
+              className={`notifications-tab ${activeTab === 'create' ? 'active' : ''}`}
             >
-              <MegaphoneIcon className="w-4 h-4 inline mr-2" />
+              <MegaphoneIcon className="w-4 h-4" />
               Créer
             </button>
             <button
               onClick={() => setActiveTab('active')}
-              className={`px-4 py-2 font-medium transition-all ${
-                activeTab === 'active'
-                  ? 'text-primary border-b-2 border-primary'
-                  : 'text-muted hover:text-foreground'
-              }`}
+              className={`notifications-tab ${activeTab === 'active' ? 'active' : ''}`}
             >
-              <CheckCircleIcon className="w-4 h-4 inline mr-2" />
-              Actives ({activeAds.length})
+              <CheckCircleIcon className="w-4 h-4" />
+              Actives
+              {!initialLoading && (
+                <span className="notifications-tab-badge">{activeAds.length}</span>
+              )}
             </button>
             <button
               onClick={() => setActiveTab('archived')}
-              className={`px-4 py-2 font-medium transition-all ${
-                activeTab === 'archived'
-                  ? 'text-primary border-b-2 border-primary'
-                  : 'text-muted hover:text-foreground'
-              }`}
+              className={`notifications-tab ${activeTab === 'archived' ? 'active' : ''}`}
             >
-              <ArchiveIcon className="w-4 h-4 inline mr-2" />
-              Archives ({archivedAds.length})
+              <ArchiveIcon className="w-4 h-4" />
+              Archives
+              {!initialLoading && (
+                <span className="notifications-tab-badge">{archivedAds.length}</span>
+              )}
             </button>
           </div>
 
+          {/* Loading State */}
+          {initialLoading && (
+            <div className="loading-spinner">
+              <Loader2Icon className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-muted">Chargement de vos annonces...</p>
+            </div>
+          )}
+
           {/* Onglet Création */}
-          {activeTab === 'create' && (
+          {!initialLoading && activeTab === 'create' && (
             <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-              {/* Image section */}
-              <div className="card animate-fadeInUp">
-                <label className="label mb-3 flex items-center gap-2">
-                  <UploadIcon className="w-4 h-4" />
-                  Image *
-                </label>
-                <div className="border-2 border-dashed border-[rgb(var(--border))] rounded-lg p-8 text-center transition-all hover:border-primary cursor-pointer">
+              {/* Image Upload */}
+              <div className="form-section">
+                <div className="form-section-title">
+                  <UploadIcon className="w-5 h-5 text-primary" />
+                  Image
+                  <span className="badge badge-primary ml-2">Obligatoire</span>
+                </div>
+                <div className="image-upload-zone" onClick={() => document.getElementById('image-upload')?.click()}>
                   {imagePreview ? (
-                    <div className="relative inline-block">
-                      <img src={imagePreview} alt="Aperçu" className="w-80 h-48 object-cover rounded-md shadow-md" />
-                      <button type="button" onClick={() => setImagePreview(null)} className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-error text-white flex items-center justify-center hover:scale-110 transition-transform">
+                    <div className="image-preview">
+                      <img src={imagePreview} alt="Aperçu" className="image-preview-img" />
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setImagePreview(null); }}
+                        className="image-preview-remove"
+                      >
                         <CloseIcon className="w-3 h-3" />
                       </button>
                     </div>
                   ) : (
                     <>
-                      <UploadIcon className="w-12 h-12 text-subtle mx-auto mb-3" />
-                      <label htmlFor="image-upload" className="cursor-pointer">
-                        <span className="text-primary font-semibold hover:underline">Choisir une image</span>
-                        <input id="image-upload" type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={handleImageSelect} className="hidden" />
-                      </label>
-                      <p className="text-subtle text-xs mt-3">PNG, JPG, GIF, WEBP — max 5MB</p>
+                      <UploadIcon className="image-upload-icon" />
+                      <p className="text-muted mb-2">Cliquez ou glissez une image</p>
+                      <input id="image-upload" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageSelect} className="hidden" />
+                      <p className="text-subtle text-xs">PNG, JPG, WEBP — max 5MB</p>
                     </>
                   )}
                 </div>
               </div>
 
               {/* Title */}
-              <div className="card animate-fadeInUp">
-                <label className="label">Titre *</label>
+              <div className="form-section">
+                <label className="label">Titre</label>
                 <input type="text" required value={formData.title} onChange={set('title')} className="input" placeholder="Ex: -20% sur tous nos services" />
               </div>
 
               {/* Description */}
-              <div className="card animate-fadeInUp">
-                <label className="label">Description *</label>
+              <div className="form-section">
+                <label className="label">Description</label>
                 <textarea required rows={4} value={formData.description} onChange={set('description')} className="input resize-y" placeholder="Détails de votre offre..." />
               </div>
 
-              {/* Promo offer */}
-              <div className="card animate-fadeInUp">
-                <div className="flex items-center gap-2 mb-4">
+              {/* Promo Offer */}
+              <div className="form-section">
+                <div className="form-section-title">
                   <TagIcon className="w-5 h-5 text-primary" />
-                  <h3 className="text-base font-semibold text-foreground m-0">Offre promotionnelle</h3>
-                  <span className="badge badge-primary">Optionnel</span>
+                  Offre promotionnelle
+                  <span className="badge badge-primary ml-2">Optionnel</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="label">Code promo</label>
-                    <input type="text" value={formData.discountCode} onChange={e => setFormData(p => ({ ...p, discountCode: e.target.value.toUpperCase() }))} className="input uppercase tracking-wide font-mono" placeholder="PROMO20" />
+                    <input
+                      type="text"
+                      value={formData.discountCode}
+                      onChange={e => setFormData(p => ({ ...p, discountCode: e.target.value.toUpperCase() }))}
+                      className="input uppercase tracking-wide font-mono"
+                      placeholder="PROMO20"
+                    />
                   </div>
                   <div>
                     <label className="label">Réduction (%)</label>
@@ -427,65 +417,99 @@ export default function ProviderNotificationsPage() {
                 </div>
               </div>
 
-              {/* Expiration date */}
-              <div className="card animate-fadeInUp">
-                <div className="flex items-center gap-2 mb-2">
-                  <CalendarIcon className="w-4 h-4 text-muted" />
-                  <label className="label m-0">Date d'expiration</label>
-                  <span className="badge bg-surface-raised text-foreground-muted">Optionnel</span>
+              {/* Expiration Date */}
+              <div className="form-section">
+                <div className="form-section-title">
+                  <CalendarIcon className="w-5 h-5 text-primary" />
+                  Date d'expiration
+                  <span className="badge badge-primary ml-2">Optionnel</span>
                 </div>
                 <input type="date" value={formData.validUntil} onChange={set('validUntil')} className="input" min={new Date().toISOString().split('T')[0]} />
                 <p className="text-subtle text-xs mt-2">Laissez vide pour une durée illimitée</p>
               </div>
 
-              {/* Information panel */}
-              <div className="bg-primary-soft rounded-lg p-4 animate-fadeInUp">
-                <div className="flex items-start gap-3">
-                  <CheckCircleIcon className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+              {/* Info Panel */}
+              <div className="info-panel">
+                <div className="info-panel-content">
+                  <CheckCircleIcon className="info-panel-icon w-5 h-5" />
                   <div>
-                    <p className="font-semibold text-foreground m-0">Envoyée à tous les clients actifs</p>
-                    <p className="text-foreground-muted text-xs mt-1 m-0">L'annonce sera envoyée uniquement aux clients avec un compte activé et non banni.</p>
+                    <p className="info-panel-title">Envoyée à tous les clients actifs</p>
+                    <p className="info-panel-text">L'annonce sera envoyée uniquement aux clients avec un compte activé et non banni.</p>
                   </div>
                 </div>
               </div>
 
-              {/* Submit button */}
-              <button type="submit" disabled={loading || !imagePreview} className="btn btn-primary btn-lg w-full animate-fadeInUp">
-                {loading ? <><Loader2Icon className="w-5 h-5 animate-spin" /> Création...</> : <><MegaphoneIcon className="w-5 h-5" /> Publier</>}
+              {/* Submit Button */}
+              <button type="submit" disabled={loading || !imagePreview} className="btn btn-primary btn-lg w-full">
+                {loading ? (
+                  <><Loader2Icon className="w-5 h-5 animate-spin" /> Création...</>
+                ) : (
+                  <><MegaphoneIcon className="w-5 h-5" /> Publier l'annonce</>
+                )}
               </button>
             </form>
           )}
 
           {/* Onglet Annonces Actives */}
-          {activeTab === 'active' && (
+          {!initialLoading && activeTab === 'active' && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h2 className="text-lg font-semibold text-foreground">Actives ({activeAds.length})</h2>
-                <button onClick={loadAdvertisements} className="btn btn-ghost btn-sm"><RefreshIcon className="w-4 h-4" /> Rafraîchir</button>
+                <button onClick={loadAdvertisements} className="btn btn-ghost btn-sm" disabled={loadingAds}>
+                  {loadingAds ? <Loader2Icon className="w-4 h-4 animate-spin" /> : <RefreshIcon className="w-4 h-4" />}
+                  Rafraîchir
+                </button>
               </div>
+
               {loadingAds ? (
-                <div className="text-center py-12"><Loader2Icon className="w-8 h-8 animate-spin text-primary mx-auto" /><p className="text-muted mt-2">Chargement...</p></div>
+                <div className="loading-spinner">
+                  <Loader2Icon className="w-8 h-8 animate-spin text-primary" />
+                  <p className="text-muted">Chargement...</p>
+                </div>
               ) : activeAds.length === 0 ? (
-                <div className="text-center py-12 bg-surface rounded-lg border border-border"><MegaphoneIcon className="w-12 h-12 text-muted mx-auto mb-3" /><h3 className="text-lg font-semibold text-foreground">Aucune annonce active</h3></div>
+                <div className="empty-state">
+                  <div className="empty-state-icon">
+                    <MegaphoneIcon className="w-8 h-8" />
+                  </div>
+                  <h3 className="empty-state-title">Aucune annonce active</h3>
+                  <p className="empty-state-text">Créez votre première annonce dans l'onglet "Créer"</p>
+                </div>
               ) : (
-                activeAds.map((ad) => <AdvertisementCard key={ad._id} ad={ad} onDelete={() => loadAdvertisements()} onRefresh={loadAdvertisements} />)
+                activeAds.map((ad) => (
+                  <AdvertisementCard key={ad._id} ad={ad} onDelete={() => loadAdvertisements()} onRefresh={loadAdvertisements} />
+                ))
               )}
             </div>
           )}
 
           {/* Onglet Archives */}
-          {activeTab === 'archived' && (
+          {!initialLoading && activeTab === 'archived' && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h2 className="text-lg font-semibold text-foreground">Archives ({archivedAds.length})</h2>
-                <button onClick={loadAdvertisements} className="btn btn-ghost btn-sm"><RefreshIcon className="w-4 h-4" /> Rafraîchir</button>
+                <button onClick={loadAdvertisements} className="btn btn-ghost btn-sm" disabled={loadingAds}>
+                  {loadingAds ? <Loader2Icon className="w-4 h-4 animate-spin" /> : <RefreshIcon className="w-4 h-4" />}
+                  Rafraîchir
+                </button>
               </div>
+
               {loadingAds ? (
-                <div className="text-center py-12"><Loader2Icon className="w-8 h-8 animate-spin text-primary mx-auto" /><p className="text-muted mt-2">Chargement...</p></div>
+                <div className="loading-spinner">
+                  <Loader2Icon className="w-8 h-8 animate-spin text-primary" />
+                  <p className="text-muted">Chargement...</p>
+                </div>
               ) : archivedAds.length === 0 ? (
-                <div className="text-center py-12 bg-surface rounded-lg border border-border"><ArchiveIcon className="w-12 h-12 text-muted mx-auto mb-3" /><h3 className="text-lg font-semibold text-foreground">Aucune annonce archivée</h3></div>
+                <div className="empty-state">
+                  <div className="empty-state-icon">
+                    <ArchiveIcon className="w-8 h-8" />
+                  </div>
+                  <h3 className="empty-state-title">Aucune annonce archivée</h3>
+                  <p className="empty-state-text">Les annonces expirées apparaîtront ici</p>
+                </div>
               ) : (
-                archivedAds.map((ad) => <AdvertisementCard key={ad._id} ad={ad} onDelete={() => loadAdvertisements()} onRefresh={loadAdvertisements} />)
+                archivedAds.map((ad) => (
+                  <AdvertisementCard key={ad._id} ad={ad} onDelete={() => loadAdvertisements()} onRefresh={loadAdvertisements} />
+                ))
               )}
             </div>
           )}
