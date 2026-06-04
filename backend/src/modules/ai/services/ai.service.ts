@@ -2,6 +2,7 @@
 // ══════════════════════════════════════════════════════════════
 //  CHATBOT IA GÉNÉRATIF — Ollama + Actions DB réelles
 //  Aligné sur les schemas exacts de Reservia
+//  Version GRATUITE (sans prix)
 // ══════════════════════════════════════════════════════════════
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -58,11 +59,11 @@ interface OllamaResponse {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  SYSTEM PROMPT
+//  SYSTEM PROMPT (version gratuite)
 // ══════════════════════════════════════════════════════════════
 
 const CONVERSATION_SYSTEM = (dbContext: string) => `
-Tu es l'assistant IA de Reservia, plateforme tunisienne de réservation de services.
+Tu es l'assistant IA de Reservia, plateforme tunisienne de réservation de services GRATUITS.
 
 ## Données disponibles
 ${dbContext}
@@ -74,13 +75,13 @@ Français | English | Tunisien/Darija (nheb/nchouf/hejez/mzyan...) | Arabe
 ## Ce que tu peux faire
 - 🔍 Rechercher et présenter des services depuis la DB
 - 🏆 Classer les services par note (🥇🥈🥉)
-- 📅 Guider une réservation étape par étape
+- 📅 Guider une réservation étape par étape (GRATUIT)
 - ❌ Aider à annuler une réservation
 - ⭐ Collecter un avis sur un service
 - ❓ Répondre aux questions générales
 
 ## Format résultats
-**Nom** (Catégorie) · 📍 Ville · ⭐X.X/5 · 💰X DT
+**Nom** (Catégorie) · 📍 Ville · ⭐X.X/5 · 🎁 GRATUIT
 
 ## Guide réservation (étapes strictes)
 1. Confirme le service (montre son ID entre [])
@@ -103,6 +104,7 @@ Français | English | Tunisien/Darija (nheb/nchouf/hejez/mzyan...) | Arabe
 - Non connecté → demander de se connecter pour toute action
 - Ne jamais inventer de données absentes du contexte
 - Réponses courtes et chaleureuses
+- Important: Tous les services sont GRATUITS, ne parle jamais de prix
 `;
 
 const ACTION_EXTRACTION_PROMPT = (userMessage: string, sessionJson: string) => `
@@ -273,9 +275,9 @@ export class AiService {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // ACTION 1 : CRÉER UNE RÉSERVATION
+  // ACTION 1 : CRÉER UNE RÉSERVATION (VERSION GRATUITE)
   // Schema Reservation: clientId, serviceId, startTime, endTime,
-  //                     duration, price, status, expiresAt
+  //                     duration, status, expiresAt (PLUS DE PRICE)
   // ─────────────────────────────────────────────────────────────
 
   private async executeCreateBooking(session: SessionContext, userId: string): Promise<string> {
@@ -290,19 +292,17 @@ export class AiService {
         return `❌ Date/heure invalide: ${flow.date} ${flow.time}. Format attendu: YYYY-MM-DD HH:MM`;
       }
 
-      // Récupère le service (duration et price sont dans le schema Service)
+      // Récupère le service (duration est dans le schema Service)
       const service = await this.serviceModel
         .findById(flow.serviceId)
-        .select('name duration basePrice discountPrice')
+        .select('name duration')
         .lean().exec();
       if (!service) return '❌ Service introuvable.';
 
-      const durationMin: number = service.duration || 60;
+      const durationMin: number = (service as any).duration || 60;
       const endTime = new Date(startTime.getTime() + durationMin * 60 * 1000);
       // expiresAt = startTime + 15 minutes (délai de confirmation)
       const expiresAt = new Date(startTime.getTime() + 15 * 60 * 1000);
-      // Utilise discountPrice si disponible, sinon basePrice
-      const price: number = (service as any).discountPrice || service.basePrice;
 
       // Vérifie les conflits de créneau
       const conflict = await this.reservationModel.findOne({
@@ -315,16 +315,16 @@ export class AiService {
         return `❌ Ce créneau est déjà réservé. Choisissez un autre horaire.`;
       }
 
-      // Crée la réservation — champs exacts du schema Reservation
+      // Crée la réservation — champs exacts du schema Reservation (SANS PRICE)
       const reservation = await this.reservationModel.create({
         clientId: new Types.ObjectId(userId),
         serviceId: new Types.ObjectId(flow.serviceId),
         startTime,
         endTime,
         duration: durationMin,         // ✅ requis dans le schema
-        price,                          // ✅ requis dans le schema (pas totalPrice)
         status: 'pending',
-        expiresAt,                      // ✅ requis dans le schema
+        expiresAt,                     // ✅ requis dans le schema
+        // price SUPPRIMÉ - réservation gratuite
       });
 
       // Email de confirmation
@@ -333,7 +333,7 @@ export class AiService {
         if (user?.email) {
           await this.emailService.sendReservationConfirmation(
             user.email,
-            service.name,
+            (service as any).name,
             flow.date,
             flow.time,
             user.firstName,
@@ -346,7 +346,7 @@ export class AiService {
       // Réinitialise le flow
       session.bookingFlow = undefined;
 
-      return `✅ Réservation créée ! ID: ${reservation._id} | ${service.name} | ${startTime.toLocaleString('fr-FR')} | ${price} DT | Statut: en attente`;
+      return `✅ Réservation GRATUITE créée ! ID: ${reservation._id} | ${(service as any).name} | ${startTime.toLocaleString('fr-FR')} | Statut: en attente`;
 
     } catch (err) {
       this.logger.error(`[Booking] ${getErrorMessage(err)}`);
@@ -402,8 +402,8 @@ export class AiService {
       session.cancelFlow = undefined;
 
       const refundMsg = isFreeCancel
-        ? 'Remboursement sous 3-5 jours ouvrables.'
-        : '⚠️ Annulation moins de 24h avant — frais possibles.';
+        ? 'Réservation annulée sans frais.'
+        : '⚠️ Annulation moins de 24h avant.';
 
       return `✅ "${target.serviceName}" annulé. ${refundMsg}`;
 
@@ -414,7 +414,7 @@ export class AiService {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // ACTION 3 : CRÉER UN AVIS
+  // ACTION 3 : CRÉER UN AVIS (inchangé)
   // Schema Review: userId, userName, userEmail, reviewType,
   //               serviceId, rating, comment (tous requis)
   // ─────────────────────────────────────────────────────────────
@@ -509,7 +509,7 @@ export class AiService {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // RECALCUL RATING SERVICE
+  // RECALCUL RATING SERVICE (inchangé)
   // ─────────────────────────────────────────────────────────────
 
   private async updateServiceRating(serviceId: string): Promise<void> {
@@ -544,7 +544,7 @@ export class AiService {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // MISE À JOUR DU FLOW DE SESSION
+  // MISE À JOUR DU FLOW DE SESSION (inchangé)
   // ─────────────────────────────────────────────────────────────
 
   private updateSessionFlow(session: SessionContext, query: string): void {
@@ -576,7 +576,7 @@ export class AiService {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // CONTEXTE DB DYNAMIQUE
+  // CONTEXTE DB DYNAMIQUE (version gratuite - sans prix)
   // ─────────────────────────────────────────────────────────────
 
   private async buildDatabaseContext(
@@ -589,23 +589,22 @@ export class AiService {
     const isCancel = /annul|cancel|batel|الغ|lheg/i.test(norm) || !!session?.cancelFlow;
     const isReview = /avis|review|note|noter|تقييم|ra2y/i.test(norm) || !!session?.reviewFlow;
 
-    // 1. Services disponibles (toujours chargés)
+    // 1. Services disponibles (toujours chargés) - VERSION GRATUITE
     try {
       const services = await this.serviceModel
         .find({ isActive: true })
         .sort({ avgRating: -1, reviewCount: -1 })
         .limit(10)
-        .select('name category location basePrice discountPrice avgRating reviewCount duration')
+        .select('name category location avgRating reviewCount duration')
         .lean().exec();
 
       if (services.length > 0) {
         const lines = services.map(s => {
           const loc = s.location as any;
           const addr = [loc?.address, loc?.city].filter(Boolean).join(', ') || 'Tunisie';
-          const price = (s as any).discountPrice || s.basePrice;
-          return `• **${s.name}** [ID:${s._id}] (${s.category}) — 📍 ${addr} — ⭐${(s.avgRating || 0).toFixed(1)}/5 · ${s.reviewCount || 0} avis · 💰${price} DT · 🕐${s.duration}min`;
+          return `• **${s.name}** [ID:${s._id}] (${s.category}) — 📍 ${addr} — ⭐${(s.avgRating || 0).toFixed(1)}/5 · ${s.reviewCount || 0} avis · 🎁 GRATUIT · 🕐${s.duration}min`;
         });
-        parts.push('### Services disponibles\n' + lines.join('\n'));
+        parts.push('### Services disponibles (tous gratuits)\n' + lines.join('\n'));
       } else {
         parts.push('### Services\nAucun service actif pour le moment.');
       }
@@ -613,7 +612,7 @@ export class AiService {
       this.logger.warn(`[DB] Services: ${getErrorMessage(err)}`);
     }
 
-    // 2. Réservations actives (pour annulation)
+    // 2. Réservations actives (pour annulation) - inchangé
     if (userId && isCancel) {
       try {
         const reservations = await this.reservationModel
@@ -649,7 +648,7 @@ export class AiService {
       }
     }
 
-    // 3. Services avec réservation confirmée (pour avis)
+    // 3. Services avec réservation confirmée (pour avis) - inchangé
     if (userId && isReview) {
       try {
         const confirmed = await this.reservationModel
@@ -671,7 +670,7 @@ export class AiService {
       }
     }
 
-    // 4. Statut utilisateur
+    // 4. Statut utilisateur - inchangé
     if (userId) {
       try {
         const user = await this.userModel
@@ -690,7 +689,7 @@ export class AiService {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // APPEL OLLAMA
+  // APPEL OLLAMA (inchangé)
   // ─────────────────────────────────────────────────────────────
 
   private async callOllama(messages: ChatMessage[]): Promise<string> {
@@ -715,7 +714,7 @@ export class AiService {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // RECOMMANDATIONS
+  // RECOMMANDATIONS (version gratuite)
   // ─────────────────────────────────────────────────────────────
 
   async getRecommendations(userId: string, limit = 5): Promise<any[]> {
@@ -737,7 +736,7 @@ export class AiService {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // UTILITAIRES
+  // UTILITAIRES (inchangés)
   // ─────────────────────────────────────────────────────────────
 
   private detectIntent(query: string): string {

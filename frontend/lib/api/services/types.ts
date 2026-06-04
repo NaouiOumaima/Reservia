@@ -9,6 +9,14 @@ export interface Location {
   postalCode?: string;
 }
 
+// Ajouter l'interface pour les créneaux de disponibilité
+export interface AvailabilitySlot {
+  day: string;
+  startTime: string;
+  endTime: string;
+  isAvailable: boolean;
+}
+
 export interface Service {
   _id: string;
   providerId: string;
@@ -26,8 +34,12 @@ export interface Service {
   rating?: number;
   smartScore: number;
   isActive: boolean;
+  isPendingApproval?: boolean;
+  rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
+  // ✅ Ajouter cette propriété
+  availabilitySlots?: AvailabilitySlot[];
 }
 
 export interface CreateServiceData {
@@ -45,6 +57,8 @@ export interface CreateServiceData {
     governorate: string;
     postalCode?: string;
   };
+  // ✅ Ajouter cette propriété
+  availabilitySlots?: AvailabilitySlot[];
 }
 
 export interface UpsertLocationData {

@@ -1,113 +1,110 @@
 'use client';
 
-import { useState } from 'react';
-import {
-  RestaurantIcon,
-  HotelIcon,
-  SpaIcon,
-  FitnessIcon,
-  LipstickIcon,
-} from '@/components/ui/Icons';
+import { CATEGORIES } from "@/lib/api/constants/categories.";
 
-interface FilterBarProps {
-  filters: { category: string; minPrice: number; maxPrice: number; radius: number };
-  onFilterChange: (filters: any) => void;
+// Type partagé pour les filtres
+export interface FilterState {
+  category: string;
+  minPrice: number;
+  maxPrice: number;
+  radius: number;
 }
 
-const categories = [
-  { value: '', label: 'Toutes catégories', icon: null },
-  { value: 'restaurant', label: 'Restaurants', icon: <RestaurantIcon className="w-4 h-4" /> },
-  { value: 'hotel', label: 'Hôtels', icon: <HotelIcon className="w-4 h-4" /> },
-  { value: 'spa', label: 'Spa & Bien-être', icon: <SpaIcon className="w-4 h-4" /> },
-  { value: 'gym', label: 'Salles de sport', icon: <FitnessIcon className="w-4 h-4" /> },
-  { value: 'coiffeur', label: 'Coiffeurs & Salons', icon: <LipstickIcon className="w-4 h-4" /> },
-];
+interface FilterBarProps {
+  filters: FilterState;
+  onFilterChange: (filters: FilterState) => void;
+}
 
 export default function FilterBar({ filters, onFilterChange }: FilterBarProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const progressPercent = ((filters.radius - 1) / (50 - 1)) * 100;
 
-  // Pour afficher l'icône à côté du texte dans le select, on ne peut pas facilement.
-  // On garde le texte seul pour le select, mais on peut ajouter l'icône dans le label de l'option.
-  // Solution : on affiche l'icône + texte via une structure personnalisée (non standard).
-  // Ici on reste simple : on affiche le texte.
+  // Vérifier si des filtres sont actifs (hors valeurs par défaut)
+  const hasActiveFilters = filters.category !== '' || filters.radius !== 10;
+
   return (
-    <div className="filter-bar">
-      <div className="filter-bar-container">
-        <div className="filter-bar-row">
-          <select
-            value={filters.category}
-            onChange={(e) => onFilterChange({ ...filters, category: e.target.value })}
-            className="filter-select"
-          >
-            {categories.map((cat) => (
-              <option key={cat.value} value={cat.value}>
-                {cat.label}
-              </option>
-            ))}
-          </select>
+    <div className="filterbar">
+      <div className="filterbar__inner">
+        <div className="filterbar__row">
 
-          <div className="filter-price">
-            <span>Max :</span>
-            <input
-              type="number"
-              value={filters.maxPrice}
-              min={0}
-              onChange={(e) =>
-                onFilterChange({ ...filters, maxPrice: parseInt(e.target.value) || 0 })
-              }
-              className="filter-input"
-              placeholder="500"
-            />
-            <span>DT</span>
-          </div>
-
-          <div className="filter-radius">
-            <span>Rayon :</span>
-            <input
-              type="range"
-              min="1"
-              max="50"
-              value={filters.radius}
-              onChange={(e) =>
-                onFilterChange({ ...filters, radius: parseInt(e.target.value) })
-              }
-              className="filter-range"
-            />
-            <span>{filters.radius} km</span>
-          </div>
-
-          <button onClick={() => setIsExpanded(!isExpanded)} className="filter-expand-btn">
-            {isExpanded ? '▲ Moins' : '▼ Plus de filtres'}
-          </button>
-        </div>
-
-        {isExpanded && (
-          <div className="filter-expanded">
-            <div className="filter-price-min">
-              <span>Prix min :</span>
-              <input
-                type="number"
-                value={filters.minPrice}
-                min={0}
-                onChange={(e) =>
-                  onFilterChange({ ...filters, minPrice: parseInt(e.target.value) || 0 })
-                }
-                className="filter-input"
-                placeholder="0"
-              />
-              <span>DT</span>
+          {/* ── Catégorie ── */}
+          <div className="filterbar__group filterbar__group--category">
+            <label className="filterbar__label">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <rect x="3" y="3" width="7" height="7" rx="1"/>
+                <rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/>
+                <rect x="14" y="14" width="7" height="7" rx="1"/>
+              </svg>
+              Catégorie
+            </label>
+            <div className="filterbar__select-wrapper">
+              <select
+                className="filterbar__select"
+                value={filters.category}
+                onChange={(e) => onFilterChange({ ...filters, category: e.target.value })}
+              >
+                <option value="">— Toutes les catégories —</option>
+                {CATEGORIES.map((cat) => (
+                  <option key={cat.key} value={cat.key}>
+                    {cat.frenchLabel}
+                  </option>
+                ))}
+              </select>
             </div>
-
-            <button
-              onClick={() =>
-                onFilterChange({ category: '', minPrice: 0, maxPrice: 500, radius: 10 })
-              }
-              className="filter-reset-btn"
-            >
-              Réinitialiser
-            </button>
           </div>
-        )}
+
+          {/* ── Rayon ── */}
+          <div className="filterbar__group filterbar__group--radius">
+            <label className="filterbar__label">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+              </svg>
+              Rayon de recherche
+            </label>
+            <div className="filterbar__radius-ctrl">
+              <span className="filterbar__radius-val">{filters.radius} km</span>
+              <input
+                type="range"
+                min="1"
+                max="50"
+                value={filters.radius}
+                className="filterbar__range"
+                style={{
+                  '--progress': `${((filters.radius - 1) / 49) * 100}%`,
+                } as React.CSSProperties}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  e.currentTarget.style.setProperty(
+                    '--progress',
+                    `${((val - 1) / 49) * 100}%`
+                  );
+                  onFilterChange({ ...filters, radius: val });
+                }}
+              />
+            </div>
+          </div>
+
+          {/* ── Reset (si filtres actifs) ── */}
+          {hasActiveFilters && (
+            <div className="filterbar__group" style={{ flex: 'none' }}>
+              <label className="filterbar__label" style={{ visibility: 'hidden' }}>‎</label>
+              <button
+                className="filterbar__clear-btn"
+                onClick={() => onFilterChange({
+                  ...filters,
+                  category: '',
+                  radius: 10
+                })}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+                Effacer
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

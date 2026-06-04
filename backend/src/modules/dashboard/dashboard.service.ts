@@ -13,7 +13,7 @@ export interface DashboardSummary {
   cancelledReservations: number;
   pendingReservations: number;
   confirmedReservations: number;
-  totalRevenue: number;
+  // totalRevenue: number; // SUPPRIMÉ - Réservations gratuites
   avgRating: number;
   reviewCount: number;
   cancellationRate: number;
@@ -29,7 +29,7 @@ export interface ServiceStats {
   cancelledReservations: number;
   cancellationRate: number;
   avgRating: number;
-  revenue: number;
+  // revenue: number; // SUPPRIMÉ - Réservations gratuites
 }
 
 export interface HourlyHeatmapData {
@@ -41,7 +41,7 @@ export interface HourlyHeatmapData {
 export interface TrendData {
   date: string;
   reservations: number;
-  revenue: number;
+  // revenue: number; // SUPPRIMÉ - Réservations gratuites
 }
 
 export interface HomePageStats {
@@ -50,14 +50,14 @@ export interface HomePageStats {
   governoratesCovered: number;
   averageSatisfaction: number;
   totalReservations: number;
-  totalRevenue: number;
+  // totalRevenue: number; // SUPPRIMÉ - Réservations gratuites
   satisfactionByService: Array<{
     serviceType: string;
     count: number;
     reservationCount: number;
     completedReservations: number;
     averageRating: number;
-    totalRevenue: number;
+    // totalRevenue: number; // SUPPRIMÉ - Réservations gratuites
   }>;
 }
 
@@ -124,9 +124,7 @@ export class DashboardService {
       const pendingReservations = reservations.filter(r => r.status === 'pending').length;
       const confirmedReservations = reservations.filter(r => r.status === 'confirmed').length;
 
-      const totalRevenue = reservations
-        .filter(r => r.status === 'completed' || r.status === 'confirmed')
-        .reduce((sum, r) => sum + r.price, 0);
+      // totalRevenue SUPPRIMÉ car réservations gratuites
 
       const avgRating = reviews.length > 0
         ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
@@ -142,7 +140,7 @@ export class DashboardService {
           cancelledReservations,
           pendingReservations,
           confirmedReservations,
-          totalRevenue,
+          // totalRevenue supprimé
           avgRating: Math.round(avgRating * 10) / 10,
           reviewCount: reviews.length,
           cancellationRate: Math.round(cancellationRate * 10) / 10,
@@ -183,7 +181,7 @@ export class DashboardService {
           cancelledReservations: cancelled,
           cancellationRate: total > 0 ? Math.round((cancelled / total) * 1000) / 10 : 0,
           avgRating: Math.round(avgRating * 10) / 10,
-          revenue: completed * (service.basePrice || 0),
+          // revenue supprimé
         });
       }
 
@@ -230,7 +228,7 @@ export class DashboardService {
         .sort({ createdAt: 1 })
         .lean();
 
-      const trendsMap = new Map<string, { reservations: number; revenue: number }>();
+      const trendsMap = new Map<string, { reservations: number }>(); // revenue supprimé
 
       for (const reservation of reservations) {
         const createdAt = (reservation as any).createdAt;
@@ -239,21 +237,19 @@ export class DashboardService {
         const dateKey = new Date(createdAt).toISOString().split('T')[0];
 
         if (!trendsMap.has(dateKey)) {
-          trendsMap.set(dateKey, { reservations: 0, revenue: 0 });
+          trendsMap.set(dateKey, { reservations: 0 });
         }
 
         const data = trendsMap.get(dateKey)!;
         data.reservations++;
 
-        if (reservation.status === 'completed') {
-          data.revenue += reservation.price;
-        }
+        // revenue supprimé car réservations gratuites
       }
 
       return Array.from(trendsMap.entries()).map(([date, data]) => ({
         date,
         reservations: data.reservations,
-        revenue: data.revenue,
+        // revenue supprimé
       }));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -268,15 +264,12 @@ export class DashboardService {
 
       // 1. Utilisateurs actifs = TOUS les utilisateurs (clients + providers) SAUF l'admin
       const totalUsers = await this.userModel.countDocuments({
-        email: { $ne: 'admin@test.com' }, // Exclure l'admin
-        isBanned: false, // Exclure les bannis
+        email: { $ne: 'admin@test.com' },
+        isBanned: false,
       });
       const activeUsers = totalUsers;
       this.logger.log(`✅ Total users (excluding admin): ${activeUsers}`);
 
-      // Alternative: Compter seulement les clients
-      // const totalClients = await this.userModel.countDocuments({ role: 'client', isBanned: false });
-      
       // 2. Services disponibles
       const availableServices = await this.serviceModel.countDocuments({ isActive: true });
       this.logger.log(`✅ Available services: ${availableServices}`);
@@ -291,24 +284,20 @@ export class DashboardService {
       const totalReservations = allReservations.length;
       this.logger.log(`✅ Total reservations: ${totalReservations}`);
 
-      // 5. Revenu total
-      const totalRevenue = allReservations
-        .filter(r => r.status === 'completed' || r.status === 'confirmed')
-        .reduce((sum, r) => sum + (r.price || 0), 0);
-      this.logger.log(`✅ Total revenue: ${totalRevenue} TND`);
+      // totalRevenue SUPPRIMÉ - Réservations gratuites
 
-// 6. Satisfaction moyenne générale
-const allReviews = await this.reviewModel.find().lean();
-let averageSatisfaction = 0;
+      // 6. Satisfaction moyenne générale
+      const allReviews = await this.reviewModel.find().lean();
+      let averageSatisfaction = 0;
 
-if (allReviews.length > 0) {
-  const totalRating = allReviews.reduce((sum, r) => sum + (r.rating || 0), 0);
-  averageSatisfaction = Math.round((totalRating / allReviews.length) * 10) / 10;
-} else {
-  // ✅ Si pas d'avis, on met 0 pour indiquer qu'il n'y a pas encore d'évaluations
-  averageSatisfaction = 0;
-}
-this.logger.log(`✅ Average satisfaction: ${averageSatisfaction} (basé sur ${allReviews.length} avis)`);
+      if (allReviews.length > 0) {
+        const totalRating = allReviews.reduce((sum, r) => sum + (r.rating || 0), 0);
+        averageSatisfaction = Math.round((totalRating / allReviews.length) * 10) / 10;
+      } else {
+        averageSatisfaction = 0;
+      }
+      this.logger.log(`✅ Average satisfaction: ${averageSatisfaction} (basé sur ${allReviews.length} avis)`);
+      
       // 7. Récupérer tous les services actifs
       const services = await this.serviceModel.find({ isActive: true }).lean();
       
@@ -317,7 +306,7 @@ this.logger.log(`✅ Average satisfaction: ${averageSatisfaction} (basé sur ${a
         serviceCount: number;
         reservationCount: number;
         completedReservations: number;
-        totalRevenue: number;
+        // totalRevenue: number; // SUPPRIMÉ
         ratings: number[];
       }>();
 
@@ -327,7 +316,7 @@ this.logger.log(`✅ Average satisfaction: ${averageSatisfaction} (basé sur ${a
           serviceCount: 0,
           reservationCount: 0,
           completedReservations: 0,
-          totalRevenue: 0,
+          // totalRevenue: 0, // SUPPRIMÉ
           ratings: [],
         });
       }
@@ -344,7 +333,7 @@ this.logger.log(`✅ Average satisfaction: ${averageSatisfaction} (basé sur ${a
             serviceCount: 1,
             reservationCount: 0,
             completedReservations: 0,
-            totalRevenue: 0,
+            // totalRevenue: 0, // SUPPRIMÉ
             ratings: [],
           });
         }
@@ -363,7 +352,7 @@ this.logger.log(`✅ Average satisfaction: ${averageSatisfaction} (basé sur ${a
             
             if (reservation.status === 'completed') {
               catStats.completedReservations++;
-              catStats.totalRevenue += reservation.price || 0;
+              // catStats.totalRevenue += reservation.price || 0; // SUPPRIMÉ
             }
           }
         }
@@ -394,7 +383,7 @@ this.logger.log(`✅ Average satisfaction: ${averageSatisfaction} (basé sur ${a
           reservationCount: data.reservationCount,
           completedReservations: data.completedReservations,
           averageRating: avgRating,
-          totalRevenue: data.totalRevenue,
+          // totalRevenue: data.totalRevenue, // SUPPRIMÉ
         };
       }).sort((a, b) => b.reservationCount - a.reservationCount);
 
@@ -404,7 +393,7 @@ this.logger.log(`✅ Average satisfaction: ${averageSatisfaction} (basé sur ${a
         governoratesCovered: governoratesCovered,
         averageSatisfaction: averageSatisfaction,
         totalReservations: totalReservations,
-        totalRevenue: totalRevenue,
+        // totalRevenue: 0, // SUPPRIMÉ
         satisfactionByService: satisfactionByService,
       };
 
@@ -422,21 +411,21 @@ this.logger.log(`✅ Average satisfaction: ${averageSatisfaction} (basé sur ${a
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`❌ Error getting home page stats: ${errorMessage}`);
       
-      // Fallback avec données réalistes
+      // Fallback avec données réalistes (sans revenue)
       return {
-        activeUsers: 12, // Valeur par défaut
+        activeUsers: 12,
         availableServices: 1,
         governoratesCovered: 1,
         averageSatisfaction: 4.8,
         totalReservations: 0,
-        totalRevenue: 0,
+        // totalRevenue: 0, // SUPPRIMÉ
         satisfactionByService: this.allCategories.map(name => ({
           serviceType: name,
           count: 0,
           reservationCount: 0,
           completedReservations: 0,
           averageRating: 0,
-          totalRevenue: 0,
+          // totalRevenue: 0, // SUPPRIMÉ
         })),
       };
     }

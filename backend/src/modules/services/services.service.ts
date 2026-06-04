@@ -154,23 +154,40 @@ export class ServicesService {
   }
 
   async update(id: string, providerId: string, updateServiceDto: UpdateServiceDto) {
-    const service = await this.findById(id);
-
-    if (service.providerId.toString() !== providerId) {
-      throw new ForbiddenException('Vous n\'êtes pas autorisé à modifier ce service');
-    }
-
-    // Si la location est mise à jour, s'assurer que les coordonnées sont au bon format
-    if (updateServiceDto.location) {
-      const location = updateServiceDto.location as any;
-      if (location.coordinates && Array.isArray(location.coordinates)) {
-        location.coordinates = [location.coordinates[0], location.coordinates[1]] as [number, number];
-      }
-    }
-
-    Object.assign(service, updateServiceDto);
-    return service.save();
+  console.log('🔍 DEBUG UPDATE:');
+  console.log('  - Service ID:', id);
+  console.log('  - Provider ID from token:', providerId);
+  
+  // ✅ Récupérer le service SANS populate pour avoir un ObjectId pur
+  const service = await this.serviceModel.findById(id).exec();
+  
+  if (!service) {
+    throw new NotFoundException('Service non trouvé');
   }
+  
+  console.log('  - Service providerId (raw):', service.providerId);
+  console.log('  - Service providerId as string:', service.providerId.toString());
+  console.log('  - Token providerId as string:', providerId.toString());
+  
+  // ✅ Comparer les strings
+  if (service.providerId.toString() !== providerId.toString()) {
+    console.log('❌ Forbidden - IDs do not match');
+    throw new ForbiddenException('Vous n\'êtes pas autorisé à modifier ce service');
+  }
+
+  console.log('✅ Update authorized');
+  
+  // Si la location est mise à jour, s'assurer que les coordonnées sont au bon format
+  if (updateServiceDto.location) {
+    const location = updateServiceDto.location as any;
+    if (location.coordinates && Array.isArray(location.coordinates)) {
+      location.coordinates = [location.coordinates[0], location.coordinates[1]] as [number, number];
+    }
+  }
+
+  Object.assign(service, updateServiceDto);
+  return service.save();
+}
 
   async delete(id: string, providerId: string) {
     const service = await this.findById(id);

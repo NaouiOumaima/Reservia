@@ -1,7 +1,11 @@
+// lib/api/services/index.ts
 import { apiClient } from '../config';
-import { CreateServiceData, Service, ServiceFilters, UpsertLocationData } from '@/lib/api/services/types';
+import { CreateServiceData, Service, ServiceFilters, UpsertLocationData, AvailabilitySlot } from '@/lib/api/services/types';
 
-
+// Définir un type pour la mise à jour qui étend Partial<CreateServiceData>
+type UpdateServiceData = Partial<CreateServiceData> & {
+  availabilitySlots?: AvailabilitySlot[];
+};
 
 export const servicesApi = {
   getAll: async (filters?: ServiceFilters): Promise<Service[]> => {
@@ -19,7 +23,6 @@ export const servicesApi = {
 
   getByProvider: async (): Promise<Service[]> => {
     const response = await apiClient.get('/services/provider');
-    // ✅ S'assurer que response.data est un tableau
     return Array.isArray(response.data) ? response.data : [];
   },
 
@@ -45,7 +48,8 @@ export const servicesApi = {
     return response.data;
   },
 
-  update: async (id: string, data: Partial<CreateServiceData>): Promise<Service> => {
+  // ✅ Utiliser le type UpdateServiceData
+  update: async (id: string, data: UpdateServiceData): Promise<Service> => {
     const response = await apiClient.put(`/services/${id}`, data);
     return response.data;
   },
@@ -63,6 +67,7 @@ export const servicesApi = {
     const response = await apiClient.patch(`/services/${id}/toggle-active`, {});
     return response.data;
   },
+
   getPendingServices: async (): Promise<Service[]> => {
     const response = await apiClient.get('/services/admin/pending');
     return response.data;
@@ -82,7 +87,8 @@ export const servicesApi = {
     const response = await apiClient.patch(`/services/admin/${serviceId}/reject`, { reason });
     return response.data;
   },
-    getAllAdmin: async (): Promise<Service[]> => {
+
+  getAllAdmin: async (): Promise<Service[]> => {
     const response = await apiClient.get('/services/admin/all');
     return response.data;
   },

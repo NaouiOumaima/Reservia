@@ -1,22 +1,25 @@
+// src/types/reservation.ts
+
 export interface Reservation {
   _id: string;
-  userId: string;
+  clientId: string;
   serviceId: string;
   serviceName?: string;
   providerName?: string;
-  date?: Date;
   startTime: string;
   endTime: string;
   duration: number;
-  price: number;
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'expired';
+  notes?: string;
   customerInfo?: {
     name: string;
     email: string;
     phone: string;
   };
-  specialRequests?: string;
   createdAt: Date;
+  expiresAt: Date;
+  cancelledAt?: Date;
+  cancellationReason?: string;
 }
 
 export interface CreateReservationData {

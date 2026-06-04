@@ -1,6 +1,6 @@
 // src/modules/services/dto/create-service.dto.ts
 
-import { IsString, IsNumber, IsOptional, IsArray, IsEnum, Min, Max, ValidateNested } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsArray, IsEnum, Min, Max, ValidateNested, IsBoolean, ArrayMinSize } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ServiceCategory } from '../../../database/schemas/service.schema';
 
@@ -20,6 +20,21 @@ class LocationDto {
   @IsOptional()
   @IsString()
   postalCode?: string;
+}
+
+// ✅ Ajouter le DTO pour les créneaux de disponibilité
+class AvailabilitySlotDto {
+  @IsString()
+  day!: string;
+
+  @IsString()
+  startTime!: string;
+
+  @IsString()
+  endTime!: string;
+
+  @IsBoolean()
+  isAvailable!: boolean;
 }
 
 export class CreateServiceDto {
@@ -54,4 +69,11 @@ export class CreateServiceDto {
   @ValidateNested()
   @Type(() => LocationDto)
   location!: LocationDto;
+
+  // ✅ Ajouter les disponibilités (optionnel)
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AvailabilitySlotDto)
+  availabilitySlots?: AvailabilitySlotDto[];
 }

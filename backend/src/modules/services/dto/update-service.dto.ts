@@ -3,4 +3,7 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateServiceDto } from './create-service.dto';
 
-export class UpdateServiceDto extends PartialType(CreateServiceDto) {}
+export class UpdateServiceDto extends PartialType(CreateServiceDto) {
+  // ✅ Ajouter cette ligne pour accepter n'importe quelle propriété supplémentaire
+  [key: string]: any;
+}

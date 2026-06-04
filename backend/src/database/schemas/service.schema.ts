@@ -1,3 +1,4 @@
+// database/schemas/service.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
@@ -44,7 +45,6 @@ export class Service {
   @Prop({ type: [String], default: [] })
   images!: string[];
 
-  // ✅ CORRECTION - Supprimer le required à l'intérieur et le mettre au niveau du champ
   @Prop({
     type: {
       type: String,
@@ -53,7 +53,7 @@ export class Service {
     },
     coordinates: {
       type: [Number],
-      required: true, // Ce required est OK car c'est pour le sous-champ
+      required: true,
     },
     address: {
       type: String,
@@ -77,6 +77,20 @@ export class Service {
     governorate: string;
     postalCode?: string;
   };
+
+  // ✅ Ajout du champ availabilitySlots
+  @Prop({ type: [{ 
+    day: String, 
+    startTime: String, 
+    endTime: String, 
+    isAvailable: Boolean 
+  }], default: [] })
+  availabilitySlots?: Array<{
+    day: string;
+    startTime: string;
+    endTime: string;
+    isAvailable: boolean;
+  }>;
 
   @Prop({ default: 0 })
   avgRating!: number;

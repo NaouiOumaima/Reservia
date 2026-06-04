@@ -2,12 +2,8 @@
 
 /**
  * LeafletMapComponent — Navigation Google Maps-like
- * ✅ CORRECTIONS :
- *   - onMapClick transmet { lngLat: { lat, lng } } (signature unifiée)
- *   - Mode provider : marqueur se déplace immédiatement au clic
- *   - MapClickHandler via useMap (react-leaflet v4, pas d'effet impératif)
- *   - curseur crosshair en mode édition
- *   - icône provider pulsante quand édition active
+ * - Mode client : recherche de services et navigation
+ * - Mode prestataire : affichage des services avec leurs localisations déjà définies
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -17,7 +13,21 @@ import {
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// ─── Types ─────────────────────────────────────────────────────────────────────
+import {
+  MapPinIcon,
+  MapIcon,
+  ClockIcon,
+  CheckIcon,
+  CloseIcon,
+  SearchIcon,
+  ChevronDownIcon,
+  ArrowRightIcon,
+  AlertTriangleIcon,
+  Loader2Icon,
+  LocationIcon,
+} from '@/components/ui/Icons';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface LatLng { lat: number; lng: number }
 type LeafletPos = [number, number];
@@ -30,7 +40,7 @@ interface Service {
   avgRating: number;
   reviewCount: number;
   location: {
-    coordinates: [number, number]; // GeoJSON [lng, lat]
+    coordinates: [number, number];
     address: string;
     city: string;
     governorate: string;
@@ -67,65 +77,19 @@ interface RouteLeg {
 
 interface Props {
   services: Service[];
-  userLocation: [number, number] | null; // [lng, lat]
+  userLocation: [number, number] | null;
   selectedService: Service | null;
   onMarkerClick: (s: Service) => void;
   isProviderMode?: boolean;
-  /** Appelé avec { lngLat: { lat, lng } } au clic sur la carte */
   onMapClick?: (e: { lngLat: { lat: number; lng: number } }) => void;
 }
 
-// ─── Constantes ────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const OSRM_BASE = 'https://router.project-osrm.org/route/v1';
-
-const OSRM_PROFILES: Record<string, string> = {
-  driving: 'driving',
-  walking: 'foot',
-  cycling: 'bike',
-};
-
-const FALLBACK_SPEED_MS: Record<string, number> = {
-  driving: 13.9,
-  walking: 1.4,
-  cycling: 4.2,
-};
-
-const MAX_SPEED_MS: Record<string, number> = {
-  driving: 55.6,
-  walking: 3.5,
-  cycling: 16.7,
-};
-
-const THEMES = [
-  {
-    id: 'streets', label: 'Standard', icon: '🗺',
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attr: '&copy; OpenStreetMap contributors',
-  },
-  {
-    id: 'dark', label: 'Sombre', icon: '🌙',
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attr: '&copy; CARTO',
-  },
-  {
-    id: 'light', label: 'Clair', icon: '☀️',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    attr: '&copy; CARTO',
-  },
-  {
-    id: 'satellite', label: 'Satellite', icon: '🛰',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attr: '&copy; Esri',
-  },
-];
-
-const MODES = [
-  { id: 'driving', label: 'Voiture', emoji: '🚗', osrm: 'driving', color: '#1a73e8', lineWeight: 6 },
-  { id: 'walking', label: 'À pied',  emoji: '🚶', osrm: 'foot',    color: '#0f9d58', lineWeight: 5 },
-  { id: 'cycling', label: 'Vélo',    emoji: '🚲', osrm: 'bike',    color: '#f29900', lineWeight: 5 },
-];
-
+const OSRM_PROFILES: Record<string, string> = { driving: 'driving', walking: 'foot', cycling: 'bike' };
+const FALLBACK_SPEED_MS: Record<string, number> = { driving: 13.9, walking: 1.4, cycling: 4.2 };
+const MAX_SPEED_MS: Record<string, number> = { driving: 55.6, walking: 3.5, cycling: 16.7 };
 const OFF_ROUTE_THRESHOLD_M  = 40;
 const STEP_ADVANCE_M         = 20;
 const ARRIVAL_M              = 15;
@@ -133,12 +97,24 @@ const REROUTE_COOLDOWN_MS    = 15_000;
 const OSRM_TIMEOUT_MS        = 15_000;
 const GPS_SMOOTH_ALPHA       = 0.25;
 
-// ─── Géométrie ─────────────────────────────────────────────────────────────────
+const THEMES = [
+  { id: 'streets', label: 'Standard',  url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',                                                         attr: '&copy; OpenStreetMap' },
+  { id: 'dark',    label: 'Sombre',    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',                                               attr: '&copy; CARTO' },
+  { id: 'light',   label: 'Clair',     url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',                                              attr: '&copy; CARTO' },
+  { id: 'satellite', label: 'Satellite', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',              attr: '&copy; Esri' },
+];
+
+const MODES = [
+  { id: 'driving', label: 'Voiture', osrm: 'driving', color: '#1a73e8', lineWeight: 6 },
+  { id: 'walking', label: 'À pied',  osrm: 'foot',    color: '#0f9d58', lineWeight: 5 },
+  { id: 'cycling', label: 'Vélo',    osrm: 'bike',    color: '#f29900', lineWeight: 5 },
+];
+
+// ─── Geometry helpers ──────────────────────────────────────────────────────────
 
 function haversine(a: LatLng, b: LatLng): number {
   const R = 6_371_000;
-  const φ1 = (a.lat * Math.PI) / 180;
-  const φ2 = (b.lat * Math.PI) / 180;
+  const φ1 = (a.lat * Math.PI) / 180, φ2 = (b.lat * Math.PI) / 180;
   const Δφ = ((b.lat - a.lat) * Math.PI) / 180;
   const Δλ = ((b.lng - a.lng) * Math.PI) / 180;
   const x  = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
@@ -146,8 +122,7 @@ function haversine(a: LatLng, b: LatLng): number {
 }
 
 function calcBearing(from: LatLng, to: LatLng): number {
-  const φ1 = (from.lat * Math.PI) / 180;
-  const φ2 = (to.lat   * Math.PI) / 180;
+  const φ1 = (from.lat * Math.PI) / 180, φ2 = (to.lat * Math.PI) / 180;
   const Δλ = ((to.lng - from.lng) * Math.PI) / 180;
   const y  = Math.sin(Δλ) * Math.cos(φ2);
   const x  = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
@@ -158,16 +133,11 @@ function toLeaflet(path: LatLng[]): LeafletPos[] {
   return path.map((p) => [p.lat, p.lng]);
 }
 
-function snapToRoute(
-  pos: LatLng,
-  path: LatLng[],
-  fromIdx = 0,
-): { segIdx: number; distM: number } {
+function snapToRoute(pos: LatLng, path: LatLng[], fromIdx = 0): { segIdx: number; distM: number } {
   let best = { segIdx: fromIdx, distM: Infinity };
   const searchEnd = Math.min(path.length - 1, fromIdx + 300);
   for (let i = fromIdx; i < searchEnd; i++) {
-    const a = path[i];
-    const b = path[i + 1] ?? path[i];
+    const a = path[i], b = path[i + 1] ?? path[i];
     const dx = b.lng - a.lng, dy = b.lat - a.lat;
     const lenSq = dx * dx + dy * dy;
     let t = 0;
@@ -189,13 +159,12 @@ function calcETA(remainM: number, totalM: number, totalSec: number, speedMs: num
   if (totalM <= 0) return 0;
   const ratioEst = (remainM / totalM) * totalSec;
   const maxSpeed = MAX_SPEED_MS[modeId] ?? MAX_SPEED_MS.driving;
-  if (speedMs > 0.5 && speedMs < maxSpeed) {
+  if (speedMs > 0.5 && speedMs < maxSpeed)
     return Math.max(5, Math.round((remainM / speedMs) * 0.6 + ratioEst * 0.4));
-  }
   return Math.max(5, Math.round(ratioEst));
 }
 
-// ─── Formatage ─────────────────────────────────────────────────────────────────
+// ─── Formatting ──────────────────────────────────────────────────────────────
 
 function fmtDist(m: number): string {
   if (m < 50)   return `${Math.round(m)} m`;
@@ -204,66 +173,62 @@ function fmtDist(m: number): string {
 }
 
 function fmtTime(sec: number): string {
-  if (sec < 60)  return '< 1 min';
+  if (sec < 60) return '< 1 min';
   const min = Math.round(sec / 60);
-  if (min < 60)  return `${min} min`;
+  if (min < 60) return `${min} min`;
   const h = Math.floor(min / 60), m = min % 60;
   return m ? `${h} h ${m} min` : `${h} h`;
 }
 
 function fmtArrival(sec: number): string {
-  return new Date(Date.now() + sec * 1000)
-    .toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  return new Date(Date.now() + sec * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
 
-// ─── Instructions ──────────────────────────────────────────────────────────────
+// ─── Instructions ─────────────────────────────────────────────────────────────
 
 function buildInstruction(type: string, modifier?: string, name?: string, exitNum?: number): string {
   const on = name?.trim() ? ` sur ${name}` : '';
   switch (type) {
-    case 'depart':            return `Démarrez vers ${modifier ?? 'le nord'}${on}`;
-    case 'arrive':            return 'Vous êtes arrivé à destination';
+    case 'depart':         return `Démarrez vers ${modifier ?? 'le nord'}${on}`;
+    case 'arrive':         return 'Vous êtes arrivé à destination';
     case 'continue':
-    case 'new name':          return `Continuez tout droit${on}`;
-    case 'merge':             return `Rejoignez${on}`;
-    case 'on ramp':           return `Prenez la bretelle d'entrée${on}`;
-    case 'off ramp':          return `Prenez la bretelle de sortie${on}`;
-    case 'end of road':       return modifier?.includes('left') ? `Tournez à gauche${on}` : `Tournez à droite${on}`;
-    case 'use lane':          return `Utilisez la bonne voie${on}`;
+    case 'new name':       return `Continuez tout droit${on}`;
+    case 'merge':          return `Rejoignez${on}`;
+    case 'on ramp':        return `Prenez la bretelle d'entrée${on}`;
+    case 'off ramp':       return `Prenez la bretelle de sortie${on}`;
+    case 'end of road':    return modifier?.includes('left') ? `Tournez à gauche${on}` : `Tournez à droite${on}`;
     case 'roundabout':
-    case 'rotary':            return `Prenez le rond-point${exitNum ? ` (${exitNum}e sortie)` : ''}${on}`;
+    case 'rotary':         return `Prenez le rond-point${exitNum ? ` (${exitNum}e sortie)` : ''}${on}`;
     case 'exit roundabout':
-    case 'exit rotary':       return `Quittez le rond-point${on}`;
-    case 'fork':              return modifier?.includes('left') ? `Restez à gauche${on}` : `Restez à droite${on}`;
+    case 'exit rotary':    return `Quittez le rond-point${on}`;
+    case 'fork':           return modifier?.includes('left') ? `Restez à gauche${on}` : `Restez à droite${on}`;
     case 'turn':
       switch (modifier) {
-        case 'left':          return `Tournez à gauche${on}`;
-        case 'right':         return `Tournez à droite${on}`;
-        case 'sharp left':    return `Virage serré à gauche${on}`;
-        case 'sharp right':   return `Virage serré à droite${on}`;
-        case 'slight left':   return `Légèrement à gauche${on}`;
-        case 'slight right':  return `Légèrement à droite${on}`;
-        case 'uturn':         return `Faites demi-tour${on}`;
-        default:              return `Tournez${on}`;
+        case 'left':       return `Tournez à gauche${on}`;
+        case 'right':      return `Tournez à droite${on}`;
+        case 'sharp left': return `Virage serré à gauche${on}`;
+        case 'sharp right':return `Virage serré à droite${on}`;
+        case 'slight left':return `Légèrement à gauche${on}`;
+        case 'slight right':return `Légèrement à droite${on}`;
+        case 'uturn':      return `Faites demi-tour${on}`;
+        default:           return `Tournez${on}`;
       }
-    case 'push bike':         return `Poussez le vélo${on}`;
-    default:                  return `Continuez${on}`;
+    default: return `Continuez${on}`;
   }
 }
 
 function stepArrow(type: string, modifier?: string): string {
-  if (type === 'depart')                           return '▶';
-  if (type === 'arrive')                           return '🏁';
-  if (type === 'roundabout' || type === 'rotary')  return '↻';
-  if (type === 'exit roundabout')                  return '↗';
-  if (!modifier)                                   return '↑';
-  if (modifier === 'uturn')                        return '↩';
-  if (modifier.includes('sharp left'))             return '↰';
-  if (modifier.includes('sharp right'))            return '↱';
-  if (modifier.includes('slight left'))            return '↖';
-  if (modifier.includes('slight right'))           return '↗';
-  if (modifier.includes('left'))                   return '←';
-  if (modifier.includes('right'))                  return '→';
+  if (type === 'depart')  return '↑';
+  if (type === 'arrive')  return '⊙';
+  if (type === 'roundabout' || type === 'rotary') return '↻';
+  if (!modifier)          return '↑';
+  if (modifier === 'uturn') return '↩';
+  if (modifier.includes('sharp left'))  return '↰';
+  if (modifier.includes('sharp right')) return '↱';
+  if (modifier.includes('slight left')) return '↖';
+  if (modifier.includes('slight right'))return '↗';
+  if (modifier.includes('left'))  return '←';
+  if (modifier.includes('right')) return '→';
   return '↑';
 }
 
@@ -274,7 +239,7 @@ function buildVoiceAnnounce(step: NavStep, distM: number): string | null {
     return null;
   }
   if (distM < STEP_ADVANCE_M) return step.instruction;
-  if (distM < 500)             return `Dans ${fmtDist(distM)}, ${step.instruction.toLowerCase()}`;
+  if (distM < 500)            return `Dans ${fmtDist(distM)}, ${step.instruction.toLowerCase()}`;
   return null;
 }
 
@@ -326,48 +291,37 @@ function buildFallbackRoute(from: LatLng, to: LatLng, service: Service, modeId: 
   return { path: [from, to], totalDistanceM: d, durationSec: sec, service, steps, legs: [{ distanceM: d, durationSec: sec, steps }] };
 }
 
-// ─── Icônes ────────────────────────────────────────────────────────────────────
+// ─── Leaflet icons ────────────────────────────────────────────────────────────
 
 function serviceIcon(selected: boolean): L.DivIcon {
   const sz = selected ? 38 : 30, color = selected ? '#1a73e8' : '#ea4335';
   return L.divIcon({
     className: '',
-    html: `<div style="width:${sz}px;height:${sz}px;background:${color};border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 3px 10px rgba(0,0,0,.45);"></div>`,
+    html: `<div class="lmap-marker-pin${selected ? ' lmap-marker-pin--selected' : ''}" style="width:${sz}px;height:${sz}px;background:${color}"></div>`,
     iconSize: [sz, sz], iconAnchor: [sz / 2, sz], popupAnchor: [0, -sz],
+  });
+}
+
+// Icône pour le mode prestataire (affichage simple, pas d'édition)
+function providerServiceIcon(hasLocation: boolean): L.DivIcon {
+  const color = hasLocation ? '#0f9d58' : '#f29900';
+  return L.divIcon({
+    className: '',
+    html: `<div class="lmap-provider-pin" style="background:${color};"><span class="lmap-provider-initial">📍</span></div>`,
+    iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -32],
   });
 }
 
 const userDotIcon = L.divIcon({
   className: '',
-  html: `<div style="width:18px;height:18px;background:#1a73e8;border:3px solid white;border-radius:50%;box-shadow:0 0 0 6px rgba(26,115,232,.2),0 2px 8px rgba(0,0,0,.3);"></div>`,
+  html: `<div class="lmap-user-dot"></div>`,
   iconSize: [18, 18], iconAnchor: [9, 9],
 });
-
-/** Icône provider : pulsation animée en mode édition */
-function providerMarkerIcon(isEditing: boolean): L.DivIcon {
-  const color = '#1a73e8';
-  return L.divIcon({
-    className: '',
-    html: `
-      <style>
-        @keyframes prov-pulse {
-          0%   { transform: scale(0.8); opacity: 0.5; }
-          70%  { transform: scale(2.2); opacity: 0;   }
-          100% { transform: scale(0.8); opacity: 0;   }
-        }
-      </style>
-      <div style="position:relative;width:34px;height:34px;">
-        ${isEditing ? `<div style="position:absolute;top:0;left:0;width:34px;height:34px;border-radius:50%;background:${color};opacity:0.25;animation:prov-pulse 1.8s ease-out infinite;"></div>` : ''}
-        <div style="position:absolute;top:0;left:0;width:28px;height:28px;margin:3px;background:${color};border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 3px 10px rgba(0,0,0,.45);"></div>
-      </div>`,
-    iconSize: [34, 34], iconAnchor: [17, 34], popupAnchor: [0, -34],
-  });
-}
 
 function navArrowIcon(bearing: number, color: string): L.DivIcon {
   return L.divIcon({
     className: '',
-    html: `<div style="width:56px;height:56px;transform:rotate(${bearing}deg);filter:drop-shadow(0 3px 10px rgba(0,0,0,.5));"><svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg"><circle cx="28" cy="28" r="26" fill="${color}" stroke="white" stroke-width="4"/><polygon points="28,9 21,30 28,25 35,30" fill="white"/><circle cx="28" cy="28" r="4" fill="white" opacity="0.4"/></svg></div>`,
+    html: `<div class="lmap-nav-arrow" style="transform:rotate(${bearing}deg)"><svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg"><circle cx="28" cy="28" r="26" fill="${color}" stroke="white" stroke-width="4"/><polygon points="28,9 21,30 28,25 35,30" fill="white"/><circle cx="28" cy="28" r="4" fill="white" opacity="0.4"/></svg></div>`,
     iconSize: [56, 56], iconAnchor: [28, 28],
   });
 }
@@ -375,12 +329,12 @@ function navArrowIcon(bearing: number, color: string): L.DivIcon {
 function destinationIcon(): L.DivIcon {
   return L.divIcon({
     className: '',
-    html: `<div style="width:36px;height:36px;background:#ea4335;border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 3px 12px rgba(0,0,0,.4);"></div>`,
+    html: `<div class="lmap-marker-pin lmap-marker-pin--dest"></div>`,
     iconSize: [36, 36], iconAnchor: [18, 36], popupAnchor: [0, -36],
   });
 }
 
-// ─── Sous-composants ───────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function MapReady() {
   const map = useMap();
@@ -388,29 +342,18 @@ function MapReady() {
   return null;
 }
 
-/**
- * MapClickHandler — enregistre/supprime le listener Leaflet via useMap.
- * Méthode recommandée avec react-leaflet v4 (évite les effets impératifs sur mapRef).
- */
-function MapClickHandler({
-  active,
-  onMapClick,
-}: {
-  active: boolean;
-  onMapClick?: (e: { lngLat: { lat: number; lng: number } }) => void;
-}) {
+function MapClickHandler({ active, onMapClick }: { active: boolean; onMapClick?: (e: { lngLat: { lat: number; lng: number } }) => void }) {
   const map = useMap();
   useEffect(() => {
     if (!active || !onMapClick) return;
-    const handler = (e: L.LeafletMouseEvent) =>
-      onMapClick({ lngLat: { lat: e.latlng.lat, lng: e.latlng.lng } });
+    const handler = (e: L.LeafletMouseEvent) => onMapClick({ lngLat: { lat: e.latlng.lat, lng: e.latlng.lng } });
     map.on('click', handler);
     return () => { map.off('click', handler); };
   }, [map, active, onMapClick]);
   return null;
 }
 
-// ─── Composant principal ───────────────────────────────────────────────────────
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function LeafletMapComponent({
   services,
@@ -421,7 +364,6 @@ export default function LeafletMapComponent({
   onMapClick,
 }: Props) {
 
-  // ── Refs ──────────────────────────────────────────────────────────────────
   const mapRef             = useRef<L.Map | null>(null);
   const watchIdRef         = useRef<number | null>(null);
   const routeRef           = useRef<Route | null>(null);
@@ -434,51 +376,28 @@ export default function LeafletMapComponent({
   const announcedStepRef   = useRef(-1);
   const isReroutingRef     = useRef(false);
 
-  // ── State ─────────────────────────────────────────────────────────────────
-  const [theme, setTheme]           = useState(THEMES[0]);
-  const [themeOpen, setThemeOpen]   = useState(false);
-  const [mode, setMode]             = useState(MODES[0]);
-  const [route, setRoute]           = useState<Route | null>(null);
-  const [loading, setLoading]       = useState(false);
-  const [error, setError]           = useState<string | null>(null);
-
-  const [navActive, setNavActive]         = useState(false);
-  const [stepIdx, setStepIdx]             = useState(0);
-  const [gpsPos, setGpsPos]               = useState<LatLng | null>(null);
-  const [bearing, setBearing]             = useState(0);
-  const [following, setFollowing]         = useState(true);
-  const [hudOpen, setHudOpen]             = useState(false);
-  const [remainM, setRemainM]             = useState(0);
-  const [remainSec, setRemainSec]         = useState(0);
-  const [offRoute, setOffRoute]           = useState(false);
-  const [rerouting, setRerouting]         = useState(false);
-  const [currentSpeed, setCurrentSpeed]   = useState(0);
+  const [theme, setTheme]             = useState(THEMES[0]);
+  const [themeOpen, setThemeOpen]     = useState(false);
+  const [mode, setMode]               = useState(MODES[0]);
+  const [route, setRoute]             = useState<Route | null>(null);
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState<string | null>(null);
+  const [navActive, setNavActive]     = useState(false);
+  const [stepIdx, setStepIdx]         = useState(0);
+  const [gpsPos, setGpsPos]           = useState<LatLng | null>(null);
+  const [bearing, setBearing]         = useState(0);
+  const [following, setFollowing]     = useState(true);
+  const [hudOpen, setHudOpen]         = useState(false);
+  const [remainM, setRemainM]         = useState(0);
+  const [remainSec, setRemainSec]     = useState(0);
+  const [offRoute, setOffRoute]       = useState(false);
+  const [rerouting, setRerouting]     = useState(false);
+  const [currentSpeed, setCurrentSpeed] = useState(0);
   const [distToNextStep, setDistToNextStep] = useState(0);
 
-  // ── État marqueur provider (mise à jour immédiate au clic) ────────────────
-  const [providerPos, setProviderPos] = useState<LatLng | null>(
-    userLocation ? { lat: userLocation[1], lng: userLocation[0] } : null,
-  );
+  const userPos: LatLng | null = userLocation ? { lat: userLocation[1], lng: userLocation[0] } : null;
+  const mapCenter: LeafletPos  = userPos ? [userPos.lat, userPos.lng] : [36.8065, 10.1815];
 
-  // Sync avec la prop userLocation (chargement initial ou changement de service)
-  useEffect(() => {
-    if (isProviderMode && userLocation) {
-      setProviderPos({ lat: userLocation[1], lng: userLocation[0] });
-      // Recentrer la carte sur le marqueur mis à jour
-      if (mapRef.current) {
-        mapRef.current.setView([userLocation[1], userLocation[0]], mapRef.current.getZoom(), { animate: true });
-      }
-    }
-  }, [isProviderMode, userLocation]);
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  const userPos: LatLng | null = userLocation
-    ? { lat: userLocation[1], lng: userLocation[0] }
-    : null;
-
-  const mapCenter: LeafletPos = userPos ? [userPos.lat, userPos.lng] : [36.8065, 10.1815];
-
-  // ── Voix ──────────────────────────────────────────────────────────────────
   const speak = useCallback((text: string, priority = false) => {
     if (!('speechSynthesis' in window) || !text) return;
     if (priority) window.speechSynthesis.cancel();
@@ -487,12 +406,7 @@ export default function LeafletMapComponent({
     window.speechSynthesis.speak(u);
   }, []);
 
-  // ── Calcul de route ───────────────────────────────────────────────────────
-  const computeAndSetRoute = useCallback(async (
-    service: Service,
-    m: typeof MODES[0],
-    fromPos?: LatLng,
-  ): Promise<Route | null> => {
+  const computeAndSetRoute = useCallback(async (service: Service, m: typeof MODES[0], fromPos?: LatLng): Promise<Route | null> => {
     const start = fromPos ?? userPos;
     if (!start) { setError('Position utilisateur non disponible.'); return null; }
     const [destLng, destLat] = service.location.coordinates;
@@ -513,21 +427,15 @@ export default function LeafletMapComponent({
     return r;
   }, [userPos]);
 
-  // ── Changement de mode ────────────────────────────────────────────────────
   const handleModeChange = useCallback(async (m: typeof MODES[0]) => {
     setMode(m); modeRef.current = m;
     if (route?.service) await computeAndSetRoute(route.service, m, gpsPos ?? undefined);
   }, [route, gpsPos, computeAndSetRoute]);
 
-  // ── Stop tracking GPS ─────────────────────────────────────────────────────
   const stopTracking = useCallback(() => {
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
-    }
+    if (watchIdRef.current !== null) { navigator.geolocation.clearWatch(watchIdRef.current); watchIdRef.current = null; }
   }, []);
 
-  // ── Arrêt navigation ──────────────────────────────────────────────────────
   const stopNav = useCallback(() => {
     stopTracking();
     window.speechSynthesis?.cancel();
@@ -539,7 +447,6 @@ export default function LeafletMapComponent({
     announcedStepRef.current = -1; isReroutingRef.current = false;
   }, [stopTracking]);
 
-  // ── Recalcul itinéraire ───────────────────────────────────────────────────
   const doReroute = useCallback(async (cur: LatLng) => {
     if (isReroutingRef.current) return;
     const r = routeRef.current, m = modeRef.current;
@@ -560,7 +467,6 @@ export default function LeafletMapComponent({
     isReroutingRef.current = false; lastRerouteRef.current = Date.now();
   }, [speak]);
 
-  // ── Démarrage navigation ──────────────────────────────────────────────────
   const startNav = useCallback(async () => {
     if (!route) { alert("Calculez d'abord un itinéraire."); return; }
     const initPos: LatLng | null = await new Promise((resolve) => {
@@ -595,8 +501,6 @@ export default function LeafletMapComponent({
         const now = Date.now();
         const r = routeRef.current, m = modeRef.current;
         if (!r || isReroutingRef.current) return;
-
-        // Calcul vitesse
         if (prevGpsRef.current) {
           const prev = prevGpsRef.current;
           const moved = haversine(prev, cur), dtSec = (now - prev.t) / 1000;
@@ -610,7 +514,6 @@ export default function LeafletMapComponent({
         }
         prevGpsRef.current = { ...cur, t: now };
         setGpsPos(cur); setCurrentSpeed(smoothSpeedRef.current);
-
         const { segIdx, distM } = snapToRoute(cur, r.path, pathSegIdxRef.current);
         if (distM > OFF_ROUTE_THRESHOLD_M) {
           setOffRoute(true);
@@ -619,17 +522,14 @@ export default function LeafletMapComponent({
         }
         setOffRoute(false);
         if (segIdx > pathSegIdxRef.current) pathSegIdxRef.current = segIdx;
-
         const remM = remainingDistance(r.path, pathSegIdxRef.current);
         setRemainM(remM);
         setRemainSec(calcETA(remM, r.totalDistanceM, r.durationSec, smoothSpeedRef.current, m.id));
-
         const dest: LatLng = { lat: r.service.location.coordinates[1], lng: r.service.location.coordinates[0] };
         if (haversine(cur, dest) < ARRIVAL_M) {
           speak('Vous êtes arrivé à destination. Bonne journée !', true);
-          stopNav(); alert('🏁 Vous êtes arrivé à destination !'); return;
+          stopNav(); alert('Vous êtes arrivé à destination !'); return;
         }
-
         const si = stepIdxRef.current, step = r.steps[si];
         if (!step) return;
         const distToStep = haversine(cur, step.point);
@@ -650,38 +550,25 @@ export default function LeafletMapComponent({
     );
   }, [route, userPos, mode, computeAndSetRoute, speak, stopNav, doReroute]);
 
-  // ── Callback onMapClick unifié ────────────────────────────────────────────
-  // Met à jour le marqueur provider immédiatement PUIS notifie le parent
   const handleMapClick = useCallback((e: { lngLat: { lat: number; lng: number } }) => {
-    if (isProviderMode) {
-      // ✅ Déplace le marqueur instantanément (sans attendre reverseGeocode du parent)
-      setProviderPos({ lat: e.lngLat.lat, lng: e.lngLat.lng });
-    }
-    // ✅ Transmet au parent avec la signature { lngLat: { lat, lng } }
-    onMapClick?.(e);
+    if (isProviderMode) onMapClick?.(e);
   }, [isProviderMode, onMapClick]);
 
-  // ── Effets ────────────────────────────────────────────────────────────────
   useEffect(() => { modeRef.current = mode; }, [mode]);
-
   useEffect(() => {
     if (!navActive || !following || !mapRef.current || !gpsPos) return;
     mapRef.current.flyTo([gpsPos.lat, gpsPos.lng], 18, { animate: true, duration: 0.6 });
   }, [gpsPos, navActive, following]);
-
   useEffect(() => {
     if (!selectedService || !mapRef.current || navActive || loading) return;
     const [lng, lat] = selectedService.location.coordinates;
     mapRef.current.flyTo([lat, lng], 15, { animate: true, duration: 1 });
   }, [selectedService, navActive, loading]);
-
   useEffect(() => () => { stopTracking(); window.speechSynthesis?.cancel(); }, [stopTracking]);
 
-  // ── Polyline affiché ──────────────────────────────────────────────────────
   const displayPath: LeafletPos[] = route
     ? toLeaflet(navActive && pathSegIdxRef.current > 0 ? route.path.slice(pathSegIdxRef.current) : route.path)
     : [];
-
   const navMarkerPos: LeafletPos | null = gpsPos
     ? [gpsPos.lat, gpsPos.lng]
     : userPos ? [userPos.lat, userPos.lng] : null;
@@ -690,27 +577,32 @@ export default function LeafletMapComponent({
   const nextStep    = route?.steps[stepIdx + 1] ?? null;
   const modeColor   = mode.color;
 
-  // ─── Rendu ─────────────────────────────────────────────────────────────────
+  // Vérifie si un service a une localisation valide
+  const hasValidLocation = (service: Service): boolean => {
+    return service.location?.coordinates?.length === 2 &&
+           service.location.coordinates[0] !== 0 &&
+           service.location.coordinates[1] !== 0;
+  };
+
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', fontFamily: 'system-ui, sans-serif' }}>
+    <div className="lmap-root">
 
-      {/* ═══ CARTE ════════════════════════════════════════════════════════ */}
+      {/* ═══ MAP ════════════════════════════════════════════════════════════ */}
       <MapContainer
         center={mapCenter}
         zoom={userPos ? 14 : 12}
-        style={{ width: '100%', height: '100%', zIndex: 1, cursor: isProviderMode ? 'crosshair' : undefined }}
+        className="lmap-container"
         scrollWheelZoom
         zoomControl={false}
         ref={mapRef}
       >
         <TileLayer key={theme.id} url={theme.url} attribution={theme.attr} />
         <MapReady />
-
-        {/* ✅ Gestionnaire de clic unifié (react-leaflet v4) */}
         <MapClickHandler active={isProviderMode} onMapClick={handleMapClick} />
 
-        {/* Polyline itinéraire */}
+        {/* Routes - uniquement pour le mode client */}
         {!isProviderMode && displayPath.length > 1 && (
           <>
             <Polyline positions={displayPath} color="rgba(0,0,0,.12)" weight={mode.lineWeight + 5} />
@@ -724,34 +616,25 @@ export default function LeafletMapComponent({
           </>
         )}
 
-        {/* Marqueur navigation (flèche) */}
-        {navActive && navMarkerPos && (
+        {/* Navigation marker - uniquement pour le mode client */}
+        {!isProviderMode && navActive && navMarkerPos && (
           <Marker position={navMarkerPos} icon={navArrowIcon(bearing, modeColor)} />
         )}
 
-        {/* Marqueur utilisateur (point bleu) - mode client */}
-        {!navActive && userPos && !isProviderMode && (
+        {/* User location - uniquement pour le mode client */}
+        {!isProviderMode && !navActive && userPos && (
           <Marker position={[userPos.lat, userPos.lng]} icon={userDotIcon}>
-            <Popup>📍 Vous êtes ici</Popup>
-          </Marker>
-        )}
-
-        {/* ✅ Marqueur provider éditable — suit providerPos mis à jour au clic */}
-        {isProviderMode && providerPos && (
-          <Marker position={[providerPos.lat, providerPos.lng]} icon={providerMarkerIcon(true)}>
             <Popup>
-              <div style={{ fontSize: 13, fontWeight: 600, minWidth: 180 }}>
-                <div style={{ marginBottom: 4 }}>📍 Position sélectionnée</div>
-                <div style={{ fontSize: 11, color: '#6b7280', fontFamily: 'monospace' }}>
-                  {providerPos.lat.toFixed(5)}, {providerPos.lng.toFixed(5)}
-                </div>
+              <div className="lmap-popup-content">
+                <LocationIcon className="w-4 h-4" />
+                <span>Vous êtes ici</span>
               </div>
             </Popup>
           </Marker>
         )}
 
-        {/* Marqueur destination - navigation active */}
-        {route && navActive && (() => {
+        {/* Destination marker - uniquement pour le mode client */}
+        {!isProviderMode && route && navActive && (() => {
           const [lng, lat] = route.service.location.coordinates;
           return (
             <Marker position={[lat, lng]} icon={destinationIcon()}>
@@ -760,10 +643,41 @@ export default function LeafletMapComponent({
           );
         })()}
 
-        {/* Marqueurs services - mode client */}
-        {!isProviderMode && services.map((s) => {
+        {/* Affichage des services */}
+        {services.map((s) => {
+          // Vérifier si les coordonnées sont valides
+          if (!hasValidLocation(s)) return null;
+          
           const [sLng, sLat] = s.location.coordinates;
           const sel = selectedService?._id === s._id;
+          
+          // Mode prestataire : icône différente, pas d'itinéraire
+          if (isProviderMode) {
+            return (
+              <Marker
+                key={s._id}
+                position={[sLat, sLng]}
+                icon={providerServiceIcon(true)}
+                eventHandlers={{ click: () => onMarkerClick(s) }}
+              >
+                <Popup>
+                  <div className="lmap-popup-service">
+                    <div className="lmap-popup-service-name">{s.name}</div>
+                    <div className="lmap-popup-service-addr">{s.location.address}</div>
+                    <div className="lmap-popup-service-row">
+                      <span className="lmap-popup-price">{s.basePrice} DT</span>
+                      <span className="lmap-popup-rating">
+                        <CheckIcon className="w-3 h-3" />
+                        {s.avgRating} ({s.reviewCount})
+                      </span>
+                    </div>
+                  </div>
+                </Popup>
+              </Marker>
+            );
+          }
+          
+          // Mode client : icône normale avec itinéraire
           return (
             <Marker
               key={s._id}
@@ -772,26 +686,24 @@ export default function LeafletMapComponent({
               eventHandlers={{ click: () => onMarkerClick(s) }}
             >
               <Popup>
-                <div style={{ minWidth: 210 }}>
-                  <strong style={{ fontSize: 14, color: '#111' }}>{s.name}</strong>
-                  <p style={{ margin: '4px 0 6px', fontSize: 12, color: '#666' }}>{s.location.address}</p>
-                  <div style={{ display: 'flex', gap: 8, fontSize: 12, marginBottom: 10 }}>
-                    <span style={{ color: '#1a73e8', fontWeight: 700 }}>{s.basePrice} DT</span>
-                    <span>⭐ {s.avgRating} ({s.reviewCount})</span>
+                <div className="lmap-popup-service">
+                  <div className="lmap-popup-service-name">{s.name}</div>
+                  <div className="lmap-popup-service-addr">{s.location.address}</div>
+                  <div className="lmap-popup-service-row">
+                    <span className="lmap-popup-price">{s.basePrice} DT</span>
+                    <span className="lmap-popup-rating">
+                      <CheckIcon className="w-3 h-3" />
+                      {s.avgRating} ({s.reviewCount})
+                    </span>
                   </div>
                   <button
                     onClick={() => computeAndSetRoute(s, mode)}
                     disabled={loading}
-                    style={{
-                      width: '100%', padding: '9px 0',
-                      background: loading ? '#93c5fd' : '#1a73e8',
-                      color: 'white', border: 'none', borderRadius: 10,
-                      fontSize: 13, fontWeight: 700,
-                      cursor: loading ? 'default' : 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                    }}
+                    className="lmap-popup-btn"
                   >
-                    {loading ? '⏳ Calcul…' : '🗺 Itinéraire'}
+                    {loading
+                      ? <><Loader2Icon className="w-3 h-3 animate-spin" /> Calcul…</>
+                      : <><MapIcon className="w-3 h-3" /> Itinéraire</>}
                   </button>
                 </div>
               </Popup>
@@ -800,207 +712,197 @@ export default function LeafletMapComponent({
         })}
       </MapContainer>
 
-      {/* ═══ SÉLECTEUR THÈME ══════════════════════════════════════════════ */}
-      <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 1000 }}>
+      {/* ═══ THEME SELECTOR ══════════════════════════════════════════════ */}
+      <div className="lmap-theme-wrap">
         <button
+          className="lmap-theme-trigger"
           onClick={() => setThemeOpen((o) => !o)}
-          style={{
-            padding: '7px 12px', background: 'white', border: 'none', borderRadius: 8,
-            fontSize: 12, cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,.2)',
-            display: 'flex', alignItems: 'center', gap: 5, fontWeight: 600,
-          }}
+          aria-label="Changer le thème de la carte"
         >
-          {theme.icon} {theme.label} ▾
+          <MapIcon className="w-4 h-4" />
+          <span>{theme.label}</span>
+          <ChevronDownIcon className={`w-3 h-3 lmap-chevron${themeOpen ? ' lmap-chevron--open' : ''}`} />
         </button>
+
         {themeOpen && (
-          <div style={{ marginTop: 4, background: 'white', borderRadius: 10, overflow: 'hidden', boxShadow: '0 6px 20px rgba(0,0,0,.18)' }}>
+          <div className="lmap-theme-dropdown animate-scaleIn">
             {THEMES.map((t) => (
               <button
                 key={t.id}
+                className={`lmap-theme-item${t.id === theme.id ? ' lmap-theme-item--active' : ''}`}
                 onClick={() => { setTheme(t); setThemeOpen(false); }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  width: '100%', padding: '10px 16px',
-                  background: t.id === theme.id ? '#e8f0fe' : 'white',
-                  border: 'none', textAlign: 'left', cursor: 'pointer',
-                  fontSize: 13, fontWeight: t.id === theme.id ? 700 : 400,
-                  color: t.id === theme.id ? '#1a73e8' : '#374151',
-                }}
               >
-                {t.icon} {t.label}
+                {t.id === theme.id && <CheckIcon className="w-3 h-3" />}
+                {t.label}
               </button>
             ))}
           </div>
         )}
       </div>
 
-      {/* ═══ ERREUR ═══════════════════════════════════════════════════════ */}
+      {/* ═══ ERROR BANNER ════════════════════════════════════════════════ */}
       {error && !navActive && (
-        <div style={{
-          position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 1000, background: '#fef3c7', border: '1px solid #f59e0b',
-          borderRadius: 10, padding: '8px 16px', fontSize: 12, color: '#92400e',
-          maxWidth: 320, textAlign: 'center',
-        }}>
-          ⚠️ {error}
+        <div className="lmap-error-banner animate-fadeIn">
+          <AlertTriangleIcon className="w-4 h-4" />
+          <span>{error}</span>
         </div>
       )}
 
-      {/* ═══ PANNEAU ITINÉRAIRE (avant navigation) ════════════════════════ */}
+      {/* ═══ ROUTE PANEL (pre-navigation) - uniquement mode client ═══════ */}
       {!isProviderMode && route && !navActive && (
-        <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000,
-          background: 'white', borderRadius: '20px 20px 0 0',
-          boxShadow: '0 -6px 28px rgba(0,0,0,.15)', padding: '0 16px 32px',
-        }}>
-          <div style={{ width: 44, height: 4, background: '#e5e7eb', borderRadius: 2, margin: '12px auto 18px' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-            <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ea4335', flexShrink: 0 }} />
-            <span style={{ fontSize: 17, fontWeight: 700, color: '#111827', flex: 1 }}>{route.service.name}</span>
+        <div className="lmap-route-panel animate-slideInRight">
+          <div className="lmap-panel-handle" />
+
+          <div className="lmap-route-header">
+            <div className="lmap-route-dest-dot" />
+            <span className="lmap-route-dest-name">{route.service.name}</span>
           </div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+
+          <div className="lmap-mode-selector">
             {MODES.map((m) => (
               <button
-                key={m.id} onClick={() => handleModeChange(m)} disabled={loading}
-                style={{
-                  flex: 1, padding: '10px 4px',
-                  border: `2px solid ${mode.id === m.id ? m.color : '#e5e7eb'}`,
-                  borderRadius: 14, background: mode.id === m.id ? `${m.color}15` : 'white',
-                  cursor: loading ? 'default' : 'pointer',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                  transition: 'all .15s', opacity: loading ? 0.6 : 1,
-                }}
+                key={m.id}
+                className={`lmap-mode-btn${mode.id === m.id ? ' lmap-mode-btn--active' : ''}`}
+                style={mode.id === m.id ? { borderColor: m.color, background: `${m.color}18`, color: m.color } : {}}
+                onClick={() => handleModeChange(m)}
+                disabled={loading}
               >
-                <span style={{ fontSize: 22 }}>{m.emoji}</span>
-                <span style={{ fontSize: 11, fontWeight: 700, color: mode.id === m.id ? m.color : '#6b7280' }}>{m.label}</span>
+                <span className="lmap-mode-label">{m.label}</span>
               </button>
             ))}
           </div>
-          <div style={{ display: 'flex', background: '#f9fafb', borderRadius: 14, border: '1px solid #f3f4f6', marginBottom: 16, overflow: 'hidden' }}>
-            {[
-              { label: 'Distance', value: fmtDist(route.totalDistanceM), icon: '📍' },
-              { label: 'Durée',    value: fmtTime(route.durationSec),    icon: '⏱' },
-              { label: 'Arrivée', value: fmtArrival(route.durationSec),  icon: '🎯' },
-            ].map((s, i) => (
-              <div key={i} style={{ flex: 1, padding: '13px 8px', textAlign: 'center', borderRight: i < 2 ? '1px solid #f3f4f6' : 'none' }}>
-                <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 4 }}>{s.icon} {s.label}</div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#111827' }}>{s.value}</div>
-              </div>
-            ))}
+
+          <div className="lmap-stats-row">
+            <div className="lmap-stat-cell">
+              <MapPinIcon className="w-4 h-4 text-muted" />
+              <span className="lmap-stat-label">Distance</span>
+              <span className="lmap-stat-value">{fmtDist(route.totalDistanceM)}</span>
+            </div>
+            <div className="lmap-stat-divider" />
+            <div className="lmap-stat-cell">
+              <ClockIcon className="w-4 h-4 text-muted" />
+              <span className="lmap-stat-label">Durée</span>
+              <span className="lmap-stat-value">{fmtTime(route.durationSec)}</span>
+            </div>
+            <div className="lmap-stat-divider" />
+            <div className="lmap-stat-cell">
+              <CheckIcon className="w-4 h-4 text-muted" />
+              <span className="lmap-stat-label">Arrivée</span>
+              <span className="lmap-stat-value">{fmtArrival(route.durationSec)}</span>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
+
+          <div className="lmap-route-actions">
             <button
+              className="lmap-start-btn"
+              style={{ background: modeColor, boxShadow: `0 4px 14px ${modeColor}50` }}
               onClick={startNav}
-              style={{
-                flex: 1, padding: '15px', background: modeColor, color: 'white',
-                border: 'none', borderRadius: 14, fontSize: 16, fontWeight: 700, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                boxShadow: `0 4px 14px ${modeColor}50`,
-              }}
             >
-              ▶ Démarrer la navigation
+              <ArrowRightIcon className="w-5 h-5" />
+              Démarrer la navigation
             </button>
             <button
+              className="lmap-close-route-btn"
               onClick={() => { setRoute(null); routeRef.current = null; setError(null); }}
-              style={{ padding: '15px 18px', background: '#f3f4f6', color: '#6b7280', border: 'none', borderRadius: 14, fontSize: 18, cursor: 'pointer' }}
+              aria-label="Fermer l'itinéraire"
             >
-              ✕
+              <CloseIcon className="w-4 h-4" />
             </button>
           </div>
         </div>
       )}
 
-      {/* ═══ HUD NAVIGATION ACTIVE ════════════════════════════════════════ */}
+      {/* ═══ NAV HUD - uniquement mode client ════════════════════════════ */}
       {!isProviderMode && navActive && route && (
         <>
-          {/* Carte de virage */}
-          <div style={{
-            position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-            zIndex: 1001, width: 'min(380px, calc(100vw - 24px))',
-            background: rerouting ? '#ea4335' : offRoute ? '#f97316' : modeColor,
-            color: 'white', borderRadius: 20, padding: '14px',
-            boxShadow: '0 6px 28px rgba(0,0,0,.35)',
-            display: 'flex', alignItems: 'center', gap: 12, transition: 'background .3s',
-          }}>
-            <div style={{ width: 58, height: 58, flexShrink: 0, background: 'rgba(255,255,255,.2)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, fontWeight: 900 }}>
-              {rerouting ? '↺' : stepArrow(currentStep?.maneuver ?? '', currentStep?.modifier)}
+          <div
+            className="lmap-turn-card animate-fadeIn"
+            style={{
+              background: rerouting ? '#ea4335' : offRoute ? '#f97316' : modeColor,
+            }}
+          >
+            <div className="lmap-turn-arrow">
+              <span className="lmap-turn-arrow-symbol">
+                {rerouting ? '↻' : stepArrow(currentStep?.maneuver ?? '', currentStep?.modifier)}
+              </span>
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 24, fontWeight: 900, lineHeight: 1, marginBottom: 4 }}>
+
+            <div className="lmap-turn-body">
+              <div className="lmap-turn-dist">
                 {rerouting ? '…' : fmtDist(distToNextStep || currentStep?.distanceM || 0)}
               </div>
-              <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.3, opacity: 0.95 }}>
-                {rerouting ? 'Recalcul en cours…' : offRoute ? '⚠️ Hors itinéraire' : currentStep?.instruction ?? 'En route…'}
+              <div className="lmap-turn-instruction">
+                {rerouting ? 'Recalcul en cours…' : offRoute ? 'Hors itinéraire' : (currentStep?.instruction ?? 'En route…')}
               </div>
               {currentStep?.streetName && !rerouting && (
-                <div style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>{currentStep.streetName}</div>
+                <div className="lmap-turn-street">{currentStep.streetName}</div>
               )}
             </div>
+
             {nextStep && !rerouting && (
-              <div title={nextStep.instruction} style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                <div style={{ width: 38, height: 38, background: 'rgba(255,255,255,.18)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
-                  {stepArrow(nextStep.maneuver, nextStep.modifier)}
-                </div>
-                <div style={{ fontSize: 10, opacity: 0.8 }}>{fmtDist(nextStep.distanceM)}</div>
+              <div className="lmap-turn-next">
+                <span className="lmap-turn-next-arrow">{stepArrow(nextStep.maneuver, nextStep.modifier)}</span>
+                <span className="lmap-turn-next-dist">{fmtDist(nextStep.distanceM)}</span>
               </div>
             )}
-            <button onClick={stopNav} style={{ flexShrink: 0, width: 36, height: 36, background: 'rgba(255,255,255,.25)', border: 'none', borderRadius: 10, color: 'white', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              ✕
+
+            <button className="lmap-turn-stop" onClick={stopNav} aria-label="Arrêter la navigation">
+              <CloseIcon className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Bouton recentrage */}
           <button
+            className={`lmap-recenter-btn${following ? ' lmap-recenter-btn--active' : ''}`}
+            style={following ? { background: modeColor, borderColor: modeColor } : {}}
             onClick={() => setFollowing((f) => !f)}
-            style={{
-              position: 'absolute', top: 88, right: 12, zIndex: 1001,
-              width: 46, height: 46,
-              background: following ? modeColor : 'white',
-              border: `2px solid ${following ? modeColor : '#e5e7eb'}`,
-              borderRadius: 13, cursor: 'pointer',
-              boxShadow: '0 2px 12px rgba(0,0,0,.2)',
-              color: following ? 'white' : '#374151', fontSize: 20,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
+            aria-label={following ? 'Libérer le suivi' : 'Recentrer'}
           >
-            {following ? '🔒' : '📍'}
+            <LocationIcon className="w-5 h-5" />
           </button>
 
-          {/* Barre inférieure ETA */}
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1001, background: 'white', borderRadius: '20px 20px 0 0', boxShadow: '0 -4px 22px rgba(0,0,0,.14)' }}>
-            <div onClick={() => setHudOpen((o) => !o)} style={{ cursor: 'pointer', userSelect: 'none' }}>
-              <div style={{ width: 44, height: 4, background: '#e5e7eb', borderRadius: 2, margin: '10px auto 0' }} />
-              <div style={{ display: 'flex', alignItems: 'center', padding: '12px 18px 14px', gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: 32, fontWeight: 900, color: '#111827', lineHeight: 1 }}>{fmtTime(remainSec)}</span>
-                  <div style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>{fmtDist(remainM)} · Arrivée {fmtArrival(remainSec)}</div>
+          <div className="lmap-eta-bar">
+            <div className="lmap-eta-handle-row" onClick={() => setHudOpen((o) => !o)}>
+              <div className="lmap-panel-handle" />
+            </div>
+            <div className="lmap-eta-content" onClick={() => setHudOpen((o) => !o)}>
+              <div className="lmap-eta-left">
+                <span className="lmap-eta-time">{fmtTime(remainSec)}</span>
+                <span className="lmap-eta-sub">{fmtDist(remainM)} · Arrivée {fmtArrival(remainSec)}</span>
+              </div>
+              {currentSpeed > 0.5 && (
+                <div className="lmap-speed-chip">
+                  <span className="lmap-speed-val">{Math.round(currentSpeed * 3.6)}</span>
+                  <span className="lmap-speed-unit">km/h</span>
                 </div>
-                {currentSpeed > 0.5 && (
-                  <div style={{ background: '#f3f4f6', borderRadius: 12, padding: '8px 12px', textAlign: 'center', flexShrink: 0 }}>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: '#111827', lineHeight: 1 }}>{Math.round(currentSpeed * 3.6)}</div>
-                    <div style={{ fontSize: 10, color: '#9ca3af' }}>km/h</div>
-                  </div>
-                )}
-                <div style={{ fontSize: 28, flexShrink: 0, opacity: 0.7 }}>{mode.emoji}</div>
-                <span style={{ fontSize: 12, color: '#9ca3af' }}>{hudOpen ? '▼' : '▲'} Étapes</span>
+              )}
+              <div className={`lmap-hud-chevron${hudOpen ? ' lmap-hud-chevron--open' : ''}`}>
+                <ChevronDownIcon className="w-4 h-4 text-muted" />
               </div>
             </div>
+
             {hudOpen && (
-              <div style={{ borderTop: '1px solid #f3f4f6', maxHeight: 260, overflowY: 'auto', padding: '6px 0 20px' }}>
+              <div className="lmap-steps-list animate-fadeIn">
                 {route.steps.map((s, i) => {
                   const isCur = i === stepIdx, isPast = i < stepIdx;
                   return (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 18px', background: isCur ? '#e8f0fe' : 'transparent', borderLeft: `3px solid ${isCur ? modeColor : 'transparent'}`, opacity: isPast ? 0.4 : 1, transition: 'all .2s' }}>
-                      <div style={{ width: 34, height: 34, flexShrink: 0, background: isCur ? modeColor : '#f3f4f6', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: isCur ? 'white' : '#6b7280' }}>
+                    <div
+                      key={i}
+                      className={`lmap-step-item${isCur ? ' lmap-step-item--current' : ''}${isPast ? ' lmap-step-item--past' : ''}`}
+                      style={isCur ? { borderLeftColor: modeColor } : {}}
+                    >
+                      <div
+                        className="lmap-step-icon"
+                        style={isCur ? { background: modeColor, color: '#fff' } : {}}
+                      >
                         {stepArrow(s.maneuver, s.modifier)}
                       </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: isCur ? 700 : 400, color: isCur ? '#111827' : '#4b5563', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.instruction}</div>
-                        {s.streetName && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>{s.streetName}</div>}
+                      <div className="lmap-step-body">
+                        <div className="lmap-step-instruction">{s.instruction}</div>
+                        {s.streetName && <div className="lmap-step-street">{s.streetName}</div>}
                       </div>
-                      <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                        <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>{fmtDist(s.distanceM)}</div>
-                        <div style={{ fontSize: 11, color: '#9ca3af' }}>{fmtTime(s.durationSec)}</div>
+                      <div className="lmap-step-meta">
+                        <span className="lmap-step-dist">{fmtDist(s.distanceM)}</span>
+                        <span className="lmap-step-time">{fmtTime(s.durationSec)}</span>
                       </div>
                     </div>
                   );
@@ -1011,30 +913,19 @@ export default function LeafletMapComponent({
         </>
       )}
 
-      {/* ═══ SPINNER ══════════════════════════════════════════════════════ */}
+      {/* ═══ LOADING SPINNER ══════════════════════════════════════════════ */}
       {loading && (
-        <div style={{
-          position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
-          zIndex: 1002, background: 'white', borderRadius: 16, padding: '18px 28px',
-          boxShadow: '0 6px 28px rgba(0,0,0,.22)', display: 'flex', alignItems: 'center', gap: 12,
-          fontSize: 14, fontWeight: 600, color: '#374151',
-        }}>
-          <span style={{ display: 'inline-block', animation: 'spin .8s linear infinite' }}>⏳</span>
-          Calcul de l&apos;itinéraire…
-          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        <div className="lmap-loading animate-fadeIn">
+          <Loader2Icon className="w-6 h-6 animate-spin text-primary" />
+          <span>Calcul de l&apos;itinéraire…</span>
         </div>
       )}
 
-      {/* ═══ BANNIÈRE MODE PROVIDER ═══════════════════════════════════════ */}
+      {/* ═══ PROVIDER BANNER (mode prestataire - affichage simple) ═══════ */}
       {isProviderMode && (
-        <div style={{
-          position: 'absolute', bottom: 14, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 1000, background: 'white', border: '1px solid #e5e7eb',
-          borderRadius: 10, padding: '8px 18px', fontSize: 12, color: '#4b5563',
-          boxShadow: '0 2px 8px rgba(0,0,0,.1)', whiteSpace: 'nowrap',
-          display: 'flex', alignItems: 'center', gap: 6,
-        }}>
-          ✏️ Mode édition — cliquez sur la carte pour repositionner
+        <div className="lmap-provider-banner animate-fadeIn">
+          <MapPinIcon className="w-4 h-4" />
+          <span>Vos services sur la carte — cliquez sur un marqueur pour voir les détails</span>
         </div>
       )}
     </div>

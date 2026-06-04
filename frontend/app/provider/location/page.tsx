@@ -1,510 +1,364 @@
-// app/provider/location/page.tsx
 'use client';
 
-/**
- * ProviderLocationPage
- * ✅ CORRECTIONS :
- *   - handleMapClick reçoit { lngLat: { lat, lng } } (signature unifiée avec LeafletMapComponent)
- *   - La carte et les champs se mettent à jour en même temps au clic
- *   - reverseGeocode met à jour location.lat/lng → la carte suit via userLocation prop
- */
-
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import { useSearchParams } from 'next/navigation';
 import { servicesApi } from '@/lib/api/services';
-import { Service } from '@/lib/api/services/types';
 import { TUNISIAN_GOVERNORATES, GOVERNORATE_COORDINATES } from '@/lib/api/constants/governorates';
 import Link from 'next/link';
 import {
-  ChevronLeftIcon,
-  MapPinIcon,
-  PencilIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  AlertTriangleIcon,
-  SaveIcon,
-  XMarkIcon,
-  LocationIcon,
-  CheckIcon,
+  ChevronLeftIcon, MapPinIcon, PencilIcon,
+  CheckCircleIcon, XCircleIcon, AlertTriangleIcon,
+  SaveIcon, XMarkIcon, LocationIcon, CheckIcon,
 } from '@/components/ui/Icons';
 
 const ServiceMap = dynamic(() => import('@/app/client/carte/ServiceMap'), {
   ssr: false,
   loading: () => (
-    <div style={{
-      height: '100%', display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', gap: '0.75rem',
-      background: 'rgb(var(--surface-raised))',
-    }}>
+    <div className="h-full flex flex-col items-center justify-center gap-3 bg-surface-raised">
       <div className="spinner" />
-      <p style={{ fontSize: '0.875rem', color: 'rgb(var(--foreground-muted))' }}>
-        Chargement de la carte…
-      </p>
+      <p className="text-sm text-muted">Chargement de la carte…</p>
     </div>
   ),
 });
 
-// ─── Types ─────────────────────────────────────────────────────────────────────
+interface Loc { lat:number; lng:number; address:string; city:string; governorate:string; postalCode:string; }
 
-interface LocationState {
-  lat: number;
-  lng: number;
-  address: string;
-  city: string;
-  governorate: string;
-  postalCode: string;
-}
+const EMPTY: Loc = { lat:36.8065, lng:10.1815, address:'', city:'', governorate:'', postalCode:'' };
 
-// ─── Helpers gouvernorat ──────────────────────────────────────────────────────
-
-const normalizeGovernorateName = (name: string): string => {
+const normalizeGov = (name: string) => {
   if (!name) return '';
-  const clean = name.replace(/Gouvernorat\s+/i, '').trim();
-  for (const gov of TUNISIAN_GOVERNORATES) {
-    if (
-      clean.toLowerCase() === gov.toLowerCase() ||
-      clean.toLowerCase().includes(gov.toLowerCase()) ||
-      gov.toLowerCase().includes(clean.toLowerCase())
-    ) return gov;
-  }
-  return clean;
+  const clean = name.replace(/Gouvernorat\s+/i,'').trim();
+  return TUNISIAN_GOVERNORATES.find(g =>
+    clean.toLowerCase()===g.toLowerCase() ||
+    clean.toLowerCase().includes(g.toLowerCase()) ||
+    g.toLowerCase().includes(clean.toLowerCase())
+  ) ?? clean;
 };
 
-const findNearestGovernorate = (lat: number, lng: number): string => {
-  let minDist = Infinity, nearest = '';
-  for (const gov of TUNISIAN_GOVERNORATES) {
-    const coords = GOVERNORATE_COORDINATES[gov as keyof typeof GOVERNORATE_COORDINATES];
-    if (coords) {
-      const d = Math.sqrt((lat - coords.lat) ** 2 + (lng - coords.lng) ** 2);
-      if (d < minDist) { minDist = d; nearest = gov; }
-    }
+const nearestGov = (lat: number, lng: number) => {
+  let min = Infinity, found = '';
+  for (const g of TUNISIAN_GOVERNORATES) {
+    const c = (GOVERNORATE_COORDINATES as any)[g];
+    if (c) { const d = Math.hypot(lat-c.lat, lng-c.lng); if (d<min){ min=d; found=g; } }
   }
-  return nearest;
+  return found;
 };
 
-// ─── Composant ────────────────────────────────────────────────────────────────
+const isValid = (s: any) =>
+  s?.location?.coordinates?.length===2 &&
+  s.location.address?.trim() && s.location.city?.trim() && s.location.governorate?.trim();
+
+const svcToLoc = (s: any): Loc => ({
+  lat: +s.location.coordinates[1], lng: +s.location.coordinates[0],
+  address: s.location.address||'', city: s.location.city||'',
+  governorate: normalizeGov(s.location.governorate||''), postalCode: s.location.postalCode||'',
+});
 
 export default function ProviderLocationPage() {
-  const [services, setServices]             = useState<Service[]>([]);
-  const [selectedServiceId, setSelectedServiceId] = useState('');
-  const [loading, setLoading]               = useState(true);
-  const [saving, setSaving]                 = useState(false);
-  const [isEditing, setIsEditing]           = useState(false);
-  const [geocoding, setGeocoding]           = useState(false);
-  const [notice, setNotice]                 = useState<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null);
-  const hasLoadedRef = useRef(false);
+  const sp    = useSearchParams();
+  const urlId = sp.get('serviceId');
 
-  const [location, setLocation] = useState<LocationState>({
-    lat: 36.8065, lng: 10.1815,
-    address: '', city: '', governorate: '', postalCode: '',
-  });
+  const [services,   setServices]   = useState<any[]>([]);
+  const [selId,      setSelId]      = useState('');
+  const [loading,    setLoading]    = useState(true);
+  const [saving,     setSaving]     = useState(false);
+  const [editing,    setEditing]    = useState(false);
+  const [geocoding,  setGeocoding]  = useState(false);
+  const [notice,     setNotice]     = useState<{type:'success'|'error'|'warning';text:string}|null>(null);
+  const [loc,        setLoc]        = useState<Loc>(EMPTY);
 
-  // ── Notices ───────────────────────────────────────────────────────────────
-  const showNotice = useCallback((type: 'success' | 'error' | 'warning', text: string) => {
+  const flash = useCallback((type:'success'|'error'|'warning', text:string) => {
     setNotice({ type, text });
-    if (type !== 'warning') setTimeout(() => setNotice(null), 3500);
+    if (type!=='warning') setTimeout(()=>setNotice(null), 3500);
   }, []);
 
-  // ── Chargement des services ───────────────────────────────────────────────
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
+  // ── Load services ───────────────────────────────────────────────
+  useEffect(()=>{
+    (async()=>{
       try {
         const data = await servicesApi.getByProvider();
-        setServices(data);
-        if (data?.length && !hasLoadedRef.current) {
-          hasLoadedRef.current = true;
-          setSelectedServiceId(data[0]._id);
-          if (data[0].location?.coordinates?.length >= 2 && data[0].location.address) {
-            setLocation({
-              lat:         Number(data[0].location.coordinates[1]),
-              lng:         Number(data[0].location.coordinates[0]),
-              address:     data[0].location.address      || '',
-              city:        data[0].location.city         || '',
-              governorate: normalizeGovernorateName(data[0].location.governorate || ''),
-              postalCode:  data[0].location.postalCode   || '',
-            });
-          }
+        const list = Array.isArray(data) ? data : [];
+        setServices(list);
+        if (list.length){
+          const id  = urlId || list[0]._id;
+          setSelId(id);
+          const svc = list.find((s:any)=>s._id===id);
+          setLoc(svc && isValid(svc) ? svcToLoc(svc) : EMPTY);
         }
-      } catch {
-        showNotice('error', 'Erreur lors du chargement des services');
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [showNotice]);
+      } catch { flash('error','Erreur lors du chargement des services'); }
+      finally   { setLoading(false); }
+    })();
+  },[urlId, flash]);
 
-  // ── Chargement d'un service sélectionné ──────────────────────────────────
-  const loadServiceLocation = useCallback(async (serviceId: string) => {
-    if (!serviceId) return;
+  const reloadLoc = useCallback(async(id:string)=>{
     setLoading(true);
-    try {
-      const service = await servicesApi.getById(serviceId);
-      if (service.location?.coordinates?.length >= 2 && service.location.address) {
-        setLocation({
-          lat:         Number(service.location.coordinates[1]),
-          lng:         Number(service.location.coordinates[0]),
-          address:     service.location.address      || '',
-          city:        service.location.city         || '',
-          governorate: normalizeGovernorateName(service.location.governorate || ''),
-          postalCode:  service.location.postalCode   || '',
-        });
-      } else {
-        setLocation({ lat: 36.8065, lng: 10.1815, address: '', city: '', governorate: '', postalCode: '' });
-      }
-    } catch { /* silent */ }
+    try { const s = await servicesApi.getById(id); setLoc(isValid(s)?svcToLoc(s):EMPTY); }
+    catch(e){ console.error(e); }
     finally { setLoading(false); }
-  }, []);
+  },[]);
 
-  useEffect(() => {
-    if (selectedServiceId) {
-      loadServiceLocation(selectedServiceId);
-      setIsEditing(false);
-    }
-  }, [selectedServiceId, loadServiceLocation]);
+  useEffect(()=>{ if(selId){ reloadLoc(selId); setEditing(false); } },[selId, reloadLoc]);
 
-  // ── Géocodage inverse ─────────────────────────────────────────────────────
-  const reverseGeocode = useCallback(async (lat: number, lng: number) => {
-    // Met à jour lat/lng immédiatement (la carte suit via la prop userLocation)
-    setLocation(prev => ({ ...prev, lat, lng }));
+  // ── Reverse geocode ─────────────────────────────────────────────
+  const revGeo = useCallback(async(lat:number, lng:number)=>{
+    setLoc(p=>({...p,lat,lng}));
     setGeocoding(true);
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&language=fr`,
-      );
-      const data = await res.json();
-      if (data.address) {
-        const road    = data.address.road || '';
-        const hn      = data.address.house_number || '';
-        const sub     = data.address.suburb || '';
-        const address = [hn, road, sub].filter(Boolean).join(' ')
-          || data.display_name?.split(',').slice(0, 2).join(',')
-          || '';
-        const city  = data.address.city || data.address.town || data.address.village || '';
-        const state = data.address.state || data.address.region || '';
-        let governorate = '';
-        for (const gov of TUNISIAN_GOVERNORATES) {
-          if (state.toLowerCase().includes(gov.toLowerCase()) || gov.toLowerCase().includes(state.toLowerCase())) {
-            governorate = gov; break;
-          }
-        }
-        if (!governorate) governorate = findNearestGovernorate(lat, lng);
-        // ✅ Met à jour tous les champs (lat/lng déjà mis à jour ci-dessus)
-        setLocation({ lat, lng, address, city, governorate, postalCode: data.address.postcode || '' });
+      const r  = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&language=fr`);
+      const d  = await r.json();
+      if (d?.address){
+        const address     = [d.address.house_number,d.address.road,d.address.suburb].filter(Boolean).join(' ') || d.display_name?.split(',').slice(0,2).join(',') || '';
+        const city        = d.address.city||d.address.town||d.address.village||'';
+        const state       = d.address.state||d.address.region||'';
+        const governorate = TUNISIAN_GOVERNORATES.find(g=>state.toLowerCase().includes(g.toLowerCase())||g.toLowerCase().includes(state.toLowerCase())) || nearestGov(lat,lng);
+        setLoc({ lat, lng, address, city, governorate, postalCode: d.address.postcode||'' });
       }
-    } catch {
-      // lat/lng déjà à jour, on garde les autres champs
-    } finally {
-      setGeocoding(false);
-    }
-  }, []);
+    } catch(e){ console.error(e); }
+    finally{ setGeocoding(false); }
+  },[]);
 
-  // ── ✅ Handler clic carte — signature { lngLat: { lat, lng } } ─────────────
-  // Correspond exactement à ce que LeafletMapComponent transmet via onMapClick
-  const handleMapClick = useCallback(
-    (e: { lngLat: { lat: number; lng: number } }) => {
-      if (!isEditing) return;
-      reverseGeocode(e.lngLat.lat, e.lngLat.lng);
-    },
-    [isEditing, reverseGeocode],
-  );
+  const onMapClick = useCallback((e:{lngLat:{lat:number;lng:number}})=>{
+    if(editing) revGeo(e.lngLat.lat, e.lngLat.lng);
+  },[editing,revGeo]);
 
-  // ── Géolocalisation GPS ───────────────────────────────────────────────────
-  const handleGPS = useCallback(() => {
-    if (!isEditing) return;
-    if (!navigator.geolocation) { showNotice('error', 'Géolocalisation non supportée'); return; }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => reverseGeocode(pos.coords.latitude, pos.coords.longitude),
-      ()    => showNotice('error', "Impossible d'obtenir votre position"),
-    );
-  }, [isEditing, reverseGeocode, showNotice]);
+  const onGPS = useCallback(()=>{
+    if(!editing) return;
+    if(!navigator.geolocation){ flash('error','Géolocalisation non supportée'); return; }
+    navigator.geolocation.getCurrentPosition(p=>revGeo(p.coords.latitude,p.coords.longitude),()=>flash('error',"Impossible d'obtenir votre position"));
+  },[editing,revGeo,flash]);
 
-  // ── Validation ────────────────────────────────────────────────────────────
-  const isFormValid = () =>
-    location.address.trim() !== '' &&
-    location.city.trim()    !== '' &&
-    location.governorate    !== '';
+  const formValid = () => loc.address.trim() && loc.city.trim() && loc.governorate;
 
-  // ── Sauvegarde ────────────────────────────────────────────────────────────
-  const saveLocation = async () => {
-    if (!selectedServiceId) { showNotice('error', 'Sélectionnez un service'); return; }
-    if (!isFormValid())     { showNotice('error', 'Remplissez tous les champs obligatoires'); return; }
+  const save = async () => {
+    if(!selId){ flash('error','Sélectionnez un service'); return; }
+    if(!formValid()){ flash('error','Remplissez tous les champs obligatoires'); return; }
     setSaving(true);
     try {
-      await servicesApi.update(selectedServiceId, {
-        location: {
-          coordinates: [location.lng, location.lat] satisfies [number, number],
-          address:     location.address,
-          city:        location.city,
-          governorate: location.governorate,
-          postalCode:  location.postalCode,
-        },
-      });
-      showNotice('success', 'Localisation enregistrée avec succès');
-      setIsEditing(false);
-      await loadServiceLocation(selectedServiceId);
-    } catch {
-      showNotice('error', "Erreur lors de l'enregistrement");
-    } finally {
-      setSaving(false);
-    }
+      await servicesApi.update(selId,{ location:{ coordinates:[loc.lng,loc.lat] as [number,number], address:loc.address, city:loc.city, governorate:loc.governorate, postalCode:loc.postalCode } });
+      flash('success','Localisation enregistrée avec succès');
+      setEditing(false);
+      await reloadLoc(selId);
+    } catch { flash('error',"Erreur lors de l'enregistrement"); }
+    finally { setSaving(false); }
   };
 
-  const handleCancel = () => {
-    loadServiceLocation(selectedServiceId);
-    setIsEditing(false);
-  };
+  const cancel = () => { reloadLoc(selId); setEditing(false); };
 
-  // ── Loading initial ───────────────────────────────────────────────────────
-  if (loading && services.length === 0) {
-    return (
-      <div className="prov-location-loading">
-        <div className="spinner" />
-        <p style={{ fontSize: '0.875rem', color: 'rgb(var(--foreground-muted))' }}>Chargement…</p>
-      </div>
-    );
-  }
+  if (loading && !services.length) return (
+    <div className="flex justify-center items-center min-h-screen bg-surface">
+      <div className="spinner" />
+    </div>
+  );
 
-  const selectedService      = services.find((s) => s._id === selectedServiceId);
-  const hasExistingLocation  = !!selectedService?.location?.address;
-
-  /**
-   * Service virtuel transmis à la carte :
-   * On injecte location.lat/lng issus de l'état local (mis à jour au clic)
-   * pour que la carte reflète immédiatement la nouvelle position.
-   */
-// Remplacer cette ligne (vers la ligne 210-215 environ) :
-const virtualService = selectedService
-  ? {
-      ...selectedService,
-      location: {
-        type: 'Point' as const,
-        coordinates: [location.lng, location.lat] as [number, number],  // ✅ Correction ici
-        address:     location.address,
-        city:        location.city,
-        governorate: location.governorate,
-        postalCode:  location.postalCode,
-      },
-    }
-  : null;
-
-  // ── Rendu ─────────────────────────────────────────────────────────────────
+  const selSvc         = services.find(s=>s._id===selId);
+  const hasLoc         = selSvc ? isValid(selSvc) : false;
+  const virtualService = selSvc ? { ...selSvc, location:{ type:'Point' as const, coordinates:[loc.lng,loc.lat] as [number,number], ...loc } } : null;
 
   return (
-    <div className="prov-location-page">
-      <div className="prov-location-container">
+    <div className="min-h-screen bg-surface">
+      <div className="container-app py-8">
 
-        {/* ── Header ──────────────────────────────────────────────────── */}
-        <div className="prov-location-header">
+        {/* ── Header ── */}
+        <div className="animate-fadeIn mb-8 flex flex-wrap gap-4 items-start justify-between">
           <div>
-            <Link href="/provider/services" className="prov-location-back">
+            <Link
+              href="/provider/services"
+              className="inline-flex items-center gap-1 text-sm text-muted hover:text-primary transition-colors rounded-pill px-3 py-1 bg-surface-raised border border-border hover-lift mb-3"
+            >
               <ChevronLeftIcon className="w-4 h-4" /> Retour aux services
             </Link>
-            <h1 className="prov-location-title">
-              <MapPinIcon className="w-6 h-6" /> Localisation
+
+            <h1 className="flex items-center gap-3 mt-1">
+              <span className="inline-flex p-2 rounded-app bg-primary-soft text-primary animate-bounce-in">
+                <MapPinIcon className="w-6 h-6" />
+              </span>
+              <span className="font-display text-foreground">Localisation</span>
             </h1>
-            <p className="prov-location-subtitle">Définissez l&apos;emplacement de vos services</p>
+            <p className="text-muted text-sm mt-1 pl-1">Définissez l&apos;emplacement exact de votre service</p>
           </div>
 
-          <div className="prov-location-header-actions">
-            {isEditing && (
-              <button className="prov-location-cancel-btn" onClick={handleCancel}>
+          <div className="flex gap-2">
+            {editing && (
+              <button className="btn btn-ghost animate-fadeIn" onClick={cancel}>
                 <XMarkIcon className="w-4 h-4" /> Annuler
               </button>
             )}
             <button
-              className={`prov-location-edit-btn ${isEditing ? 'editing' : 'primary'}`}
-              onClick={() => setIsEditing((e) => !e)}
+              className={`btn ${editing ? 'btn-ghost' : 'btn-primary'}`}
+              onClick={()=>setEditing(e=>!e)}
             >
               <PencilIcon className="w-4 h-4" />
-              {isEditing ? 'En cours de modification' : 'Modifier'}
+              {editing ? 'En modification…' : 'Modifier'}
             </button>
           </div>
         </div>
 
-        {/* ── Sélecteur de service ─────────────────────────────────────── */}
-        {services.length > 0 && (
-          <div className="prov-location-service-selector">
-            <label>Sélectionner un service</label>
+        {/* ── Service selector ── */}
+        {services.length>0 && (
+          <div className="card mb-6 animate-fadeInUp p-4">
+            <label className="label">Service concerné</label>
             <select
-              className="prov-location-service-select"
-              value={selectedServiceId}
-              onChange={(e) => setSelectedServiceId(e.target.value)}
-              disabled={isEditing}
+              className="input"
+              style={{ maxWidth:'28rem' }}
+              value={selId}
+              onChange={e=>setSelId(e.target.value)}
+              disabled={editing}
             >
-              {services.map((s) => (
-                <option key={s._id} value={s._id}>
-                  {s.name} {s.location?.address ? '📍' : '⚠️'}
-                </option>
+              {services.map(s=>(
+                <option key={s._id} value={s._id}>{s.name} {isValid(s)?'📍':'⚠️'}</option>
               ))}
             </select>
           </div>
         )}
 
-        {/* ── Notices ──────────────────────────────────────────────────── */}
+        {/* ── Notice ── */}
         {notice && (
-          <div className={`prov-location-notice ${notice.type}`}>
-            {notice.type === 'success' && <CheckCircleIcon className="w-4 h-4" />}
-            {notice.type === 'error'   && <XCircleIcon     className="w-4 h-4" />}
-            {notice.type === 'warning' && <AlertTriangleIcon className="w-4 h-4" />}
-            {notice.text}
+          <div className={`alert animate-slideInRight mb-6 ${
+            notice.type==='success' ? 'alert-success' :
+            notice.type==='error'   ? 'alert-error'   : 'alert-warning'
+          }`}>
+            {notice.type==='success' && <CheckCircleIcon   className="w-5 h-5 flex-shrink-0" />}
+            {notice.type==='error'   && <XCircleIcon       className="w-5 h-5 flex-shrink-0" />}
+            {notice.type==='warning' && <AlertTriangleIcon className="w-5 h-5 flex-shrink-0" />}
+            <span>{notice.text}</span>
           </div>
         )}
 
-        {!hasExistingLocation && !isEditing && !notice && (
-          <div className="prov-location-notice warning">
-            <AlertTriangleIcon className="w-4 h-4" />
-            Ce service n&apos;a pas encore de localisation. Cliquez sur &ldquo;Modifier&rdquo; pour en ajouter une.
+        {!hasLoc && !editing && !notice && (
+          <div className="alert alert-warning mb-6 animate-fadeIn">
+            <AlertTriangleIcon className="w-5 h-5 flex-shrink-0" />
+            <span>Ce service n&apos;a pas encore de localisation. Cliquez sur <strong>Modifier</strong> pour en ajouter une.</span>
           </div>
         )}
 
-        {/* ── Panneau principal ────────────────────────────────────────── */}
+        {/* ── Main panel ── */}
         {virtualService && (
-          <div className="prov-location-panel">
+          <div className="card p-0 overflow-hidden animate-scaleIn">
 
-            {/* Top bar */}
-            <div className="prov-location-panel-top">
+            {/* Panel top bar */}
+            <div className="flex items-start justify-between flex-wrap gap-3 px-6 py-4 border-b border-border bg-surface-raised">
               <div>
-                <p className="prov-location-service-name">{selectedService?.name}</p>
-                <p className="prov-location-coords">
+                <p className="font-sans font-semibold text-foreground text-lg">{selSvc?.name}</p>
+                <p className="text-muted text-sm flex items-center gap-1 mt-1">
                   <LocationIcon className="w-3 h-3" />
-                  {hasExistingLocation || isEditing
-                    ? `${Number(location.lat).toFixed(5)}, ${Number(location.lng).toFixed(5)}`
-                    : 'Aucune position définie'}
-                  {geocoding && (
-                    <span style={{ marginLeft: 6, fontSize: 11, color: '#6b7280' }}>
-                      ⏳ Géocodage…
-                    </span>
-                  )}
+                  {hasLoc||editing ? `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}` : 'Aucune position définie'}
+                  {geocoding && <span className="ml-2 text-xs animate-pulse-soft">⏳ Géocodage…</span>}
                 </p>
               </div>
-              {isEditing && (
-                <button className="prov-location-gps-btn" onClick={handleGPS}>
-                  <MapPinIcon className="w-4 h-4" /> Ma position
+              {editing && (
+                <button className="btn btn-ghost btn-sm" onClick={onGPS}>
+                  <MapPinIcon className="w-4 h-4" /> Ma position GPS
                 </button>
               )}
             </div>
 
-            {/* ✅ Carte :
-                - userLocation = [lng, lat] depuis l'état local (mis à jour immédiatement au clic)
-                - onMapClick   = handleMapClick qui reçoit { lngLat: { lat, lng } }
-            */}
-            <div className="prov-location-map-wrapper">
+            {/* Map */}
+            <div style={{ height:'22rem' }} className="w-full">
               <ServiceMap
                 services={[virtualService]}
-                userLocation={[location.lng, location.lat]}
+                userLocation={[loc.lng, loc.lat]}
                 selectedService={null}
-                onMarkerClick={() => {}}
-                isProviderMode={isEditing}
-                onMapClick={handleMapClick}
+                onMarkerClick={()=>{}}
+                isProviderMode={editing}
+                onMapClick={onMapClick}
               />
             </div>
 
-            <p className="prov-location-map-hint">
-              <MapPinIcon className="w-3 h-3" />
-              {isEditing
-                ? 'Cliquez sur la carte pour placer le marqueur — les champs se mettent à jour automatiquement'
-                : 'Position actuelle du service sur la carte'}
-            </p>
+            {editing && (
+              <p className="text-muted text-xs px-6 py-2 bg-surface-raised border-b border-border flex items-center gap-1">
+                <MapPinIcon className="w-3 h-3" />
+                Cliquez sur la carte pour placer le marqueur — les champs se mettent à jour automatiquement
+              </p>
+            )}
 
-            {/* ── Champs formulaire ─────────────────────────────────── */}
-            <div className="prov-location-form-grid">
+            {/* Form fields */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
 
-              {/* Adresse */}
-              <div className="prov-location-field prov-location-form-full">
-                <label className="prov-location-field-label">
-                  Adresse {isEditing && <span className="required">*</span>}
+              <div className="md:col-span-2">
+                <label className="label">
+                  Adresse {editing && <span className="text-error ml-1">*</span>}
                 </label>
                 <input
-                  type="text"
-                  className="prov-location-field-input"
-                  value={location.address}
-                  onChange={(e) => isEditing && setLocation({ ...location, address: e.target.value })}
-                  placeholder="Ex : 12 Rue de la Liberté"
-                  disabled={!isEditing}
+                  type="text" className="input"
+                  value={loc.address}
+                  onChange={e=>editing && setLoc({...loc,address:e.target.value})}
+                  placeholder="Ex : 12 Rue de la Liberté, Tunis"
+                  disabled={!editing}
                 />
               </div>
 
-              {/* Ville */}
-              <div className="prov-location-field">
-                <label className="prov-location-field-label">
-                  Ville {isEditing && <span className="required">*</span>}
+              <div>
+                <label className="label">
+                  Ville {editing && <span className="text-error ml-1">*</span>}
                 </label>
                 <input
-                  type="text"
-                  className="prov-location-field-input"
-                  value={location.city}
-                  onChange={(e) => isEditing && setLocation({ ...location, city: e.target.value })}
+                  type="text" className="input"
+                  value={loc.city}
+                  onChange={e=>editing && setLoc({...loc,city:e.target.value})}
                   placeholder="Ex : Tunis"
-                  disabled={!isEditing}
+                  disabled={!editing}
                 />
               </div>
 
-              {/* Code postal */}
-              <div className="prov-location-field">
-                <label className="prov-location-field-label">Code postal</label>
+              <div>
+                <label className="label">Code postal</label>
                 <input
-                  type="text"
-                  className="prov-location-field-input"
-                  value={location.postalCode}
-                  onChange={(e) => isEditing && setLocation({ ...location, postalCode: e.target.value })}
+                  type="text" className="input"
+                  value={loc.postalCode}
+                  onChange={e=>editing && setLoc({...loc,postalCode:e.target.value})}
                   placeholder="Ex : 1000"
-                  disabled={!isEditing}
+                  disabled={!editing}
                 />
               </div>
 
-              {/* Gouvernorat */}
-              <div className="prov-location-field prov-location-form-full">
-                <label className="prov-location-field-label">
-                  Gouvernorat {isEditing && <span className="required">*</span>}
+              <div className="md:col-span-2">
+                <label className="label">
+                  Gouvernorat {editing && <span className="text-error ml-1">*</span>}
                 </label>
                 <select
-                  className="prov-location-field-select"
-                  value={location.governorate}
-                  onChange={(e) => isEditing && setLocation({ ...location, governorate: e.target.value })}
-                  disabled={!isEditing}
+                  className="input"
+                  value={loc.governorate}
+                  onChange={e=>editing && setLoc({...loc,governorate:e.target.value})}
+                  disabled={!editing}
                 >
                   <option value="">Sélectionner un gouvernorat</option>
-                  {TUNISIAN_GOVERNORATES.map((gov) => (
-                    <option key={gov} value={gov}>{gov}</option>
-                  ))}
+                  {TUNISIAN_GOVERNORATES.map(g=><option key={g} value={g}>{g}</option>)}
                 </select>
-                {isEditing && location.governorate && (
-                  <span className="prov-location-field-hint">
+                {editing && loc.governorate && (
+                  <p className="text-success text-xs mt-1 flex items-center gap-1 animate-fadeIn">
                     <CheckIcon className="w-3 h-3" /> Détecté automatiquement
-                  </span>
+                  </p>
                 )}
               </div>
 
+              {/* Validation banner */}
+              {editing && (
+                <div className={`md:col-span-2 alert ${formValid()?'alert-success':'alert-warning'} animate-fadeIn`}>
+                  {formValid()
+                    ? <><CheckCircleIcon className="w-4 h-4" /> Tous les champs obligatoires sont remplis</>
+                    : <><AlertTriangleIcon className="w-4 h-4" /> Veuillez remplir les champs marqués *</>
+                  }
+                </div>
+              )}
             </div>
 
-            {/* ── Validation ──────────────────────────────────────────── */}
-            {isEditing && (
-              <div className={`prov-location-validation ${isFormValid() ? 'valid' : 'invalid'}`}>
-                {isFormValid()
-                  ? <><CheckCircleIcon  className="w-4 h-4" /> Tous les champs obligatoires sont remplis</>
-                  : <><AlertTriangleIcon className="w-4 h-4" /> Veuillez remplir les champs marqués *</>}
-              </div>
-            )}
-
-            {/* ── Actions sauvegarde ───────────────────────────────────── */}
-            {isEditing && (
-              <div className="prov-location-save-actions">
-                <button className="prov-location-cancel-btn" onClick={handleCancel}>
+            {/* Footer actions */}
+            {editing && (
+              <div className="flex justify-end gap-3 px-6 py-4 border-t border-border bg-surface-raised animate-fadeIn">
+                <button className="btn btn-ghost" onClick={cancel}>
                   <XMarkIcon className="w-4 h-4" /> Annuler
                 </button>
                 <button
-                  className="prov-location-save-btn"
-                  onClick={saveLocation}
-                  disabled={saving || !isFormValid()}
+                  className="btn btn-primary"
+                  onClick={save}
+                  disabled={saving || !formValid()}
                 >
                   <SaveIcon className="w-4 h-4" />
-                  {saving ? 'Enregistrement…' : 'Enregistrer'}
+                  {saving ? 'Enregistrement…' : 'Enregistrer la localisation'}
                 </button>
               </div>
             )}
-
           </div>
         )}
 

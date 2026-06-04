@@ -1,16 +1,18 @@
-import { IsNotEmpty, IsDateString, IsString, IsOptional } from 'class-validator';
+// src/modules/reservations/dto/create-reservation.dto.ts
+
+import { IsString, IsDateString, IsNumber, IsOptional, Min, Max } from 'class-validator';
 
 export class CreateReservationDto {
-  @IsNotEmpty()
-  serviceId: string;
+  @IsString()
+  serviceId!: string;
 
-  @IsNotEmpty()
   @IsDateString()
-  startTime: string;
+  startTime!: string;
 
-  @IsNotEmpty()
-  @IsDateString()
-  endTime: string;
+  @IsNumber()
+  @Min(5)
+  @Max(480)
+  duration!: number;
 
   @IsOptional()
   @IsString()
@@ -18,13 +20,13 @@ export class CreateReservationDto {
 }
 
 export class ConfirmReservationDto {
-  @IsNotEmpty()
-  reservationId: string;
+  @IsString()
+  reservationId!: string;
 }
 
 export class CancelReservationDto {
-  @IsNotEmpty()
-  reservationId: string;
+  @IsString()
+  reservationId!: string;
 
   @IsOptional()
   @IsString()

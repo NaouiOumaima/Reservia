@@ -7,7 +7,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class DashboardController {
   constructor(private dashboardService: DashboardService) {}
 
-  // ✅ IMPORTANT: Cet endpoint doit être PUBLIC (sans @UseGuards)
+  // ✅ Endpoint public pour la page d'accueil
   @Get('stats/home')
   async getHomePageStats(): Promise<HomePageStats> {
     console.log('📊 Home stats endpoint called');

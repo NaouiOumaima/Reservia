@@ -30,9 +30,6 @@ export class Reservation {
   @Prop({ required: true })
   duration!: number;
 
-  @Prop({ required: true })
-  price!: number;
-
   @Prop({ required: true, enum: ReservationStatus, default: ReservationStatus.PENDING })
   status!: ReservationStatus;
 
@@ -54,7 +51,6 @@ export class Reservation {
 
 export const ReservationSchema = SchemaFactory.createForClass(Reservation);
 
-// Index pour les requêtes fréquentes
 ReservationSchema.index({ clientId: 1, createdAt: -1 });
 ReservationSchema.index({ serviceId: 1, startTime: 1 });
 ReservationSchema.index({ serviceId: 1, status: 1 });

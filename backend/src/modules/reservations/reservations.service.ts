@@ -34,7 +34,6 @@ export class ReservationsService {
       throw new BadRequestException('Créneau non disponible');
     }
 
-    const price = service.discountPrice || service.basePrice;
     const pendingTimeout = this.configService.get<number>('reservation.pendingTimeoutMinutes') || 10;
     const expiresAt = new Date(Date.now() + pendingTimeout * 60000);
 
@@ -44,7 +43,6 @@ export class ReservationsService {
       startTime: start,
       endTime: end,
       duration,
-      price,
       status: ReservationStatus.PENDING,
       notes,
       expiresAt,
@@ -59,14 +57,9 @@ export class ReservationsService {
   async confirm(id: string, providerId: string) {
     const reservation = await this.findById(id);
     const service = await this.serviceModel.findById(reservation.serviceId);
-    
-    if (!service) {
-      throw new NotFoundException('Service non trouvé');
-    }
-    
-    if (service.providerId.toString() !== providerId) {
-      throw new ForbiddenException('Non autorisé');
-    }
+
+    if (!service) throw new NotFoundException('Service non trouvé');
+    if (service.providerId.toString() !== providerId) throw new ForbiddenException('Non autorisé');
 
     if (reservation.status !== ReservationStatus.PENDING) {
       throw new BadRequestException(`La réservation ne peut pas être confirmée (statut: ${reservation.status})`);
@@ -92,19 +85,18 @@ export class ReservationsService {
   async cancel(id: string, userId: string, reason?: string) {
     const reservation = await this.findById(id);
     const service = await this.serviceModel.findById(reservation.serviceId);
-    
-    if (!service) {
-      throw new NotFoundException('Service non trouvé');
-    }
+
+    if (!service) throw new NotFoundException('Service non trouvé');
 
     const isClient = reservation.clientId.toString() === userId;
     const isOwner = service.providerId.toString() === userId;
 
-    if (!isClient && !isOwner) {
-      throw new ForbiddenException('Non autorisé');
-    }
+    if (!isClient && !isOwner) throw new ForbiddenException('Non autorisé');
 
-    if (reservation.status !== ReservationStatus.PENDING && reservation.status !== ReservationStatus.CONFIRMED) {
+    if (
+      reservation.status !== ReservationStatus.PENDING &&
+      reservation.status !== ReservationStatus.CONFIRMED
+    ) {
       throw new BadRequestException(`La réservation ne peut pas être annulée (statut: ${reservation.status})`);
     }
 
@@ -124,14 +116,9 @@ export class ReservationsService {
   async complete(id: string, providerId: string) {
     const reservation = await this.findById(id);
     const service = await this.serviceModel.findById(reservation.serviceId);
-    
-    if (!service) {
-      throw new NotFoundException('Service non trouvé');
-    }
-    
-    if (service.providerId.toString() !== providerId) {
-      throw new ForbiddenException('Non autorisé');
-    }
+
+    if (!service) throw new NotFoundException('Service non trouvé');
+    if (service.providerId.toString() !== providerId) throw new ForbiddenException('Non autorisé');
 
     if (reservation.status !== ReservationStatus.CONFIRMED) {
       throw new BadRequestException('Seules les réservations confirmées peuvent être complétées');
@@ -166,7 +153,6 @@ export class ReservationsService {
   async getAvailability(serviceId: string, date: Date) {
     const start = new Date(date);
     start.setHours(0, 0, 0, 0);
-
     const end = new Date(date);
     end.setHours(23, 59, 59, 999);
 
@@ -185,9 +171,7 @@ export class ReservationsService {
 
   private async findById(id: string) {
     const reservation = await this.reservationModel.findById(id);
-    if (!reservation) {
-      throw new NotFoundException('Réservation non trouvée');
-    }
+    if (!reservation) throw new NotFoundException('Réservation non trouvée');
     return reservation;
   }
 
@@ -201,7 +185,6 @@ export class ReservationsService {
         { startTime: { $lte: start }, endTime: { $gte: end } },
       ],
     });
-
     return !existing;
   }
 
