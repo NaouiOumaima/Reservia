@@ -4,7 +4,6 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import FilterBar from './FilterBar';
 import ServiceMap from './ServiceMap';
-import { MenuIcon } from '@/components/ui/Icons';
 
 interface Service {
   _id: string;
@@ -34,15 +33,12 @@ function CarteContent() {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [filters, setFilters] = useState({
     category: categoryParam || '',
-    minPrice: 0,
-    maxPrice: 500,
     radius: 10,
   });
   const [loading, setLoading] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(true);      // pour desktop
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Géolocalisation
   useEffect(() => {
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -54,7 +50,6 @@ function CarteContent() {
     }
   }, []);
 
-  // Récupération des services
   useEffect(() => {
     if (!userLocation) return;
     const fetchServices = async () => {
@@ -78,64 +73,86 @@ function CarteContent() {
     fetchServices();
   }, [userLocation, filters.radius]);
 
-  // Filtrage local
   useEffect(() => {
     let filtered = [...services];
     if (filters.category) filtered = filtered.filter((s) => s.category === filters.category);
-    filtered = filtered.filter((s) => s.basePrice >= filters.minPrice && s.basePrice <= filters.maxPrice);
     setFilteredServices(filtered);
   }, [filters, services]);
 
-  const handleMarkerClick = (service: Service) => setSelectedService(service);
-  const closeMobileSidebar = () => setMobileMenuOpen(false);
+  const handleMarkerClick = (service: Service) => {
+    setSelectedService(service);
+    setMobileOpen(false);
+  };
 
   return (
-    <div className="client-carte-page">
-      {/* Sidebar */}
-      <aside className={`client-carte-sidebar ${sidebarOpen ? 'open' : ''}`}>
-        <div className="client-carte-sidebar-header">
-          <div className="client-carte-sidebar-header-top">
-            <h2>Services à proximité</h2>
+    <div className="cc-page">
+
+      {/* ── Overlay mobile ── */}
+      {mobileOpen && (
+        <div
+          className="cc-overlay"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* ── Sidebar ── */}
+      <aside className={`cc-sidebar ${sidebarOpen ? 'cc-sidebar--open' : 'cc-sidebar--collapsed'} ${mobileOpen ? 'cc-sidebar--mobile-open' : ''}`}>
+
+        {/* Header */}
+        <div className="cc-sidebar__header">
+          <div className="cc-sidebar__header-top">
+            <span className="cc-sidebar__title">Services à proximité</span>
+            {/* Bouton collapse desktop */}
             <button
-              className="client-carte-sidebar-toggle"
+              className="cc-sidebar__toggle"
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              aria-label="Réduire la sidebar"
+              aria-label={sidebarOpen ? 'Réduire' : 'Agrandir'}
             >
-              {sidebarOpen ? '◀' : '▶'}
+              {sidebarOpen ? '←' : '→'}
+            </button>
+            {/* Bouton fermer mobile */}
+            <button
+              className="cc-sidebar__close-mobile"
+              onClick={() => setMobileOpen(false)}
+              aria-label="Fermer"
+            >
+              ✕
             </button>
           </div>
-          <p>{filteredServices.length} résultat(s)</p>
+          <span className="cc-sidebar__count">{filteredServices.length} résultat(s)</span>
         </div>
 
-        <div className="client-carte-services-list">
+        {/* Liste */}
+        <div className="cc-sidebar__list">
           {loading ? (
-            <div className="client-carte-loading">
-              <div className="spinner" />
-              <span>Chargement…</span>
+            <div className="cc-sidebar__state">
+              <div className="cc-dots">
+                <div className="cc-dot" />
+                <div className="cc-dot" />
+                <div className="cc-dot" />
+              </div>
+              <p>Chargement…</p>
             </div>
           ) : filteredServices.length === 0 ? (
-            <div className="client-carte-empty">
-              <span>🔍</span>
-              <span>Aucun service trouvé</span>
+            <div className="cc-sidebar__state">
+              <div className="cc-sidebar__empty-icon">📍</div>
+              <p>Aucun service dans ce rayon</p>
             </div>
           ) : (
-            filteredServices.map((service) => (
+            filteredServices.map((service, i) => (
               <div
                 key={service._id}
-                className={`client-carte-service-item ${selectedService?._id === service._id ? 'active' : ''}`}
-                onClick={() => {
-                  handleMarkerClick(service);
-                  closeMobileSidebar();
-                }}
+                className={`cc-service-item ${selectedService?._id === service._id ? 'cc-service-item--active' : ''}`}
+                style={{ animationDelay: `${i * 40}ms` }}
+                onClick={() => handleMarkerClick(service)}
               >
-                <h3>{service.name}</h3>
-                <p>{service.location.address}</p>
-                <div className="client-carte-service-info">
-                  <span className="price">{service.basePrice} DT</span>
-                  <div className="rating">
-                    <span>★</span>
-                    <span>{service.avgRating}</span>
-                    <span>({service.reviewCount})</span>
+                <div className="cc-service-item__icon">📍</div>
+                <div className="cc-service-item__body">
+                  <h3 className="cc-service-item__name">{service.name}</h3>
+                  <p className="cc-service-item__addr">{service.location.address}</p>
+                  <div className="cc-service-item__meta">
+                    <span className="cc-badge-free">Gratuit</span>
+                    <span className="cc-badge-rating">★ {service.avgRating}</span>
                   </div>
                 </div>
               </div>
@@ -144,13 +161,10 @@ function CarteContent() {
         </div>
       </aside>
 
-      {/* Overlay mobile */}
-      {mobileMenuOpen && <div className="client-carte-overlay" onClick={closeMobileSidebar} />}
-
-      {/* Contenu principal */}
-      <div className="client-carte-main">
+      {/* ── Zone principale ── */}
+      <div className="cc-main">
         <FilterBar filters={filters} onFilterChange={setFilters} />
-        <div className="client-carte-map-container">
+        <div className="cc-map">
           <ServiceMap
             services={filteredServices}
             userLocation={userLocation}
@@ -160,21 +174,27 @@ function CarteContent() {
         </div>
       </div>
 
-      {/* Bouton burger mobile */}
-      <button
-        className="client-carte-mobile-menu-btn"
-        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        aria-label="Ouvrir la liste des services"
-      >
-        <MenuIcon className="w-5 h-5" />
-      </button>
+     {/* ── Bouton mobile burger ── */}
+<button
+  className="cc-fab"
+  onClick={() => setMobileOpen(!mobileOpen)}
+  aria-label="Voir les services"
+>
+  {mobileOpen ? '✕' : '☰'}
+  {/* Badge optionnel - toujours afficher le compteur si des services existent */}
+  {filteredServices.length > 0 && (
+    <span className="cc-fab__badge">{filteredServices.length}</span>
+  )}
+</button>
     </div>
   );
 }
 
 export default function ClientCartePage() {
   return (
-    <Suspense fallback={<div className="client-carte-suspense">Chargement de la carte…</div>}>
+    <Suspense fallback={
+      <div className="client-carte-suspense">Chargement de la carte…</div>
+    }>
       <CarteContent />
     </Suspense>
   );
