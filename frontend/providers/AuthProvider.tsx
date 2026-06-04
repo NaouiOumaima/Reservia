@@ -11,6 +11,7 @@ import {
   type RegisterData,
   type User,
 } from '@/lib/api';
+import { normalizeUser } from '@/lib/api/users/users.api';
 
 interface AuthContextType {
   user: User | null;
@@ -53,7 +54,11 @@ function getInitialUser(): User | null {
   if (typeof window === 'undefined') return null;
   try {
     const stored = localStorage.getItem('user');
-    return stored ? JSON.parse(stored) : null;
+    if (stored) {
+      const user = JSON.parse(stored);
+      return normalizeUser(user); // Normaliser l'utilisateur dès la récupération initiale
+    }
+    return null;
   } catch {
     return null;
   }
@@ -86,16 +91,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const updateUser = useCallback((updatedUser: User) => {
-    setUser(updatedUser);
+    const normalizedUser = normalizeUser(updatedUser);
+     setUser(normalizedUser);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+    localStorage.setItem('user', JSON.stringify(normalizedUser));
     }
   }, []);
 
   const login = async (credentials: LoginCredentials) => {
     try {
       const res = await loginApi(credentials);
-      setUser(res.user);
+      const normalizedUser = normalizeUser(res.user); 
+      setUser(normalizedUser);
+      localStorage.setItem('user', JSON.stringify(normalizedUser));
       localStorage.setItem('user', JSON.stringify(res.user));
       localStorage.setItem('accessToken', res.accessToken);
       localStorage.setItem('refreshToken', res.refreshToken);
@@ -113,11 +121,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const register = async (data: RegisterData) => {
     try {
       const res = await registerApi(data);
-      setUser(res.user);
+      const normalizedUser = normalizeUser(res.user);
+      setUser(normalizedUser);
       if (res.accessToken) {
         localStorage.setItem('user', JSON.stringify(res.user));
         localStorage.setItem('accessToken', res.accessToken);
         localStorage.setItem('refreshToken', res.refreshToken);
+        localStorage.setItem('user', JSON.stringify(normalizedUser));
+
         setCookie('accessToken', res.accessToken, 7);
       }
     } catch (error: any) {

@@ -1,4 +1,5 @@
 // backend/src/modules/users/users.service.ts
+
 import { Injectable, InternalServerErrorException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -50,10 +51,24 @@ export class UsersService {
     }
   }
 
-  async updateAvatar(userId: string, avatarUrl: string): Promise<any | null> {
+  // ✅ MODIFIÉ : Accepter l'image en Base64
+  async updateAvatar(userId: string, imageBase64: string): Promise<any | null> {
     try {
+      // Validation: vérifier que c'est bien une image Base64
+      if (!imageBase64 || !imageBase64.startsWith('data:image/')) {
+        throw new BadRequestException('Format d\'image invalide');
+      }
+      
+      // Vérifier la taille (max 5MB en Base64 ≈ 3.7MB d'image réelle)
+      const sizeInBytes = Buffer.byteLength(imageBase64, 'utf8');
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      
+      if (sizeInBytes > maxSize) {
+        throw new BadRequestException('L\'image ne doit pas dépasser 5MB');
+      }
+      
       const user = await this.userModel
-        .findByIdAndUpdate(userId, { profileImage: avatarUrl }, { new: true })
+        .findByIdAndUpdate(userId, { profileImage: imageBase64 }, { new: true })
         .lean()
         .exec();
       
@@ -61,7 +76,24 @@ export class UsersService {
       return this.sanitizeUser(user);
     } catch (error) {
       console.error('Error in updateAvatar:', error);
+      if (error instanceof BadRequestException) throw error;
       throw new InternalServerErrorException('Failed to update avatar');
+    }
+  }
+
+  // ✅ NOUVEAU : Mettre à jour l'image Google
+  async updateGooglePicture(userId: string, pictureUrl: string): Promise<any | null> {
+    try {
+      const user = await this.userModel
+        .findByIdAndUpdate(userId, { picture: pictureUrl }, { new: true })
+        .lean()
+        .exec();
+      
+      if (!user) return null;
+      return this.sanitizeUser(user);
+    } catch (error) {
+      console.error('Error in updateGooglePicture:', error);
+      throw new InternalServerErrorException('Failed to update Google picture');
     }
   }
 

@@ -49,6 +49,8 @@ export interface ChangePasswordData {
   confirmPassword: string;
 }
 
+// frontend/lib/api/users/types.ts
+
 export interface User {
   _id: string;
   email: string;
@@ -59,6 +61,7 @@ export interface User {
   bio?: string;
   profileImage?: string;
   avatar?: string;
+  avatarUrl?: string; // 👈 Pour l'URL normalisée
   isBanned?: boolean;
   isEmailVerified?: boolean;
   isActive?: boolean;
@@ -66,7 +69,7 @@ export interface User {
   createdAt?: Date;
   providerStatus?: string;
   googleId?: string | null;
-  picture?: string | null;
+  picture?: string | null; // 👈 Pour Google OAuth
   preferences?: UserPreferences;
   providerProfile?: ProviderProfile;
   location?: UserLocation;

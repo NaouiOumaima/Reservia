@@ -79,33 +79,43 @@ export class UsersController {
     }
   }
 
-  @Post('avatar')
-  @UseInterceptors(FileInterceptor('avatar', avatarUploadConfig))
-  async uploadAvatar(@Request() req, @UploadedFile() file: Express.Multer.File) {
-    try {
-      const userId = req.user._id || req.user.id;
-      if (!userId) {
-        throw new BadRequestException('User ID not found');
-      }
-      
-      if (!file) {
-        throw new BadRequestException('Aucun fichier uploadé');
-      }
-      
-      const avatarUrl = `/uploads/avatars/${file.filename}`;
-      const updatedUser = await this.usersService.updateAvatar(userId, avatarUrl);
-      
-      return {
-        avatarUrl: avatarUrl,
-        message: 'Avatar mis à jour avec succès',
-        user: updatedUser,
-      };
-    } catch (error) {
-      console.error('Upload avatar error:', error);
-      if (error instanceof BadRequestException) throw error;
-      throw new InternalServerErrorException('Failed to upload avatar');
+  // backend/src/modules/users/users.controller.ts
+
+// Remplace la méthode uploadAvatar par celle-ci :
+@Post('avatar')
+@UseGuards(JwtAuthGuard)
+async uploadAvatar(@Request() req, @Body('avatar') avatarBase64: string) {
+  try {
+    const userId = req.user._id || req.user.id;
+    if (!userId) {
+      throw new BadRequestException('User ID not found');
     }
+    
+    if (!avatarBase64) {
+      throw new BadRequestException('Aucune image fournie');
+    }
+    
+    // Validation du format Base64
+    if (!avatarBase64.startsWith('data:image/')) {
+      throw new BadRequestException('Format d\'image invalide. Utilisez JPG, PNG ou WEBP.');
+    }
+    
+    const updatedUser = await this.usersService.updateAvatar(userId, avatarBase64);
+    if (!updatedUser) {
+      throw new BadRequestException('User not found');
+    }
+    
+    return {
+      avatarUrl: avatarBase64,
+      message: 'Avatar mis à jour avec succès',
+      user: updatedUser,
+    };
+  } catch (error) {
+    console.error('Upload avatar error:', error);
+    if (error instanceof BadRequestException) throw error;
+    throw new InternalServerErrorException('Failed to upload avatar');
   }
+}
 
   @Patch('me/change-password')
   async changeMyPassword(@Request() req, @Body() changePasswordDto: ChangePasswordDto) {
