@@ -1,3 +1,4 @@
+// app/service/[id]/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -5,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { servicesApi, reviewsApi, reservationsApi } from '@/lib/api';
 import type { Service } from '@/lib/api/services/types';
 import type { Review } from '@/lib/api/reviews/types';
-import { StarIcon, LocationIcon } from '@/components/ui/Icons';
+import { StarIcon, MapPinIcon, ClockIcon, UserIcon, ArrowRightIcon } from '@/components/ui/Icons';
 
 export default function ServiceDetailPage() {
   const params = useParams();
@@ -72,42 +73,96 @@ export default function ServiceDetailPage() {
     return slots;
   };
 
-  const displayPrice = service.discountPrice || service.basePrice;
-  const hasDiscount = !!service.discountPrice && service.discountPrice < service.basePrice;
-
   return (
     <div className="min-h-screen bg-surface">
       <div className="max-w-4xl mx-auto py-8 px-4">
-        {service.images?.[0] && (
-          <img src={service.images[0]} alt={service.name} className="w-full h-64 object-cover rounded-lg mb-6" />
+        {/* Bouton retour */}
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-muted hover:text-foreground mb-4 transition"
+        >
+          <ArrowRightIcon className="w-4 h-4 rotate-180" />
+          Retour
+        </button>
+
+        {/* Images */}
+        {service.images && service.images.length > 0 && (
+          <div className="grid grid-cols-2 gap-2 mb-6">
+            <div className="col-span-2">
+              <img
+                src={service.images[0]}
+                alt={service.name}
+                className="w-full h-64 object-cover rounded-lg"
+              />
+            </div>
+            {service.images[1] && (
+              <img
+                src={service.images[1]}
+                alt={service.name}
+                className="w-full h-32 object-cover rounded-lg"
+              />
+            )}
+            {service.images[2] && (
+              <img
+                src={service.images[2]}
+                alt={service.name}
+                className="w-full h-32 object-cover rounded-lg"
+              />
+            )}
+          </div>
         )}
 
+        {/* Titre et infos */}
         <h1 className="text-3xl font-bold text-foreground mb-2">{service.name}</h1>
-        <div className="flex items-center gap-4 mb-4">
+        <div className="flex flex-wrap items-center gap-4 mb-6">
           <div className="flex items-center gap-1 text-warning">
             <StarIcon className="w-5 h-5 fill-current" />
             <span className="font-medium">{service.avgRating?.toFixed(1) || '0.0'}</span>
             <span className="text-muted">({service.reviewCount || 0} avis)</span>
           </div>
           <div className="flex items-center gap-1 text-muted">
-            <LocationIcon className="w-4 h-4" />
+            <MapPinIcon className="w-4 h-4" />
             <span>{service.location?.city}, {service.location?.governorate}</span>
+          </div>
+          <div className="flex items-center gap-1 text-muted">
+            <ClockIcon className="w-4 h-4" />
+            <span>{service.duration} min</span>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2">
-            <div className="card mb-6">
-              <h2 className="text-xl font-semibold mb-3">Description</h2>
-              <p className="text-muted">{service.description}</p>
-            </div>
+          <div className="md:col-span-2 space-y-6">
+            {/* Description */}
             <div className="card">
-              <h2 className="text-xl font-semibold mb-3">Avis clients</h2>
+              <h2 className="text-xl font-semibold mb-3">Description</h2>
+              <p className="text-muted leading-relaxed">{service.description}</p>
+            </div>
+
+            {/* Prestataire */}
+            <div className="card">
+              <h2 className="text-xl font-semibold mb-3">Prestataire</h2>
+              <div className="flex items-center gap-2">
+                <UserIcon className="w-5 h-5 text-muted" />
+                <span className="text-foreground">{service.providerName || 'Non spécifié'}</span>
+              </div>
+            </div>
+
+            {/* Avis clients */}
+            <div className="card">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xl font-semibold">Avis clients</h2>
+                <button
+                  onClick={() => router.push(`/service/${serviceId}/review`)}
+                  className="text-sm text-blue-600 hover:text-blue-700"
+                >
+                  Donner mon avis
+                </button>
+              </div>
               {reviews.length === 0 ? (
-                <p className="text-muted">Aucun avis pour le moment</p>
+                <p className="text-muted">Aucun avis pour le moment. Soyez le premier à donner votre avis !</p>
               ) : (
                 <div className="space-y-4">
-                  {reviews.map(review => (
+                  {reviews.slice(0, 3).map(review => (
                     <div key={review._id} className="border-b border-border pb-4 last:border-0">
                       <div className="flex items-center gap-2 mb-2">
                         <div className="flex text-warning">
@@ -120,42 +175,40 @@ export default function ServiceDetailPage() {
                       <p className="text-foreground">{review.comment}</p>
                     </div>
                   ))}
+                  {reviews.length > 3 && (
+                    <button className="text-sm text-blue-600 hover:text-blue-700">
+                      Voir tous les {reviews.length} avis
+                    </button>
+                  )}
                 </div>
               )}
             </div>
           </div>
 
+          {/* Sidebar réservation */}
           <div>
             <div className="card sticky top-24">
               <div className="text-center mb-4">
-                {hasDiscount ? (
-                  <div>
-                    <span className="text-2xl font-bold text-primary">{displayPrice} DT</span>
-                    <span className="text-sm text-muted line-through ml-2">{service.basePrice} DT</span>
-                    <span className="text-xs text-green-600 ml-2">Promo</span>
-                  </div>
-                ) : (
-                  <span className="text-3xl font-bold text-primary">{displayPrice} DT</span>
-                )}
-                <span className="text-muted"> / {service.duration} min</span>
+                <span className="text-xl text-muted">Service GRATUIT</span>
+                <p className="text-sm text-muted mt-1">{service.duration} minutes</p>
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="label">Date</label>
+                  <label className="label block text-sm font-medium mb-1">Date</label>
                   <input
                     type="date"
                     min={new Date().toISOString().split('T')[0]}
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="input"
+                    className="input w-full px-3 py-2 border rounded-lg"
                   />
                 </div>
                 <div>
-                  <label className="label">Horaire</label>
+                  <label className="label block text-sm font-medium mb-1">Horaire</label>
                   <select
                     value={selectedTime}
                     onChange={(e) => setSelectedTime(e.target.value)}
-                    className="input"
+                    className="input w-full px-3 py-2 border rounded-lg"
                     disabled={!selectedDate}
                   >
                     <option value="">Sélectionner un horaire</option>
@@ -167,12 +220,12 @@ export default function ServiceDetailPage() {
                 <button
                   onClick={handleBooking}
                   disabled={booking || !selectedDate || !selectedTime}
-                  className="btn btn-primary w-full"
+                  className="btn btn-primary w-full py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {booking ? 'Réservation en cours...' : 'Réserver maintenant'}
+                  {booking ? 'Réservation en cours...' : 'Réserver gratuitement'}
                 </button>
                 <p className="text-xs text-muted text-center mt-2">
-                  Paiement sécurisé • Annulation gratuite sous 24h
+                  Service gratuit • Annulation gratuite sous 24h
                 </p>
               </div>
             </div>

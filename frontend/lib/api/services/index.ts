@@ -1,2 +1,2 @@
 export type * from './services.api';
-export { servicesApi } from './services.api';
+export *from './services.api';

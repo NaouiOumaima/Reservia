@@ -1,4 +1,4 @@
-// src/types/reservation.ts
+// src/api/reservation/types/reservation.ts
 
 export interface Reservation {
   _id: string;

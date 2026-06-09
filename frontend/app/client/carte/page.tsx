@@ -2,6 +2,8 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useAuth } from '@/providers/AuthProvider';
+import FavoriteButton from '@/components/FavoriteButton';
 import FilterBar from './FilterBar';
 import ServiceMap from './ServiceMap';
 
@@ -26,6 +28,7 @@ interface Service {
 // ─── Inner page (needs useSearchParams) ──────────────────────────────────────
 
 function CarteContent() {
+  const { user } = useAuth();
   const searchParams   = useSearchParams();
   const categoryParam  = searchParams.get('category');
 
@@ -167,8 +170,20 @@ function CarteContent() {
               >
                 <div className="cc-service-item__icon">📍</div>
                 <div className="cc-service-item__body">
-                  <h3 className="cc-service-item__name">{service.name}</h3>
-                  <p className="cc-service-item__addr">{service.location.address}</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h3 className="cc-service-item__name">{service.name}</h3>
+                      <p className="cc-service-item__addr">{service.location.address}</p>
+                    </div>
+                    {user?.role === 'client' && (
+                      <FavoriteButton
+                        serviceId={service._id}
+                        size="sm"
+                        className="relative"
+                        onClick={(event) => event.stopPropagation()}
+                      />
+                    )}
+                  </div>
                   <div className="cc-service-item__meta">
                     <span className="cc-badge-price">{service.basePrice} TND</span>
                     <span className="cc-badge-rating">★ {service.avgRating}</span>

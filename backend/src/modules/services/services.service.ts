@@ -1,3 +1,5 @@
+// src/modules/services/services.service.ts
+
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -29,21 +31,19 @@ export class ServicesService {
     return service.save();
   }
 
-  // ✅ Méthode UPSERT corrigée
   async upsertLocation(providerId: string, upsertLocationDto: UpsertLocationDto) {
     const existingService = await this.serviceModel.findOne({ 
       providerId: new Types.ObjectId(providerId) 
     }).exec();
 
-    // S'assurer que les coordonnées sont au bon format [lng, lat]
     const coordinates: [number, number] = [
       upsertLocationDto.location.coordinates.lng, 
-      upsertLocationDto.location.coordinates.lat
+      upsertLocationDto.location.coordinates.lat,
     ];
 
     const locationData = {
       type: 'Point',
-      coordinates: coordinates,
+      coordinates,
       address: upsertLocationDto.location.address,
       city: upsertLocationDto.location.city,
       governorate: upsertLocationDto.location.governorate,
@@ -51,39 +51,27 @@ export class ServicesService {
     };
 
     if (existingService) {
-      // UPDATE: mettre à jour le service existant
       existingService.location = locationData;
-      // Note: updatedAt est géré automatiquement par Mongoose grâce à timestamps: true
       await existingService.save();
-      return {
-        action: 'updated',
-        service: existingService
-      };
+      return { action: 'updated', service: existingService };
     } else {
-      // CREATE: créer un nouveau service avec localisation minimale
       const newService = new this.serviceModel({
         providerId: new Types.ObjectId(providerId),
         name: 'Mon Service',
         category: ServiceCategory.OTHER,
         description: 'Service créé via la localisation',
-        basePrice: 0,
         duration: 60,
         location: locationData,
         isActive: true,
-        isPendingApproval: true, // En attente d'approbation
+        isPendingApproval: true,
       });
       await newService.save();
-      return {
-        action: 'created',
-        service: newService
-      };
+      return { action: 'created', service: newService };
     }
   }
 
   async findAll(query?: {
     category?: ServiceCategory;
-    minPrice?: number;
-    maxPrice?: number;
     minRating?: number;
     limit?: number;
     skip?: number;
@@ -91,8 +79,6 @@ export class ServicesService {
     const filter: any = { isActive: true };
 
     if (query?.category) filter.category = query.category;
-    if (query?.minPrice !== undefined) filter.basePrice = { $gte: query.minPrice };
-    if (query?.maxPrice !== undefined) filter.basePrice = { ...filter.basePrice, $lte: query.maxPrice };
     if (query?.minRating !== undefined) filter.avgRating = { $gte: query.minRating };
 
     const services = await this.serviceModel
@@ -154,40 +140,26 @@ export class ServicesService {
   }
 
   async update(id: string, providerId: string, updateServiceDto: UpdateServiceDto) {
-  console.log('🔍 DEBUG UPDATE:');
-  console.log('  - Service ID:', id);
-  console.log('  - Provider ID from token:', providerId);
-  
-  // ✅ Récupérer le service SANS populate pour avoir un ObjectId pur
-  const service = await this.serviceModel.findById(id).exec();
-  
-  if (!service) {
-    throw new NotFoundException('Service non trouvé');
-  }
-  
-  console.log('  - Service providerId (raw):', service.providerId);
-  console.log('  - Service providerId as string:', service.providerId.toString());
-  console.log('  - Token providerId as string:', providerId.toString());
-  
-  // ✅ Comparer les strings
-  if (service.providerId.toString() !== providerId.toString()) {
-    console.log('❌ Forbidden - IDs do not match');
-    throw new ForbiddenException('Vous n\'êtes pas autorisé à modifier ce service');
-  }
-
-  console.log('✅ Update authorized');
-  
-  // Si la location est mise à jour, s'assurer que les coordonnées sont au bon format
-  if (updateServiceDto.location) {
-    const location = updateServiceDto.location as any;
-    if (location.coordinates && Array.isArray(location.coordinates)) {
-      location.coordinates = [location.coordinates[0], location.coordinates[1]] as [number, number];
+    const service = await this.serviceModel.findById(id).exec();
+    
+    if (!service) {
+      throw new NotFoundException('Service non trouvé');
     }
-  }
+    
+    if (service.providerId.toString() !== providerId.toString()) {
+      throw new ForbiddenException('Vous n\'êtes pas autorisé à modifier ce service');
+    }
 
-  Object.assign(service, updateServiceDto);
-  return service.save();
-}
+    if (updateServiceDto.location) {
+      const location = updateServiceDto.location as any;
+      if (location.coordinates && Array.isArray(location.coordinates)) {
+        location.coordinates = [location.coordinates[0], location.coordinates[1]] as [number, number];
+      }
+    }
+
+    Object.assign(service, updateServiceDto);
+    return service.save();
+  }
 
   async delete(id: string, providerId: string) {
     const service = await this.findById(id);
@@ -218,84 +190,55 @@ export class ServicesService {
     return this.serviceModel.findByIdAndUpdate(serviceId, { $inc: { popularity: 1 } });
   }
 
-// Admin methods - Complétez celles qui manquent
+  // ==================== ADMIN ====================
 
-// Méthode pour récupérer tous les services (admin seulement)
-async findAllAdmin(): Promise<ServiceDocument[]> {
-  // Récupérer TOUS les services sans aucun filtre
-  return this.serviceModel
-    .find()
-    .populate('providerId', 'firstName lastName email providerProfile.businessName phone')
-    .sort({ createdAt: -1 })
-    .exec();
-}
-// services.service.ts - Ajoutez ces méthodes à la fin de votre classe
-
-// Admin methods
-async findPending(): Promise<ServiceDocument[]> {
-  return this.serviceModel
-    .find({ 
-      isPendingApproval: true, 
-      isActive: false 
-    })
-    .populate('providerId', 'firstName lastName email providerProfile.businessName phone')
-    .sort({ createdAt: 1 }) // Les plus anciens d'abord
-    .exec();
-}
-
-async approveService(serviceId: string): Promise<ServiceDocument> {
-  const service = await this.serviceModel.findByIdAndUpdate(
-    serviceId,
-    { 
-      isActive: true, 
-      isPendingApproval: false,
-      rejectionReason: null // Effacer toute raison de rejet précédente
-    },
-    { new: true },
-  ).exec();
-  
-  if (!service) {
-    throw new NotFoundException('Service non trouvé');
+  async findAllAdmin(): Promise<ServiceDocument[]> {
+    return this.serviceModel
+      .find()
+      .populate('providerId', 'firstName lastName email providerProfile.businessName phone')
+      .sort({ createdAt: -1 })
+      .exec();
   }
-  
-  return service;
-}
 
-async rejectService(serviceId: string, reason: string): Promise<ServiceDocument> {
-  const service = await this.serviceModel.findByIdAndUpdate(
-    serviceId,
-    { 
-      isPendingApproval: false, 
-      isActive: false,
-      rejectionReason: reason 
-    },
-    { new: true },
-  ).exec();
-  
-  if (!service) {
-    throw new NotFoundException('Service non trouvé');
+  async findPending(): Promise<ServiceDocument[]> {
+    return this.serviceModel
+      .find({ isPendingApproval: true, isActive: false })
+      .populate('providerId', 'firstName lastName email providerProfile.businessName phone')
+      .sort({ createdAt: 1 })
+      .exec();
   }
-  
-  return service;
-}
 
-async getPendingCount(): Promise<number> {
-  return this.serviceModel.countDocuments({ 
-    isPendingApproval: true, 
-    isActive: false 
-  });
-}
+  async approveService(serviceId: string): Promise<ServiceDocument> {
+    const service = await this.serviceModel.findByIdAndUpdate(
+      serviceId,
+      { isActive: true, isPendingApproval: false, rejectionReason: null },
+      { new: true },
+    ).exec();
+    
+    if (!service) throw new NotFoundException('Service non trouvé');
+    return service;
+  }
 
-// Optionnel: Méthode pour voir les services rejetés
-async findRejected(): Promise<ServiceDocument[]> {
-  return this.serviceModel
-    .find({ 
-      isPendingApproval: false, 
-      isActive: false, 
-      rejectionReason: { $ne: null, $exists: true } 
-    })
-    .populate('providerId', 'firstName lastName email')
-    .sort({ updatedAt: -1 })
-    .exec();
-}
+  async rejectService(serviceId: string, reason: string): Promise<ServiceDocument> {
+    const service = await this.serviceModel.findByIdAndUpdate(
+      serviceId,
+      { isPendingApproval: false, isActive: false, rejectionReason: reason },
+      { new: true },
+    ).exec();
+    
+    if (!service) throw new NotFoundException('Service non trouvé');
+    return service;
+  }
+
+  async getPendingCount(): Promise<number> {
+    return this.serviceModel.countDocuments({ isPendingApproval: true, isActive: false });
+  }
+
+  async findRejected(): Promise<ServiceDocument[]> {
+    return this.serviceModel
+      .find({ isPendingApproval: false, isActive: false, rejectionReason: { $ne: null, $exists: true } })
+      .populate('providerId', 'firstName lastName email')
+      .sort({ updatedAt: -1 })
+      .exec();
+  }
 }

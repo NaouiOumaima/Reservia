@@ -18,3 +18,17 @@ export class CreateReservationDto {
   @IsString()
   notes?: string;
 }
+
+export class ConfirmReservationDto {
+  @IsString()
+  reservationId!: string;
+}
+
+export class CancelReservationDto {
+  @IsString()
+  reservationId!: string;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}

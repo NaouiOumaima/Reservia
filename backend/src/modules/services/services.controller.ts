@@ -1,4 +1,5 @@
-// services.controller.ts - Version complète
+// src/modules/services/services.controller.ts
+
 import {
   Controller,
   Get,
@@ -34,16 +35,12 @@ export class ServicesController {
   @Get()
   async findAll(
     @Query('category') category?: ServiceCategory,
-    @Query('minPrice') minPrice?: number,
-    @Query('maxPrice') maxPrice?: number,
     @Query('minRating') minRating?: number,
     @Query('limit') limit?: number,
     @Query('skip') skip?: number,
   ) {
     return this.servicesService.findAll({
       category,
-      minPrice,
-      maxPrice,
       minRating,
       limit,
       skip,
@@ -102,21 +99,17 @@ export class ServicesController {
     return this.servicesService.toggleActive(id, req.user._id);
   }
 
-  // ==================== ENDPOINTS ADMIN ====================
+  // ==================== ADMIN ====================
 
-
-  // Dans getAllServicesAdmin, ajoutez un log
-@Get('admin/all')
-@UseGuards(JwtAuthGuard)
-async getAllServicesAdmin(@Request() req) {
-  console.log('User role:', req.user?.role); // Debug
-  console.log('User object:', req.user); // Debug
-  
-  if (req.user.role !== 'admin') {
-    throw new ForbiddenException('Accès réservé aux administrateurs. Votre rôle: ' + req.user?.role);
+  @Get('admin/all')
+  @UseGuards(JwtAuthGuard)
+  async getAllServicesAdmin(@Request() req) {
+    if (req.user.role !== 'admin') {
+      throw new ForbiddenException('Accès réservé aux administrateurs');
+    }
+    return this.servicesService.findAllAdmin();
   }
-  return this.servicesService.findAllAdmin();
-}
+
   @Get('admin/pending')
   @UseGuards(JwtAuthGuard)
   async getPendingServices(@Request() req) {
@@ -150,7 +143,7 @@ async getAllServicesAdmin(@Request() req) {
   async rejectService(
     @Param('id') id: string,
     @Body('reason') reason: string,
-    @Request() req
+    @Request() req,
   ) {
     if (req.user.role !== 'admin') {
       throw new ForbiddenException('Accès réservé aux administrateurs');

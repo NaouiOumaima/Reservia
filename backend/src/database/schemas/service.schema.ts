@@ -1,4 +1,4 @@
-// database/schemas/service.schema.ts
+// src/database/schemas/service.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
@@ -32,12 +32,6 @@ export class Service {
 
   @Prop({ required: true })
   description!: string;
-
-  @Prop({ required: true })
-  basePrice!: number;
-
-  @Prop()
-  discountPrice?: number;
 
   @Prop({ required: true })
   duration!: number;
@@ -78,7 +72,6 @@ export class Service {
     postalCode?: string;
   };
 
-  // ✅ Ajout du champ availabilitySlots
   @Prop({ type: [{ 
     day: String, 
     startTime: String, 
@@ -116,7 +109,6 @@ export class Service {
   @Prop({ type: Object })
   cancellationPolicy?: {
     minHoursBefore: number;
-    refundPercentage: number;
   };
 
   @Prop({ type: [{ start: String, end: String }], default: [] })
@@ -125,7 +117,6 @@ export class Service {
 
 export const ServiceSchema = SchemaFactory.createForClass(Service);
 
-// Index pour la recherche
 ServiceSchema.index({ location: '2dsphere' });
 ServiceSchema.index({ name: 'text', description: 'text' });
 ServiceSchema.index({ category: 1 });
