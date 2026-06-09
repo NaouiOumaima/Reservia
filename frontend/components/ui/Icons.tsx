@@ -22,7 +22,21 @@ const base = (className?: string, size?: number) => ({
 // ============================================
 // NAVIGATION PRINCIPALE
 // ============================================
-
+export function NavigationIcon({
+  className = "w-6 h-6",
+  size,
+}: IconProps) {
+  return (
+    <svg {...base(className, size)}>
+      <circle cx="12" cy="12" r="9.5" />
+      <path
+        d="M16.5 7.5l-2.8 6.2-6.2 2.8 2.8-6.2 6.2-2.8z"
+        fill="currentColor"
+        stroke="none"
+      />
+    </svg>
+  );
+}
 export function HomeIcon({ className = "w-6 h-6", size }: IconProps) {
   return (
     <svg {...base(className, size)}>

@@ -1,17 +1,10 @@
 'use client';
 
-/**
- * LeafletMapComponent — Navigation Google Maps-like
- * - Mode client : recherche de services et navigation
- * - Mode prestataire : affichage des services avec leurs localisations déjà définies
- */
-
 import { useEffect, useRef, useState, useCallback } from 'react';
-import {
-  MapContainer, TileLayer, Marker, Popup, Polyline, useMap,
-} from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 
 import {
   MapPinIcon,
@@ -19,7 +12,6 @@ import {
   ClockIcon,
   CheckIcon,
   CloseIcon,
-  SearchIcon,
   ChevronDownIcon,
   ArrowRightIcon,
   AlertTriangleIcon,
@@ -30,9 +22,8 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface LatLng { lat: number; lng: number }
-type LeafletPos = [number, number];
 
-interface Service {
+export interface Service {
   _id: string;
   name: string;
   category: string;
@@ -40,7 +31,7 @@ interface Service {
   avgRating: number;
   reviewCount: number;
   location: {
-    coordinates: [number, number];
+    coordinates: [number, number]; // GeoJSON [lng, lat]
     address: string;
     city: string;
     governorate: string;
@@ -49,292 +40,123 @@ interface Service {
   duration: number;
 }
 
-interface NavStep {
-  instruction: string;
-  distanceM: number;
-  durationSec: number;
-  point: LatLng;
-  maneuver: string;
-  modifier?: string;
-  streetName?: string;
-  exitNumber?: number;
-}
-
-interface Route {
-  path: LatLng[];
-  totalDistanceM: number;
-  durationSec: number;
-  service: Service;
-  steps: NavStep[];
-  legs: RouteLeg[];
-}
-
-interface RouteLeg {
-  distanceM: number;
-  durationSec: number;
-  steps: NavStep[];
-}
-
-interface Props {
+export interface Props {
   services: Service[];
-  userLocation: [number, number] | null;
+  userLocation: [number, number] | null; // [lng, lat]
   selectedService: Service | null;
   onMarkerClick: (s: Service) => void;
   isProviderMode?: boolean;
   onMapClick?: (e: { lngLat: { lat: number; lng: number } }) => void;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const OSRM_BASE = 'https://router.project-osrm.org/route/v1';
-const OSRM_PROFILES: Record<string, string> = { driving: 'driving', walking: 'foot', cycling: 'bike' };
-const FALLBACK_SPEED_MS: Record<string, number> = { driving: 13.9, walking: 1.4, cycling: 4.2 };
-const MAX_SPEED_MS: Record<string, number> = { driving: 55.6, walking: 3.5, cycling: 16.7 };
-const OFF_ROUTE_THRESHOLD_M  = 40;
-const STEP_ADVANCE_M         = 20;
-const ARRIVAL_M              = 15;
-const REROUTE_COOLDOWN_MS    = 15_000;
-const OSRM_TIMEOUT_MS        = 15_000;
-const GPS_SMOOTH_ALPHA       = 0.25;
-
-const THEMES = [
-  { id: 'streets', label: 'Standard',  url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',                                                         attr: '&copy; OpenStreetMap' },
-  { id: 'dark',    label: 'Sombre',    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',                                               attr: '&copy; CARTO' },
-  { id: 'light',   label: 'Clair',     url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',                                              attr: '&copy; CARTO' },
-  { id: 'satellite', label: 'Satellite', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',              attr: '&copy; Esri' },
-];
+// ─── Mode config ──────────────────────────────────────────────────────────────
+//
+// Each mode points to a different OSRM server.
+// LRM builds the URL as:  serviceUrl + '/' + profile + '/' + waypoints
+// For foot/bike, the profile is already baked into serviceUrl, so profile='driving'
+// is just a placeholder that satisfies LRM's URL template.
 
 const MODES = [
-  { id: 'driving', label: 'Voiture', osrm: 'driving', color: '#1a73e8', lineWeight: 6 },
-  { id: 'walking', label: 'À pied',  osrm: 'foot',    color: '#0f9d58', lineWeight: 5 },
-  { id: 'cycling', label: 'Vélo',    osrm: 'bike',    color: '#f29900', lineWeight: 5 },
+  {
+    id: 'driving',
+    label: 'Voiture',
+    icon: '🚗',
+    color: '#2563eb',
+    serviceUrl: 'https://router.project-osrm.org/route/v1',
+    profile: 'driving',
+  },
+  {
+    id: 'walking',
+    label: 'Piéton',
+    icon: '🚶',
+    color: '#16a34a',
+    serviceUrl: 'https://routing.openstreetmap.de/routed-foot/route/v1',
+    profile: 'driving',
+  },
+  {
+    id: 'cycling',
+    label: 'Vélo',
+    icon: '🚲',
+    color: '#ea580c',
+    serviceUrl: 'https://routing.openstreetmap.de/routed-bike/route/v1',
+    profile: 'driving',
+  },
+] as const;
+type Mode = typeof MODES[number];
+
+const THEMES = [
+  { id: 'streets',   label: 'Standard',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attr: '© OpenStreetMap contributors' },
+  { id: 'dark',      label: 'Sombre',
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attr: '© CARTO' },
+  { id: 'light',     label: 'Clair',
+    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    attr: '© CARTO' },
+  { id: 'satellite', label: 'Satellite',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attr: '© Esri' },
 ];
 
-// ─── Geometry helpers ──────────────────────────────────────────────────────────
+// ─── Route data returned by LRM ───────────────────────────────────────────────
 
-function haversine(a: LatLng, b: LatLng): number {
-  const R = 6_371_000;
-  const φ1 = (a.lat * Math.PI) / 180, φ2 = (b.lat * Math.PI) / 180;
-  const Δφ = ((b.lat - a.lat) * Math.PI) / 180;
-  const Δλ = ((b.lng - a.lng) * Math.PI) / 180;
-  const x  = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+interface RouteSummary {
+  totalDistance: number; // metres — directly from OSRM, no calculation
+  totalTime: number;     // seconds — directly from OSRM, no calculation
 }
 
-function calcBearing(from: LatLng, to: LatLng): number {
-  const φ1 = (from.lat * Math.PI) / 180, φ2 = (to.lat * Math.PI) / 180;
-  const Δλ = ((to.lng - from.lng) * Math.PI) / 180;
-  const y  = Math.sin(Δλ) * Math.cos(φ2);
-  const x  = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
-  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+interface RouteInfo {
+  service: Service;
+  summary: RouteSummary;
+  instructions: Array<{ text: string; distance: number; time: number }>;
 }
 
-function toLeaflet(path: LatLng[]): LeafletPos[] {
-  return path.map((p) => [p.lat, p.lng]);
-}
-
-function snapToRoute(pos: LatLng, path: LatLng[], fromIdx = 0): { segIdx: number; distM: number } {
-  let best = { segIdx: fromIdx, distM: Infinity };
-  const searchEnd = Math.min(path.length - 1, fromIdx + 300);
-  for (let i = fromIdx; i < searchEnd; i++) {
-    const a = path[i], b = path[i + 1] ?? path[i];
-    const dx = b.lng - a.lng, dy = b.lat - a.lat;
-    const lenSq = dx * dx + dy * dy;
-    let t = 0;
-    if (lenSq > 0) t = Math.max(0, Math.min(1, ((pos.lng - a.lng) * dx + (pos.lat - a.lat) * dy) / lenSq));
-    const proj: LatLng = { lat: a.lat + t * dy, lng: a.lng + t * dx };
-    const d = haversine(pos, proj);
-    if (d < best.distM) best = { segIdx: i, distM: d };
-  }
-  return best;
-}
-
-function remainingDistance(path: LatLng[], fromIdx: number): number {
-  let d = 0;
-  for (let i = fromIdx; i < path.length - 1; i++) d += haversine(path[i], path[i + 1]);
-  return d;
-}
-
-function calcETA(remainM: number, totalM: number, totalSec: number, speedMs: number, modeId: string): number {
-  if (totalM <= 0) return 0;
-  const ratioEst = (remainM / totalM) * totalSec;
-  const maxSpeed = MAX_SPEED_MS[modeId] ?? MAX_SPEED_MS.driving;
-  if (speedMs > 0.5 && speedMs < maxSpeed)
-    return Math.max(5, Math.round((remainM / speedMs) * 0.6 + ratioEst * 0.4));
-  return Math.max(5, Math.round(ratioEst));
-}
-
-// ─── Formatting ──────────────────────────────────────────────────────────────
+// ─── Formatters ───────────────────────────────────────────────────────────────
 
 function fmtDist(m: number): string {
-  if (m < 50)   return `${Math.round(m)} m`;
-  if (m < 1000) return `${Math.round(m / 10) * 10} m`;
-  return `${(m / 1000).toFixed(1)} km`;
+  if (!m || isNaN(m)) return '—';
+  return m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`;
 }
 
 function fmtTime(sec: number): string {
-  if (sec < 60) return '< 1 min';
-  const min = Math.round(sec / 60);
-  if (min < 60) return `${min} min`;
-  const h = Math.floor(min / 60), m = min % 60;
-  return m ? `${h} h ${m} min` : `${h} h`;
+  if (!sec || isNaN(sec) || sec <= 0) return '—';
+  const h   = Math.floor(sec / 3600);
+  const min = Math.floor((sec % 3600) / 60);
+  if (h > 0) return `${h}h ${min > 0 ? min + 'min' : ''}`.trim();
+  return min < 1 ? '< 1 min' : `${min} min`;
 }
 
 function fmtArrival(sec: number): string {
-  return new Date(Date.now() + sec * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-}
-
-// ─── Instructions ─────────────────────────────────────────────────────────────
-
-function buildInstruction(type: string, modifier?: string, name?: string, exitNum?: number): string {
-  const on = name?.trim() ? ` sur ${name}` : '';
-  switch (type) {
-    case 'depart':         return `Démarrez vers ${modifier ?? 'le nord'}${on}`;
-    case 'arrive':         return 'Vous êtes arrivé à destination';
-    case 'continue':
-    case 'new name':       return `Continuez tout droit${on}`;
-    case 'merge':          return `Rejoignez${on}`;
-    case 'on ramp':        return `Prenez la bretelle d'entrée${on}`;
-    case 'off ramp':       return `Prenez la bretelle de sortie${on}`;
-    case 'end of road':    return modifier?.includes('left') ? `Tournez à gauche${on}` : `Tournez à droite${on}`;
-    case 'roundabout':
-    case 'rotary':         return `Prenez le rond-point${exitNum ? ` (${exitNum}e sortie)` : ''}${on}`;
-    case 'exit roundabout':
-    case 'exit rotary':    return `Quittez le rond-point${on}`;
-    case 'fork':           return modifier?.includes('left') ? `Restez à gauche${on}` : `Restez à droite${on}`;
-    case 'turn':
-      switch (modifier) {
-        case 'left':       return `Tournez à gauche${on}`;
-        case 'right':      return `Tournez à droite${on}`;
-        case 'sharp left': return `Virage serré à gauche${on}`;
-        case 'sharp right':return `Virage serré à droite${on}`;
-        case 'slight left':return `Légèrement à gauche${on}`;
-        case 'slight right':return `Légèrement à droite${on}`;
-        case 'uturn':      return `Faites demi-tour${on}`;
-        default:           return `Tournez${on}`;
-      }
-    default: return `Continuez${on}`;
-  }
-}
-
-function stepArrow(type: string, modifier?: string): string {
-  if (type === 'depart')  return '↑';
-  if (type === 'arrive')  return '⊙';
-  if (type === 'roundabout' || type === 'rotary') return '↻';
-  if (!modifier)          return '↑';
-  if (modifier === 'uturn') return '↩';
-  if (modifier.includes('sharp left'))  return '↰';
-  if (modifier.includes('sharp right')) return '↱';
-  if (modifier.includes('slight left')) return '↖';
-  if (modifier.includes('slight right'))return '↗';
-  if (modifier.includes('left'))  return '←';
-  if (modifier.includes('right')) return '→';
-  return '↑';
-}
-
-function buildVoiceAnnounce(step: NavStep, distM: number): string | null {
-  if (step.maneuver === 'arrive') {
-    if (distM < 50)  return 'Vous êtes arrivé à destination.';
-    if (distM < 200) return `Dans ${fmtDist(distM)}, vous serez arrivé.`;
-    return null;
-  }
-  if (distM < STEP_ADVANCE_M) return step.instruction;
-  if (distM < 500)            return `Dans ${fmtDist(distM)}, ${step.instruction.toLowerCase()}`;
-  return null;
-}
-
-// ─── OSRM ─────────────────────────────────────────────────────────────────────
-
-async function fetchOsrmRoute(from: LatLng, to: LatLng, profile: string) {
-  try {
-    const p   = OSRM_PROFILES[profile] ?? profile;
-    const url = `${OSRM_BASE}/${p}/${from.lng.toFixed(6)},${from.lat.toFixed(6)};${to.lng.toFixed(6)},${to.lat.toFixed(6)}?overview=full&geometries=geojson&steps=true&annotations=duration,distance&alternatives=false`;
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), OSRM_TIMEOUT_MS);
-    const res = await fetch(url, { signal: ctrl.signal });
-    clearTimeout(timer);
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (!data.routes?.[0]) return null;
-    const r    = data.routes[0];
-    const path = (r.geometry.coordinates as [number, number][]).map(([lng, lat]) => ({ lat, lng }));
-    const legs: RouteLeg[] = [];
-    const allSteps: NavStep[] = [];
-    for (const leg of r.legs ?? []) {
-      const legSteps: NavStep[] = [];
-      for (const s of leg.steps ?? []) {
-        const [mLng, mLat] = s.maneuver.location;
-        const step: NavStep = {
-          instruction: buildInstruction(s.maneuver.type, s.maneuver.modifier, s.name, s.maneuver.exit),
-          distanceM: Math.round(s.distance), durationSec: Math.round(s.duration),
-          point: { lat: mLat, lng: mLng }, maneuver: s.maneuver.type,
-          modifier: s.maneuver.modifier, streetName: s.name || undefined, exitNumber: s.maneuver.exit,
-        };
-        legSteps.push(step); allSteps.push(step);
-      }
-      legs.push({ distanceM: Math.round(leg.distance), durationSec: Math.round(leg.duration), steps: legSteps });
-    }
-    return { path, distM: Math.round(r.distance), durationSec: Math.round(r.duration), steps: allSteps, legs };
-  } catch (e) {
-    if ((e as Error).name !== 'AbortError') console.error('OSRM error:', e);
-    return null;
-  }
-}
-
-function buildFallbackRoute(from: LatLng, to: LatLng, service: Service, modeId: string): Route {
-  const d = haversine(from, to);
-  const sec = Math.round(d / (FALLBACK_SPEED_MS[modeId] ?? FALLBACK_SPEED_MS.driving));
-  const steps: NavStep[] = [
-    { instruction: 'Démarrez le trajet (itinéraire approx.)', distanceM: d, durationSec: sec, point: from, maneuver: 'depart' },
-    { instruction: 'Vous êtes arrivé à destination', distanceM: 0, durationSec: 0, point: to, maneuver: 'arrive' },
-  ];
-  return { path: [from, to], totalDistanceM: d, durationSec: sec, service, steps, legs: [{ distanceM: d, durationSec: sec, steps }] };
+  if (!sec || isNaN(sec)) return '—';
+  return new Date(Date.now() + sec * 1000)
+    .toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
 
 // ─── Leaflet icons ────────────────────────────────────────────────────────────
 
-function serviceIcon(selected: boolean): L.DivIcon {
-  const sz = selected ? 38 : 30, color = selected ? '#1a73e8' : '#ea4335';
+const makeServiceIcon = (selected: boolean) => {
+  const sz = selected ? 44 : 36;
+  const bg = selected ? '#2563eb' : '#ef4444';
   return L.divIcon({
-    className: '',
-    html: `<div class="lmap-marker-pin${selected ? ' lmap-marker-pin--selected' : ''}" style="width:${sz}px;height:${sz}px;background:${color}"></div>`,
-    iconSize: [sz, sz], iconAnchor: [sz / 2, sz], popupAnchor: [0, -sz],
+    html:
+      `<div style="width:${sz}px;height:${sz}px;background:${bg};border:3px solid white;` +
+      `border-radius:50%;display:flex;align-items:center;justify-content:center;` +
+      `box-shadow:0 2px 8px rgba(0,0,0,.25)">` +
+      `<span style="color:white;font-size:${selected ? 20 : 16}px">📍</span></div>`,
+    className: '', iconSize: [sz, sz],
+    iconAnchor: [sz / 2, sz], popupAnchor: [0, -sz / 2],
   });
-}
+};
 
-// Icône pour le mode prestataire (affichage simple, pas d'édition)
-function providerServiceIcon(hasLocation: boolean): L.DivIcon {
-  const color = hasLocation ? '#0f9d58' : '#f29900';
-  return L.divIcon({
-    className: '',
-    html: `<div class="lmap-provider-pin" style="background:${color};"><span class="lmap-provider-initial">📍</span></div>`,
-    iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -32],
-  });
-}
-
-const userDotIcon = L.divIcon({
-  className: '',
-  html: `<div class="lmap-user-dot"></div>`,
-  iconSize: [18, 18], iconAnchor: [9, 9],
+const userIcon = L.divIcon({
+  html:
+    '<div style="width:20px;height:20px;background:#2563eb;border:3px solid white;' +
+    'border-radius:50%;box-shadow:0 0 0 4px rgba(37,99,235,.25)"></div>',
+  className: '', iconSize: [20, 20], iconAnchor: [10, 10],
 });
 
-function navArrowIcon(bearing: number, color: string): L.DivIcon {
-  return L.divIcon({
-    className: '',
-    html: `<div class="lmap-nav-arrow" style="transform:rotate(${bearing}deg)"><svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg"><circle cx="28" cy="28" r="26" fill="${color}" stroke="white" stroke-width="4"/><polygon points="28,9 21,30 28,25 35,30" fill="white"/><circle cx="28" cy="28" r="4" fill="white" opacity="0.4"/></svg></div>`,
-    iconSize: [56, 56], iconAnchor: [28, 28],
-  });
-}
-
-function destinationIcon(): L.DivIcon {
-  return L.divIcon({
-    className: '',
-    html: `<div class="lmap-marker-pin lmap-marker-pin--dest"></div>`,
-    iconSize: [36, 36], iconAnchor: [18, 36], popupAnchor: [0, -36],
-  });
-}
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Map sub-components ───────────────────────────────────────────────────────
 
 function MapReady() {
   const map = useMap();
@@ -342,14 +164,122 @@ function MapReady() {
   return null;
 }
 
-function MapClickHandler({ active, onMapClick }: { active: boolean; onMapClick?: (e: { lngLat: { lat: number; lng: number } }) => void }) {
+function MapClickHandler({ active, cb }: { active: boolean; cb?: (e: any) => void }) {
   const map = useMap();
   useEffect(() => {
-    if (!active || !onMapClick) return;
-    const handler = (e: L.LeafletMouseEvent) => onMapClick({ lngLat: { lat: e.latlng.lat, lng: e.latlng.lng } });
-    map.on('click', handler);
-    return () => { map.off('click', handler); };
-  }, [map, active, onMapClick]);
+    if (!active || !cb) return;
+    const h = (e: L.LeafletMouseEvent) =>
+      cb({ lngLat: { lat: e.latlng.lat, lng: e.latlng.lng } });
+    map.on('click', h);
+    return () => { map.off('click', h); };
+  }, [map, active, cb]);
+  return null;
+}
+
+// ─── LRM routing controller ───────────────────────────────────────────────────
+//
+// Owns the L.Routing.control instance.
+// Uses dynamic import() so LRM (which references `window`) never runs on the server.
+// After the import, LRM patches L and L.Routing.* becomes available.
+// LRM calls OSRM and fires `routesfound` with routes[0].summary containing
+// totalDistance (metres) and totalTime (seconds) straight from OSRM.
+
+interface LrmControllerProps {
+  from: LatLng;
+  to: LatLng;
+  mode: Mode;
+  color: string;
+  onRouteFound: (summary: RouteSummary, instructions: RouteInfo['instructions']) => void;
+  onRoutingError: (msg: string) => void;
+  onLoading: (b: boolean) => void;
+}
+
+function LrmController({
+  from, to, mode, color,
+  onRouteFound, onRoutingError, onLoading,
+}: LrmControllerProps) {
+  const map = useMap();
+  const controlRef = useRef<L.Routing.Control | null>(null);
+
+  useEffect(() => {
+    // Remove any previous control
+    if (controlRef.current) {
+      try { map.removeControl(controlRef.current); } catch (_) {}
+      controlRef.current = null;
+    }
+
+    onLoading(true);
+
+    // Dynamic import — LRM patches L and registers L.Routing after this resolves
+    import('leaflet-routing-machine').then(() => {
+      const LR = (L as any).Routing;
+
+      const routingPlan = LR.plan(
+        [L.latLng(from.lat, from.lng), L.latLng(to.lat, to.lng)],
+        {
+          createMarker: () => null,   // we render our own markers
+          draggableWaypoints: false,
+          addWaypoints: false,
+        },
+      );
+
+      const control: L.Routing.Control = LR.control({
+        plan: routingPlan,
+        router: LR.osrmv1({
+          serviceUrl: mode.serviceUrl,
+          profile: mode.profile,
+          language: 'fr',
+        }),
+        show: false,               // hide the default LRM sidebar
+        collapsible: false,
+        routeWhileDragging: false,
+        lineOptions: {
+          styles: [
+            { color: 'rgba(0,0,0,.15)', weight: 9 },
+            { color,                    weight: 5, opacity: 0.92 },
+            { color: '#ffffff',         weight: 2, opacity: 0.35 },
+          ],
+          extendToWaypoints: false,
+          missingRouteTolerance: 0,
+        },
+        waypointMode: 'connect',
+      });
+
+      control.on('routesfound', (e: any) => {
+        onLoading(false);
+        const route = e.routes[0];
+        // totalDistance (metres) and totalTime (seconds) come from OSRM via LRM.
+        // No calculation on our side.
+        const summary: RouteSummary = {
+          totalDistance: route.summary.totalDistance,
+          totalTime:     route.summary.totalTime,
+        };
+        const instructions = (route.instructions ?? []).map((ins: any) => ({
+          text:     ins.text,
+          distance: ins.distance,  // metres, from OSRM
+          time:     ins.time,      // seconds, from OSRM
+        }));
+        onRouteFound(summary, instructions);
+      });
+
+      control.on('routingerror', (e: any) => {
+        onLoading(false);
+        onRoutingError(e.error?.message ?? 'Erreur de routage');
+      });
+
+      control.addTo(map);
+      controlRef.current = control;
+    });
+
+    return () => {
+      if (controlRef.current) {
+        try { map.removeControl(controlRef.current); } catch (_) {}
+        controlRef.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [from.lat, from.lng, to.lat, to.lng, mode.id]);
+
   return null;
 }
 
@@ -363,235 +293,92 @@ export default function LeafletMapComponent({
   isProviderMode = false,
   onMapClick,
 }: Props) {
+  const mapRef = useRef<L.Map | null>(null);
 
-  const mapRef             = useRef<L.Map | null>(null);
-  const watchIdRef         = useRef<number | null>(null);
-  const routeRef           = useRef<Route | null>(null);
-  const modeRef            = useRef(MODES[0]);
-  const pathSegIdxRef      = useRef(0);
-  const stepIdxRef         = useRef(0);
-  const lastRerouteRef     = useRef(0);
-  const prevGpsRef         = useRef<(LatLng & { t: number }) | null>(null);
-  const smoothSpeedRef     = useRef(0);
-  const announcedStepRef   = useRef(-1);
-  const isReroutingRef     = useRef(false);
+  const [theme,      setTheme]      = useState(THEMES[0]);
+  const [themeOpen,  setThemeOpen]  = useState(false);
+  const [mode,       setMode]       = useState<Mode>(MODES[0]);
+  const [routeInfo,  setRouteInfo]  = useState<RouteInfo | null>(null);
+  const [loading,    setLoading]    = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
+  const [stepsOpen,  setStepsOpen]  = useState(false);
+  const [activeStep, setActiveStep] = useState(0);
 
-  const [theme, setTheme]             = useState(THEMES[0]);
-  const [themeOpen, setThemeOpen]     = useState(false);
-  const [mode, setMode]               = useState(MODES[0]);
-  const [route, setRoute]             = useState<Route | null>(null);
-  const [loading, setLoading]         = useState(false);
-  const [error, setError]             = useState<string | null>(null);
-  const [navActive, setNavActive]     = useState(false);
-  const [stepIdx, setStepIdx]         = useState(0);
-  const [gpsPos, setGpsPos]           = useState<LatLng | null>(null);
-  const [bearing, setBearing]         = useState(0);
-  const [following, setFollowing]     = useState(true);
-  const [hudOpen, setHudOpen]         = useState(false);
-  const [remainM, setRemainM]         = useState(0);
-  const [remainSec, setRemainSec]     = useState(0);
-  const [offRoute, setOffRoute]       = useState(false);
-  const [rerouting, setRerouting]     = useState(false);
-  const [currentSpeed, setCurrentSpeed] = useState(0);
-  const [distToNextStep, setDistToNextStep] = useState(0);
+  // Holds the current routing target so LrmController knows what to route
+  const [routingTarget, setRoutingTarget] = useState<{ service: Service; mode: Mode } | null>(null);
 
-  const userPos: LatLng | null = userLocation ? { lat: userLocation[1], lng: userLocation[0] } : null;
-  const mapCenter: LeafletPos  = userPos ? [userPos.lat, userPos.lng] : [36.8065, 10.1815];
+  const userPos: LatLng | null = userLocation
+    ? { lat: userLocation[1], lng: userLocation[0] }
+    : null;
 
-  const speak = useCallback((text: string, priority = false) => {
-    if (!('speechSynthesis' in window) || !text) return;
-    if (priority) window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'fr-FR'; u.rate = 1.0; u.pitch = 1.0;
-    window.speechSynthesis.speak(u);
+  const center: [number, number] = userPos
+    ? [userPos.lat, userPos.lng]
+    : [36.8065, 10.1815]; // Tunis default
+
+  // ── Start routing ─────────────────────────────────────────────────────
+  const startRoute = useCallback((svc: Service, overrideMode?: Mode) => {
+    if (!userPos) { setError('Position utilisateur non disponible'); return; }
+    setError(null);
+    setRouteInfo(null);
+    setActiveStep(0);
+    setStepsOpen(false);
+    setRoutingTarget({ service: svc, mode: overrideMode ?? mode });
+  }, [userPos, mode]);
+
+  const handleModeChange = useCallback((m: Mode) => {
+    setMode(m);
+    if (routingTarget) setRoutingTarget({ ...routingTarget, mode: m });
+  }, [routingTarget]);
+
+  const clearRoute = useCallback(() => {
+    setRoutingTarget(null);
+    setRouteInfo(null);
+    setError(null);
+    setStepsOpen(false);
+    setActiveStep(0);
   }, []);
 
-  const computeAndSetRoute = useCallback(async (service: Service, m: typeof MODES[0], fromPos?: LatLng): Promise<Route | null> => {
-    const start = fromPos ?? userPos;
-    if (!start) { setError('Position utilisateur non disponible.'); return null; }
-    const [destLng, destLat] = service.location.coordinates;
-    const dest: LatLng = { lat: destLat, lng: destLng };
-    setLoading(true); setError(null);
-    const osrm = await fetchOsrmRoute(start, dest, m.id);
-    setLoading(false);
-    let r: Route;
-    if (osrm) {
-      r = { path: osrm.path, totalDistanceM: osrm.distM, durationSec: osrm.durationSec, service, steps: osrm.steps, legs: osrm.legs };
-    } else {
-      r = buildFallbackRoute(start, dest, service, m.id);
-      setError('OSRM indisponible – itinéraire approximatif affiché.');
-    }
-    setRoute(r); routeRef.current = r;
-    stepIdxRef.current = 0; pathSegIdxRef.current = 0;
-    setStepIdx(0); setRemainM(r.totalDistanceM); setRemainSec(r.durationSec);
-    return r;
+  const recenter = useCallback(() => {
+    if (userPos && mapRef.current)
+      mapRef.current.flyTo([userPos.lat, userPos.lng], 15, { duration: 1 });
   }, [userPos]);
 
-  const handleModeChange = useCallback(async (m: typeof MODES[0]) => {
-    setMode(m); modeRef.current = m;
-    if (route?.service) await computeAndSetRoute(route.service, m, gpsPos ?? undefined);
-  }, [route, gpsPos, computeAndSetRoute]);
+  // ── LRM callbacks ─────────────────────────────────────────────────────
+  const handleRouteFound = useCallback((
+    summary: RouteSummary,
+    instructions: RouteInfo['instructions'],
+  ) => {
+    if (!routingTarget) return;
+    setRouteInfo({ service: routingTarget.service, summary, instructions });
+  }, [routingTarget]);
 
-  const stopTracking = useCallback(() => {
-    if (watchIdRef.current !== null) { navigator.geolocation.clearWatch(watchIdRef.current); watchIdRef.current = null; }
+  const handleRoutingError = useCallback((msg: string) => {
+    setError(msg);
+    setRoutingTarget(null);
   }, []);
 
-  const stopNav = useCallback(() => {
-    stopTracking();
-    window.speechSynthesis?.cancel();
-    setNavActive(false); setGpsPos(null); setStepIdx(0);
-    setFollowing(true); setHudOpen(false); setRemainM(0); setRemainSec(0);
-    setOffRoute(false); setRerouting(false); setCurrentSpeed(0);
-    pathSegIdxRef.current = 0; stepIdxRef.current = 0;
-    prevGpsRef.current = null; smoothSpeedRef.current = 0;
-    announcedStepRef.current = -1; isReroutingRef.current = false;
-  }, [stopTracking]);
-
-  const doReroute = useCallback(async (cur: LatLng) => {
-    if (isReroutingRef.current) return;
-    const r = routeRef.current, m = modeRef.current;
-    if (!r) return;
-    isReroutingRef.current = true; setRerouting(true);
-    speak('Recalcul de l\'itinéraire.', true);
-    const [destLng, destLat] = r.service.location.coordinates;
-    const osrm = await fetchOsrmRoute(cur, { lat: destLat, lng: destLng }, m.id);
-    if (osrm) {
-      const nr: Route = { path: osrm.path, totalDistanceM: osrm.distM, durationSec: osrm.durationSec, service: r.service, steps: osrm.steps, legs: osrm.legs };
-      setRoute(nr); routeRef.current = nr;
-      stepIdxRef.current = 0; pathSegIdxRef.current = 0;
-      setStepIdx(0); setRemainM(nr.totalDistanceM); setRemainSec(nr.durationSec);
-      announcedStepRef.current = -1;
-      setTimeout(() => speak(nr.steps[0]?.instruction ?? 'Continuez.'), 500);
-    }
-    setRerouting(false); setOffRoute(false);
-    isReroutingRef.current = false; lastRerouteRef.current = Date.now();
-  }, [speak]);
-
-  const startNav = useCallback(async () => {
-    if (!route) { alert("Calculez d'abord un itinéraire."); return; }
-    const initPos: LatLng | null = await new Promise((resolve) => {
-      if (!navigator.geolocation) { resolve(null); return; }
-      navigator.geolocation.getCurrentPosition(
-        (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
-        ()  => resolve(null),
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 },
-      );
-    });
-    const start = initPos ?? userPos;
-    if (!start) { alert('Position GPS indisponible.'); return; }
-    let activeRoute = route;
-    if (initPos) {
-      setLoading(true);
-      const fresh = await computeAndSetRoute(route.service, mode, initPos);
-      setLoading(false);
-      if (fresh) activeRoute = fresh;
-    }
-    prevGpsRef.current = { ...start, t: Date.now() };
-    smoothSpeedRef.current = 0; pathSegIdxRef.current = 0;
-    stepIdxRef.current = 0; announcedStepRef.current = -1;
-    lastRerouteRef.current = 0; isReroutingRef.current = false;
-    setGpsPos(start); setNavActive(true); setFollowing(true);
-    setStepIdx(0); setOffRoute(false); setRerouting(false);
-    setRemainM(activeRoute.totalDistanceM); setRemainSec(activeRoute.durationSec);
-    speak(activeRoute.steps[0]?.instruction ?? 'Navigation démarrée. Bonne route !', true);
-
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      async (pos) => {
-        const cur: LatLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        const now = Date.now();
-        const r = routeRef.current, m = modeRef.current;
-        if (!r || isReroutingRef.current) return;
-        if (prevGpsRef.current) {
-          const prev = prevGpsRef.current;
-          const moved = haversine(prev, cur), dtSec = (now - prev.t) / 1000;
-          if (moved > 0.3 && dtSec > 0.1) {
-            const raw = moved / dtSec, max = MAX_SPEED_MS[m.id] ?? MAX_SPEED_MS.driving;
-            if (raw < max) {
-              smoothSpeedRef.current = smoothSpeedRef.current === 0 ? raw : smoothSpeedRef.current * (1 - GPS_SMOOTH_ALPHA) + raw * GPS_SMOOTH_ALPHA;
-              setBearing(calcBearing(prev, cur));
-            }
-          }
-        }
-        prevGpsRef.current = { ...cur, t: now };
-        setGpsPos(cur); setCurrentSpeed(smoothSpeedRef.current);
-        const { segIdx, distM } = snapToRoute(cur, r.path, pathSegIdxRef.current);
-        if (distM > OFF_ROUTE_THRESHOLD_M) {
-          setOffRoute(true);
-          if (now - lastRerouteRef.current > REROUTE_COOLDOWN_MS) await doReroute(cur);
-          return;
-        }
-        setOffRoute(false);
-        if (segIdx > pathSegIdxRef.current) pathSegIdxRef.current = segIdx;
-        const remM = remainingDistance(r.path, pathSegIdxRef.current);
-        setRemainM(remM);
-        setRemainSec(calcETA(remM, r.totalDistanceM, r.durationSec, smoothSpeedRef.current, m.id));
-        const dest: LatLng = { lat: r.service.location.coordinates[1], lng: r.service.location.coordinates[0] };
-        if (haversine(cur, dest) < ARRIVAL_M) {
-          speak('Vous êtes arrivé à destination. Bonne journée !', true);
-          stopNav(); alert('Vous êtes arrivé à destination !'); return;
-        }
-        const si = stepIdxRef.current, step = r.steps[si];
-        if (!step) return;
-        const distToStep = haversine(cur, step.point);
-        setDistToNextStep(distToStep);
-        if (si !== announcedStepRef.current) {
-          const voice = buildVoiceAnnounce(step, distToStep);
-          if (voice) { announcedStepRef.current = si; speak(voice); }
-        }
-        if (distToStep < STEP_ADVANCE_M && r.steps[si + 1]) {
-          const next = si + 1;
-          stepIdxRef.current = next; setStepIdx(next); announcedStepRef.current = -1;
-          const ns = r.steps[next];
-          if (ns && ns.maneuver !== 'arrive') speak(ns.instruction, true);
-        }
-      },
-      (err) => console.warn(`GPS error (${err.code}): ${err.message}`),
-      { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 },
-    );
-  }, [route, userPos, mode, computeAndSetRoute, speak, stopNav, doReroute]);
-
-  const handleMapClick = useCallback((e: { lngLat: { lat: number; lng: number } }) => {
-    if (isProviderMode) onMapClick?.(e);
-  }, [isProviderMode, onMapClick]);
-
-  useEffect(() => { modeRef.current = mode; }, [mode]);
+  // Pan to selected service
   useEffect(() => {
-    if (!navActive || !following || !mapRef.current || !gpsPos) return;
-    mapRef.current.flyTo([gpsPos.lat, gpsPos.lng], 18, { animate: true, duration: 0.6 });
-  }, [gpsPos, navActive, following]);
-  useEffect(() => {
-    if (!selectedService || !mapRef.current || navActive || loading) return;
+    if (!selectedService || !mapRef.current) return;
     const [lng, lat] = selectedService.location.coordinates;
-    mapRef.current.flyTo([lat, lng], 15, { animate: true, duration: 1 });
-  }, [selectedService, navActive, loading]);
-  useEffect(() => () => { stopTracking(); window.speechSynthesis?.cancel(); }, [stopTracking]);
+    mapRef.current.flyTo([lat, lng], 15, { duration: 1 });
+  }, [selectedService]);
 
-  const displayPath: LeafletPos[] = route
-    ? toLeaflet(navActive && pathSegIdxRef.current > 0 ? route.path.slice(pathSegIdxRef.current) : route.path)
-    : [];
-  const navMarkerPos: LeafletPos | null = gpsPos
-    ? [gpsPos.lat, gpsPos.lng]
-    : userPos ? [userPos.lat, userPos.lng] : null;
+  const hasValidCoords = (s: Service) =>
+    s.location?.coordinates?.length === 2 &&
+    s.location.coordinates[0] !== 0 &&
+    s.location.coordinates[1] !== 0;
 
-  const currentStep = route?.steps[stepIdx] ?? null;
-  const nextStep    = route?.steps[stepIdx + 1] ?? null;
-  const modeColor   = mode.color;
+  const activeMode = routingTarget?.mode ?? mode;
 
-  // Vérifie si un service a une localisation valide
-  const hasValidLocation = (service: Service): boolean => {
-    return service.location?.coordinates?.length === 2 &&
-           service.location.coordinates[0] !== 0 &&
-           service.location.coordinates[1] !== 0;
-  };
-
-  // ─── Render ────────────────────────────────────────────────────────────────
+  // ─── Render ────────────────────────────────────────────────────────────
 
   return (
     <div className="lmap-root">
 
-      {/* ═══ MAP ════════════════════════════════════════════════════════════ */}
+      {/* ═══════════════════════════ MAP ══════════════════════════════════ */}
       <MapContainer
-        center={mapCenter}
+        center={center}
         zoom={userPos ? 14 : 12}
         className="lmap-container"
         scrollWheelZoom
@@ -600,111 +387,70 @@ export default function LeafletMapComponent({
       >
         <TileLayer key={theme.id} url={theme.url} attribution={theme.attr} />
         <MapReady />
-        <MapClickHandler active={isProviderMode} onMapClick={handleMapClick} />
+        <MapClickHandler active={isProviderMode} cb={onMapClick} />
 
-        {/* Routes - uniquement pour le mode client */}
-        {!isProviderMode && displayPath.length > 1 && (
-          <>
-            <Polyline positions={displayPath} color="rgba(0,0,0,.12)" weight={mode.lineWeight + 5} />
-            <Polyline
-              positions={displayPath}
-              color={offRoute ? '#ea4335' : modeColor}
-              weight={mode.lineWeight} opacity={0.9}
-              dashArray={mode.id === 'walking' ? '8,6' : undefined}
-            />
-            <Polyline positions={displayPath} color="white" weight={mode.lineWeight - 2} opacity={0.2} />
-          </>
+        {/* LRM routing control — client mode only, when a target is selected */}
+        {!isProviderMode && routingTarget && userPos && (
+          <LrmController
+            from={userPos}
+            to={{
+              lat: routingTarget.service.location.coordinates[1],
+              lng: routingTarget.service.location.coordinates[0],
+            }}
+            mode={routingTarget.mode}
+            color={routingTarget.mode.color}
+            onRouteFound={handleRouteFound}
+            onRoutingError={handleRoutingError}
+            onLoading={setLoading}
+          />
         )}
 
-        {/* Navigation marker - uniquement pour le mode client */}
-        {!isProviderMode && navActive && navMarkerPos && (
-          <Marker position={navMarkerPos} icon={navArrowIcon(bearing, modeColor)} />
-        )}
-
-        {/* User location - uniquement pour le mode client */}
-        {!isProviderMode && !navActive && userPos && (
-          <Marker position={[userPos.lat, userPos.lng]} icon={userDotIcon}>
-            <Popup>
-              <div className="lmap-popup-content">
-                <LocationIcon className="w-4 h-4" />
-                <span>Vous êtes ici</span>
-              </div>
-            </Popup>
+        {/* User dot */}
+        {userPos && (
+          <Marker position={[userPos.lat, userPos.lng]} icon={userIcon}>
+            <Popup><span className="text-sm font-medium">Vous êtes ici</span></Popup>
           </Marker>
         )}
 
-        {/* Destination marker - uniquement pour le mode client */}
-        {!isProviderMode && route && navActive && (() => {
-          const [lng, lat] = route.service.location.coordinates;
-          return (
-            <Marker position={[lat, lng]} icon={destinationIcon()}>
-              <Popup>{route.service.name}</Popup>
-            </Marker>
-          );
-        })()}
-
-        {/* Affichage des services */}
+        {/* Service markers */}
         {services.map((s) => {
-          // Vérifier si les coordonnées sont valides
-          if (!hasValidLocation(s)) return null;
-          
+          if (!hasValidCoords(s)) return null;
           const [sLng, sLat] = s.location.coordinates;
-          const sel = selectedService?._id === s._id;
-          
-          // Mode prestataire : icône différente, pas d'itinéraire
-          if (isProviderMode) {
-            return (
-              <Marker
-                key={s._id}
-                position={[sLat, sLng]}
-                icon={providerServiceIcon(true)}
-                eventHandlers={{ click: () => onMarkerClick(s) }}
-              >
-                <Popup>
-                  <div className="lmap-popup-service">
-                    <div className="lmap-popup-service-name">{s.name}</div>
-                    <div className="lmap-popup-service-addr">{s.location.address}</div>
-                    <div className="lmap-popup-service-row">
-                      <span className="lmap-popup-price">{s.basePrice} DT</span>
-                      <span className="lmap-popup-rating">
-                        <CheckIcon className="w-3 h-3" />
-                        {s.avgRating} ({s.reviewCount})
-                      </span>
-                    </div>
-                  </div>
-                </Popup>
-              </Marker>
-            );
-          }
-          
-          // Mode client : icône normale avec itinéraire
+          const selected = selectedService?._id === s._id;
+
           return (
             <Marker
               key={s._id}
               position={[sLat, sLng]}
-              icon={serviceIcon(sel)}
+              icon={makeServiceIcon(selected)}
               eventHandlers={{ click: () => onMarkerClick(s) }}
             >
               <Popup>
                 <div className="lmap-popup-service">
                   <div className="lmap-popup-service-name">{s.name}</div>
                   <div className="lmap-popup-service-addr">{s.location.address}</div>
-                  <div className="lmap-popup-service-row">
-                    <span className="lmap-popup-price">{s.basePrice} DT</span>
-                    <span className="lmap-popup-rating">
-                      <CheckIcon className="w-3 h-3" />
-                      {s.avgRating} ({s.reviewCount})
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => computeAndSetRoute(s, mode)}
-                    disabled={loading}
-                    className="lmap-popup-btn"
-                  >
-                    {loading
-                      ? <><Loader2Icon className="w-3 h-3 animate-spin" /> Calcul…</>
-                      : <><MapIcon className="w-3 h-3" /> Itinéraire</>}
-                  </button>
+
+                  {isProviderMode ? (
+                    <div className="text-xs text-muted mt-1">
+                      {s.location.city}, {s.location.governorate}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-sm text-yellow-500">⭐ {s.avgRating}</span>
+                        <span className="text-xs text-gray-400">({s.reviewCount} avis)</span>
+                      </div>
+                      <button
+                        className="lmap-popup-btn mt-2"
+                        disabled={loading}
+                        onClick={() => startRoute(s)}
+                      >
+                        {loading
+                          ? <><Loader2Icon className="w-3 h-3 animate-spin" /> Calcul…</>
+                          : <><MapIcon className="w-3 h-3" /> Itinéraire</>}
+                      </button>
+                    </>
+                  )}
                 </div>
               </Popup>
             </Marker>
@@ -712,21 +458,18 @@ export default function LeafletMapComponent({
         })}
       </MapContainer>
 
-      {/* ═══ THEME SELECTOR ══════════════════════════════════════════════ */}
+      {/* ═════════════════════ THEME SELECTOR ════════════════════════════ */}
       <div className="lmap-theme-wrap">
-        <button
-          className="lmap-theme-trigger"
-          onClick={() => setThemeOpen((o) => !o)}
-          aria-label="Changer le thème de la carte"
-        >
+        <button className="lmap-theme-trigger" onClick={() => setThemeOpen(o => !o)}>
           <MapIcon className="w-4 h-4" />
           <span>{theme.label}</span>
-          <ChevronDownIcon className={`w-3 h-3 lmap-chevron${themeOpen ? ' lmap-chevron--open' : ''}`} />
+          <ChevronDownIcon
+            className={`w-3 h-3 lmap-chevron${themeOpen ? ' lmap-chevron--open' : ''}`}
+          />
         </button>
-
         {themeOpen && (
           <div className="lmap-theme-dropdown animate-scaleIn">
-            {THEMES.map((t) => (
+            {THEMES.map(t => (
               <button
                 key={t.id}
                 className={`lmap-theme-item${t.id === theme.id ? ' lmap-theme-item--active' : ''}`}
@@ -740,192 +483,159 @@ export default function LeafletMapComponent({
         )}
       </div>
 
-      {/* ═══ ERROR BANNER ════════════════════════════════════════════════ */}
-      {error && !navActive && (
+      {/* ═════════════════════ RECENTER ══════════════════════════════════ */}
+      {userPos && (
+        <button onClick={recenter} className="lmap-recenter-btn" aria-label="Recentrer">
+          <LocationIcon className="w-5 h-5" />
+        </button>
+      )}
+
+      {/* ═════════════════════ ERROR BANNER ══════════════════════════════ */}
+      {error && (
         <div className="lmap-error-banner animate-fadeIn">
           <AlertTriangleIcon className="w-4 h-4" />
           <span>{error}</span>
+          <button onClick={() => setError(null)} className="ml-auto">
+            <CloseIcon className="w-4 h-4" />
+          </button>
         </div>
       )}
 
-      {/* ═══ ROUTE PANEL (pre-navigation) - uniquement mode client ═══════ */}
-      {!isProviderMode && route && !navActive && (
+      {/* ═════════════════════ LOADING ═══════════════════════════════════ */}
+      {loading && (
+        <div className="lmap-loading animate-fadeIn">
+          <Loader2Icon className="w-5 h-5 animate-spin text-primary" />
+          <span>Calcul de l&apos;itinéraire…</span>
+        </div>
+      )}
+
+      {/* ═════════════════════ ROUTE PANEL (client only) ═════════════════ */}
+      {!isProviderMode && routeInfo && !loading && (
         <div className="lmap-route-panel animate-slideInRight">
           <div className="lmap-panel-handle" />
 
+          {/* Destination */}
           <div className="lmap-route-header">
-            <div className="lmap-route-dest-dot" />
-            <span className="lmap-route-dest-name">{route.service.name}</span>
+            <div className="lmap-route-dest-dot" style={{ background: activeMode.color }} />
+            <div className="flex-1 min-w-0">
+              <div className="lmap-route-dest-name">{routeInfo.service.name}</div>
+              <div className="text-xs text-muted truncate">
+                {routeInfo.service.location.address}
+              </div>
+            </div>
+            <button onClick={clearRoute} className="lmap-close-route-btn" aria-label="Fermer">
+              <CloseIcon className="w-4 h-4" />
+            </button>
           </div>
 
+          {/* Mode selector */}
           <div className="lmap-mode-selector">
-            {MODES.map((m) => (
+            {MODES.map(m => (
               <button
                 key={m.id}
-                className={`lmap-mode-btn${mode.id === m.id ? ' lmap-mode-btn--active' : ''}`}
-                style={mode.id === m.id ? { borderColor: m.color, background: `${m.color}18`, color: m.color } : {}}
-                onClick={() => handleModeChange(m)}
                 disabled={loading}
+                className={`lmap-mode-btn${activeMode.id === m.id ? ' lmap-mode-btn--active' : ''}`}
+                style={activeMode.id === m.id
+                  ? { borderColor: m.color, background: `${m.color}18`, color: m.color }
+                  : {}}
+                onClick={() => handleModeChange(m)}
               >
+                <span className="text-base">{m.icon}</span>
                 <span className="lmap-mode-label">{m.label}</span>
               </button>
             ))}
           </div>
 
+          {/* Stats — totalDistance and totalTime come straight from OSRM via LRM */}
           <div className="lmap-stats-row">
             <div className="lmap-stat-cell">
               <MapPinIcon className="w-4 h-4 text-muted" />
               <span className="lmap-stat-label">Distance</span>
-              <span className="lmap-stat-value">{fmtDist(route.totalDistanceM)}</span>
+              <span className="lmap-stat-value">
+                {fmtDist(routeInfo.summary.totalDistance)}
+              </span>
             </div>
             <div className="lmap-stat-divider" />
             <div className="lmap-stat-cell">
               <ClockIcon className="w-4 h-4 text-muted" />
               <span className="lmap-stat-label">Durée</span>
-              <span className="lmap-stat-value">{fmtTime(route.durationSec)}</span>
+              <span className="lmap-stat-value">
+                {fmtTime(routeInfo.summary.totalTime)}
+              </span>
             </div>
             <div className="lmap-stat-divider" />
             <div className="lmap-stat-cell">
               <CheckIcon className="w-4 h-4 text-muted" />
               <span className="lmap-stat-label">Arrivée</span>
-              <span className="lmap-stat-value">{fmtArrival(route.durationSec)}</span>
-            </div>
-          </div>
-
-          <div className="lmap-route-actions">
-            <button
-              className="lmap-start-btn"
-              style={{ background: modeColor, boxShadow: `0 4px 14px ${modeColor}50` }}
-              onClick={startNav}
-            >
-              <ArrowRightIcon className="w-5 h-5" />
-              Démarrer la navigation
-            </button>
-            <button
-              className="lmap-close-route-btn"
-              onClick={() => { setRoute(null); routeRef.current = null; setError(null); }}
-              aria-label="Fermer l'itinéraire"
-            >
-              <CloseIcon className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ═══ NAV HUD - uniquement mode client ════════════════════════════ */}
-      {!isProviderMode && navActive && route && (
-        <>
-          <div
-            className="lmap-turn-card animate-fadeIn"
-            style={{
-              background: rerouting ? '#ea4335' : offRoute ? '#f97316' : modeColor,
-            }}
-          >
-            <div className="lmap-turn-arrow">
-              <span className="lmap-turn-arrow-symbol">
-                {rerouting ? '↻' : stepArrow(currentStep?.maneuver ?? '', currentStep?.modifier)}
+              <span className="lmap-stat-value">
+                {fmtArrival(routeInfo.summary.totalTime)}
               </span>
             </div>
-
-            <div className="lmap-turn-body">
-              <div className="lmap-turn-dist">
-                {rerouting ? '…' : fmtDist(distToNextStep || currentStep?.distanceM || 0)}
-              </div>
-              <div className="lmap-turn-instruction">
-                {rerouting ? 'Recalcul en cours…' : offRoute ? 'Hors itinéraire' : (currentStep?.instruction ?? 'En route…')}
-              </div>
-              {currentStep?.streetName && !rerouting && (
-                <div className="lmap-turn-street">{currentStep.streetName}</div>
-              )}
-            </div>
-
-            {nextStep && !rerouting && (
-              <div className="lmap-turn-next">
-                <span className="lmap-turn-next-arrow">{stepArrow(nextStep.maneuver, nextStep.modifier)}</span>
-                <span className="lmap-turn-next-dist">{fmtDist(nextStep.distanceM)}</span>
-              </div>
-            )}
-
-            <button className="lmap-turn-stop" onClick={stopNav} aria-label="Arrêter la navigation">
-              <CloseIcon className="w-4 h-4" />
-            </button>
           </div>
 
-          <button
-            className={`lmap-recenter-btn${following ? ' lmap-recenter-btn--active' : ''}`}
-            style={following ? { background: modeColor, borderColor: modeColor } : {}}
-            onClick={() => setFollowing((f) => !f)}
-            aria-label={following ? 'Libérer le suivi' : 'Recentrer'}
-          >
-            <LocationIcon className="w-5 h-5" />
-          </button>
+          {/* Turn-by-turn instructions */}
+          {routeInfo.instructions.length > 0 && (
+            <div className="lmap-steps-wrap">
+              <button className="lmap-steps-toggle" onClick={() => setStepsOpen(o => !o)}>
+                <ArrowRightIcon
+                  className={`w-4 h-4 transition-transform${stepsOpen ? ' rotate-90' : ''}`}
+                />
+                <span>
+                  {stepsOpen ? 'Masquer' : 'Voir'} les instructions ({routeInfo.instructions.length})
+                </span>
+              </button>
 
-          <div className="lmap-eta-bar">
-            <div className="lmap-eta-handle-row" onClick={() => setHudOpen((o) => !o)}>
-              <div className="lmap-panel-handle" />
-            </div>
-            <div className="lmap-eta-content" onClick={() => setHudOpen((o) => !o)}>
-              <div className="lmap-eta-left">
-                <span className="lmap-eta-time">{fmtTime(remainSec)}</span>
-                <span className="lmap-eta-sub">{fmtDist(remainM)} · Arrivée {fmtArrival(remainSec)}</span>
-              </div>
-              {currentSpeed > 0.5 && (
-                <div className="lmap-speed-chip">
-                  <span className="lmap-speed-val">{Math.round(currentSpeed * 3.6)}</span>
-                  <span className="lmap-speed-unit">km/h</span>
-                </div>
-              )}
-              <div className={`lmap-hud-chevron${hudOpen ? ' lmap-hud-chevron--open' : ''}`}>
-                <ChevronDownIcon className="w-4 h-4 text-muted" />
-              </div>
-            </div>
-
-            {hudOpen && (
-              <div className="lmap-steps-list animate-fadeIn">
-                {route.steps.map((s, i) => {
-                  const isCur = i === stepIdx, isPast = i < stepIdx;
-                  return (
+              {stepsOpen && (
+                <div className="lmap-steps-list animate-fadeIn">
+                  {routeInfo.instructions.map((ins, i) => (
                     <div
                       key={i}
-                      className={`lmap-step-item${isCur ? ' lmap-step-item--current' : ''}${isPast ? ' lmap-step-item--past' : ''}`}
-                      style={isCur ? { borderLeftColor: modeColor } : {}}
+                      className={[
+                        'lmap-step-item',
+                        i === activeStep ? 'lmap-step-item--current' : '',
+                        i  < activeStep  ? 'lmap-step-item--past'    : '',
+                      ].join(' ')}
+                      style={i === activeStep ? { borderLeftColor: activeMode.color } : {}}
+                      onClick={() => setActiveStep(i)}
                     >
-                      <div
-                        className="lmap-step-icon"
-                        style={isCur ? { background: modeColor, color: '#fff' } : {}}
-                      >
-                        {stepArrow(s.maneuver, s.modifier)}
-                      </div>
                       <div className="lmap-step-body">
-                        <div className="lmap-step-instruction">{s.instruction}</div>
-                        {s.streetName && <div className="lmap-step-street">{s.streetName}</div>}
+                        <div className="lmap-step-instruction">{ins.text}</div>
                       </div>
                       <div className="lmap-step-meta">
-                        <span className="lmap-step-dist">{fmtDist(s.distanceM)}</span>
-                        <span className="lmap-step-time">{fmtTime(s.durationSec)}</span>
+                        <span className="lmap-step-dist">{fmtDist(ins.distance)}</span>
+                        <span className="lmap-step-time">{fmtTime(ins.time)}</span>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </>
-      )}
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
-      {/* ═══ LOADING SPINNER ══════════════════════════════════════════════ */}
-      {loading && (
-        <div className="lmap-loading animate-fadeIn">
-          <Loader2Icon className="w-6 h-6 animate-spin text-primary" />
-          <span>Calcul de l&apos;itinéraire…</span>
+          {/* Start navigation CTA */}
+          <button
+            className="lmap-start-btn"
+            style={{ background: activeMode.color, boxShadow: `0 4px 14px ${activeMode.color}50` }}
+            onClick={() => {
+              if (userPos && mapRef.current)
+                mapRef.current.flyTo([userPos.lat, userPos.lng], 17, { duration: 1.2 });
+            }}
+          >
+            <ArrowRightIcon className="w-5 h-5" />
+            Démarrer la navigation
+          </button>
         </div>
       )}
 
-      {/* ═══ PROVIDER BANNER (mode prestataire - affichage simple) ═══════ */}
+      {/* ═════════════════════ PROVIDER BANNER ═══════════════════════════ */}
       {isProviderMode && (
         <div className="lmap-provider-banner animate-fadeIn">
           <MapPinIcon className="w-4 h-4" />
-          <span>Vos services sur la carte — cliquez sur un marqueur pour voir les détails</span>
+          <span>
+            {onMapClick
+              ? 'Cliquez sur la carte pour placer le marqueur de votre service'
+              : 'Vos services — cliquez un marqueur pour les détails'}
+          </span>
         </div>
       )}
     </div>

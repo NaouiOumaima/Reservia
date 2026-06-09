@@ -20,6 +20,7 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
 import { UploadModule } from './modules/upload/upload.module'; // ✅ CHANGEMENT: Importer le module, pas le controller
 import { AdvertisementsModule } from './modules/advertisements/advertisements.module';
 import { FavoritesModule } from './modules/favorites/favorites.module';
+import { CsrfModule } from './csrf/csrf.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { FavoritesModule } from './modules/favorites/favorites.module';
     UploadModule,
     AdvertisementsModule, 
     FavoritesModule,
+    CsrfModule,
   ],
   controllers: [],
   providers: [],

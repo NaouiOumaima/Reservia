@@ -14,7 +14,7 @@ interface Service {
   reviewCount: number;
   location: {
     type: string;
-    coordinates: [number, number];
+    coordinates: [number, number]; // [lng, lat]
     address: string;
     city: string;
     governorate: string;
@@ -23,44 +23,46 @@ interface Service {
   duration: number;
 }
 
+// ─── Inner page (needs useSearchParams) ──────────────────────────────────────
+
 function CarteContent() {
-  const searchParams = useSearchParams();
-  const categoryParam = searchParams.get('category');
+  const searchParams   = useSearchParams();
+  const categoryParam  = searchParams.get('category');
 
-  const [services, setServices] = useState<Service[]>([]);
+  const [services,         setServices]         = useState<Service[]>([]);
   const [filteredServices, setFilteredServices] = useState<Service[]>([]);
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
-  const [filters, setFilters] = useState({
-    category: categoryParam || '',
-    radius: 10,
-  });
-  const [loading, setLoading] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [userLocation,     setUserLocation]     = useState<[number, number] | null>(null);
+  const [selectedService,  setSelectedService]  = useState<Service | null>(null);
+  const [filters,          setFilters]          = useState({ category: categoryParam ?? '', radius: 10 });
+  const [loading,          setLoading]          = useState(true);
+  const [sidebarOpen,      setSidebarOpen]      = useState(true);
+  const [mobileOpen,       setMobileOpen]       = useState(false);
 
+  // ── Geolocation ────────────────────────────────────────────────────────
   useEffect(() => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setUserLocation([pos.coords.longitude, pos.coords.latitude]),
-        () => setUserLocation([10.1815, 36.8065])
-      );
-    } else {
-      setUserLocation([10.1815, 36.8065]);
+    if (!('geolocation' in navigator)) {
+      setUserLocation([10.1815, 36.8065]); // Tunis fallback
+      return;
     }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserLocation([pos.coords.longitude, pos.coords.latitude]),
+      ()    => setUserLocation([10.1815, 36.8065]),
+    );
   }, []);
 
+  // ── Fetch nearby services ───────────────────────────────────────────────
   useEffect(() => {
     if (!userLocation) return;
-    const fetchServices = async () => {
+    (async () => {
       setLoading(true);
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-        const res = await fetch(
-          `${apiUrl}/services/nearby?lng=${userLocation[0]}&lat=${userLocation[1]}&distance=${filters.radius}`
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
+        const res    = await fetch(
+          `${apiUrl}/services/nearby` +
+          `?lng=${userLocation[0]}&lat=${userLocation[1]}&distance=${filters.radius}`,
         );
         const data = await res.json();
-        const arr = Array.isArray(data) ? data : [];
+        const arr  = Array.isArray(data) ? data : [];
         setServices(arr);
         setFilteredServices(arr);
       } catch {
@@ -69,48 +71,57 @@ function CarteContent() {
       } finally {
         setLoading(false);
       }
-    };
-    fetchServices();
+    })();
   }, [userLocation, filters.radius]);
 
+  // ── Category filter (client-side) ──────────────────────────────────────
   useEffect(() => {
-    let filtered = [...services];
-    if (filters.category) filtered = filtered.filter((s) => s.category === filters.category);
-    setFilteredServices(filtered);
-  }, [filters, services]);
+    setFilteredServices(
+      filters.category
+        ? services.filter((s) => s.category === filters.category)
+        : [...services],
+    );
+  }, [filters.category, services]);
 
+  // ── Handlers ────────────────────────────────────────────────────────────
   const handleMarkerClick = (service: Service) => {
     setSelectedService(service);
-    setMobileOpen(false);
+    setMobileOpen(false); // close sidebar on mobile after selecting
   };
+
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <div className="cc-page">
 
-      {/* ── Overlay mobile ── */}
+      {/* Overlay mobile */}
       {mobileOpen && (
-        <div
-          className="cc-overlay"
-          onClick={() => setMobileOpen(false)}
-        />
+        <div className="cc-overlay" onClick={() => setMobileOpen(false)} />
       )}
 
-      {/* ── Sidebar ── */}
-      <aside className={`cc-sidebar ${sidebarOpen ? 'cc-sidebar--open' : 'cc-sidebar--collapsed'} ${mobileOpen ? 'cc-sidebar--mobile-open' : ''}`}>
-
+      {/* ═══════ Sidebar ═════════════════════════════════════════════════ */}
+      <aside
+        className={[
+          'cc-sidebar',
+          sidebarOpen   ? 'cc-sidebar--open'        : 'cc-sidebar--collapsed',
+          mobileOpen    ? 'cc-sidebar--mobile-open' : '',
+        ].join(' ')}
+      >
         {/* Header */}
         <div className="cc-sidebar__header">
           <div className="cc-sidebar__header-top">
             <span className="cc-sidebar__title">Services à proximité</span>
-            {/* Bouton collapse desktop */}
+
+            {/* Desktop collapse toggle */}
             <button
               className="cc-sidebar__toggle"
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              aria-label={sidebarOpen ? 'Réduire' : 'Agrandir'}
+              aria-label={sidebarOpen ? 'Réduire le panneau' : 'Agrandir le panneau'}
             >
               {sidebarOpen ? '←' : '→'}
             </button>
-            {/* Bouton fermer mobile */}
+
+            {/* Mobile close */}
             <button
               className="cc-sidebar__close-mobile"
               onClick={() => setMobileOpen(false)}
@@ -119,10 +130,12 @@ function CarteContent() {
               ✕
             </button>
           </div>
-          <span className="cc-sidebar__count">{filteredServices.length} résultat(s)</span>
+          <span className="cc-sidebar__count">
+            {loading ? 'Chargement…' : `${filteredServices.length} résultat(s)`}
+          </span>
         </div>
 
-        {/* Liste */}
+        {/* Service list */}
         <div className="cc-sidebar__list">
           {loading ? (
             <div className="cc-sidebar__state">
@@ -131,18 +144,24 @@ function CarteContent() {
                 <div className="cc-dot" />
                 <div className="cc-dot" />
               </div>
-              <p>Chargement…</p>
+              <p>Recherche des services…</p>
             </div>
           ) : filteredServices.length === 0 ? (
             <div className="cc-sidebar__state">
               <div className="cc-sidebar__empty-icon">📍</div>
               <p>Aucun service dans ce rayon</p>
+              <p className="text-xs text-muted mt-1">
+                Essayez d&apos;augmenter le rayon de recherche
+              </p>
             </div>
           ) : (
             filteredServices.map((service, i) => (
               <div
                 key={service._id}
-                className={`cc-service-item ${selectedService?._id === service._id ? 'cc-service-item--active' : ''}`}
+                className={[
+                  'cc-service-item',
+                  selectedService?._id === service._id ? 'cc-service-item--active' : '',
+                ].join(' ')}
                 style={{ animationDelay: `${i * 40}ms` }}
                 onClick={() => handleMarkerClick(service)}
               >
@@ -151,7 +170,7 @@ function CarteContent() {
                   <h3 className="cc-service-item__name">{service.name}</h3>
                   <p className="cc-service-item__addr">{service.location.address}</p>
                   <div className="cc-service-item__meta">
-                    <span className="cc-badge-free">Gratuit</span>
+                    <span className="cc-badge-price">{service.basePrice} TND</span>
                     <span className="cc-badge-rating">★ {service.avgRating}</span>
                   </div>
                 </div>
@@ -161,7 +180,7 @@ function CarteContent() {
         </div>
       </aside>
 
-      {/* ── Zone principale ── */}
+      {/* ═══════ Main area ═══════════════════════════════════════════════ */}
       <div className="cc-main">
         <FilterBar filters={filters} onFilterChange={setFilters} />
         <div className="cc-map">
@@ -170,31 +189,38 @@ function CarteContent() {
             userLocation={userLocation}
             selectedService={selectedService}
             onMarkerClick={handleMarkerClick}
+            isProviderMode={false}
           />
         </div>
       </div>
 
-     {/* ── Bouton mobile burger ── */}
-<button
-  className="cc-fab"
-  onClick={() => setMobileOpen(!mobileOpen)}
-  aria-label="Voir les services"
->
-  {mobileOpen ? '✕' : '☰'}
-  {/* Badge optionnel - toujours afficher le compteur si des services existent */}
-  {filteredServices.length > 0 && (
-    <span className="cc-fab__badge">{filteredServices.length}</span>
-  )}
-</button>
+      {/* ═══════ Mobile FAB ══════════════════════════════════════════════ */}
+      <button
+        className="cc-fab"
+        onClick={() => setMobileOpen(!mobileOpen)}
+        aria-label="Voir les services"
+      >
+        {mobileOpen ? '✕' : '☰'}
+        {filteredServices.length > 0 && (
+          <span className="cc-fab__badge">{filteredServices.length}</span>
+        )}
+      </button>
     </div>
   );
 }
 
+// ─── Export with Suspense boundary (required for useSearchParams) ─────────────
+
 export default function ClientCartePage() {
   return (
-    <Suspense fallback={
-      <div className="client-carte-suspense">Chargement de la carte…</div>
-    }>
+    <Suspense
+      fallback={
+        <div className="client-carte-suspense">
+          <div className="spinner" />
+          Chargement de la carte…
+        </div>
+      }
+    >
       <CarteContent />
     </Suspense>
   );

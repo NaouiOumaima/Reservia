@@ -8413,29 +8413,58 @@
   .notif-title { font-size: 0.8125rem; }
   .notif-message { font-size: 0.75rem; -webkit-line-clamp: 2; }
 
+  .notif-dropdown-wrap {
+    position: static;
+  }
+
   .notif-dropdown-panel {
     position: fixed;
-    top: auto;
     bottom: 0;
     left: 0;
     right: 0;
     width: 100%;
+    max-height: 90dvh;
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    max-height: 75vh;
     animation: slideUp 0.28s ease-out;
     transform-origin: bottom center;
+    z-index: 9999;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: rgb(var(--surface));
+    box-shadow: var(--shadow-xl);
+    border: 1px solid rgb(var(--border));
+    border-bottom: none;
+  }
+
+  .notif-dropdown-list {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--foreground-muted), .25) transparent;
+    min-height: 0;
+  }
+
+  .notif-dropdown-header {
+    flex-shrink: 0;
+    padding: 1rem 1.25rem 0.75rem;
+    border-bottom: 1px solid rgb(var(--border));
+  }
+
+  .notif-dropdown-footer {
+    flex-shrink: 0;
+    padding: 0.625rem 1.25rem;
+    padding-bottom: max(0.625rem, env(safe-area-inset-bottom));
+    border-top: 1px solid rgb(var(--border));
+    background: rgb(var(--surface-raised));
   }
 
   .notif-modal-box { max-width: 100%; border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
-  .notif-modal-overlay { align-items: flex-end; padding: 0; }
+  .notif-modal-overlay { align-items: flex-end; padding: 0; padding-top: max(1rem, env(safe-area-inset-top)); }
   .notif-modal-img { height: 10rem; }
-  .notif-modal-body { padding: 1.25rem; }
+  .notif-modal-body { padding: 1.25rem; padding-bottom: max(1.25rem, env(safe-area-inset-bottom)); }
   .notif-modal-title { font-size: 1rem; }
   .notif-modal-actions { flex-direction: column; }
-}
-
-@media (max-width: 400px) {
-  .notif-dropdown-panel { max-height: 80vh; }
 }
 /* ── Modal AD extras ── */
 .notif-modal-img-badge {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { notificationsApi, Notification, NotificationType } from '@/lib/api/notifications';
 import { useAuth } from '@/providers/AuthProvider';
 import Image from 'next/image';
@@ -39,7 +40,75 @@ function formatDate(dateString: string) {
 
 type FilterType = 'all' | 'unread' | NotificationType;
 
+// Fonction pour générer l'URL de redirection selon le type de notification et le rôle
+// Fonction pour générer l'URL de redirection selon le type de notification et le rôle
+function getRedirectUrl(notification: Notification, userRole?: string): string | null {
+  const data = notification.data;
+  
+  // Réservations
+  if (notification.type === NotificationType.RESERVATION_CONFIRMED ||
+      notification.type === NotificationType.RESERVATION_REMINDER ||
+      notification.type === NotificationType.RESERVATION_CANCELLED ||
+      notification.type === NotificationType.RESERVATION_EXPIRED) {
+    
+    // Utiliser reservationId directement depuis la notification
+    const reservationId = notification.reservationId;
+    
+    if (userRole === 'provider') {
+      if (reservationId) {
+        return `/provider/bookings?bookingId=${reservationId}`;
+      }
+      return '/provider/bookings';
+    } else {
+      if (reservationId) {
+        return `/client/bookings?bookingId=${reservationId}`;
+      }
+      return '/client/bookings';
+    }
+  }
+  
+  // Annonce publicitaire
+  if (notification.type === NotificationType.ADVERTISEMENT) {
+    // Utiliser actionUrl s'il existe, sinon retourner au search
+    if (notification.actionUrl) {
+      return notification.actionUrl;
+    }
+    if (data?.actionUrl) {
+      return data.actionUrl;
+    }
+    return '/search';
+  }
+  
+  // Promotion
+  if (notification.type === NotificationType.PROMOTION) {
+    // Utiliser actionUrl s'il existe
+    if (notification.actionUrl) {
+      return notification.actionUrl;
+    }
+    if (data?.actionUrl) {
+      return data.actionUrl;
+    }
+    return '/search';
+  }
+  
+  // Système - utiliser actionUrl si disponible
+  if (notification.type === NotificationType.SYSTEM) {
+    if (notification.actionUrl) {
+      return notification.actionUrl;
+    }
+    if (data?.actionUrl) {
+      return data.actionUrl;
+    }
+    return null;
+  }
+  
+  // Default: retour null (ouvre le modal au lieu de rediriger)
+  return null;
+}
+
 export default function NotificationsPage() {
+  const router = useRouter();
+  const { user } = useAuth();
   const [notifications, setNotifications]       = useState<Notification[]>([]);
   const [loading, setLoading]                   = useState(true);
   const [unreadCount, setUnreadCount]           = useState(0);
@@ -111,6 +180,27 @@ export default function NotificationsPage() {
     await fetchNotifications(next, true);
     setPage(next);
     setLoadingMore(false);
+  };
+
+  // Gestion du clic sur une notification
+  const handleNotificationClick = async (notification: Notification) => {
+    // Si la notification n'est pas lue, la marquer comme lue
+    if (!notification.isRead) {
+      await markAsRead(notification._id);
+      notification.isRead = true;
+    }
+    
+    // Vérifier s'il y a une redirection spécifique
+    const redirectUrl = getRedirectUrl(notification, user?.role);
+    
+    if (redirectUrl) {
+      // Rediriger vers la page correspondante
+      router.push(redirectUrl);
+    } else {
+      // Sinon ouvrir le modal
+      setSelectedNotif(notification);
+      setModalOpen(true);
+    }
   };
 
   const displayed = notifications.filter(n => {
@@ -209,14 +299,14 @@ export default function NotificationsPage() {
               {displayed.map((notif, i) => {
                 const { Icon, cls, label } = getIconInfo(notif.type);
                 const isUnread = !notif.isRead;
+                const redirectUrl = getRedirectUrl(notif, user?.role);
+                const hasRedirect = redirectUrl !== null;
 
                 return (
                   <div
                     key={notif._id}
-onClick={() => {
-  setSelectedNotif(notif);
-  setModalOpen(true);
-}}                    className={`notif-card ${isUnread ? 'notif-card-unread' : 'notif-card-read'} animate-fadeInUp`}
+                    onClick={() => handleNotificationClick(notif)}
+                    className={`notif-card ${isUnread ? 'notif-card-unread' : 'notif-card-read'} animate-fadeInUp ${hasRedirect ? 'cursor-pointer' : ''}`}
                     style={{ animationDelay: `${i * 40}ms` }}
                   >
                     <div className="notif-card-inner">
@@ -242,6 +332,13 @@ onClick={() => {
                           <span className="notif-promo-badge">
                             <TagIcon className="w-3 h-3" />
                             -{notif.data.discountPercentage}%
+                          </span>
+                        )}
+                        
+                        {/* Indicateur de redirection */}
+                        {hasRedirect && (
+                          <span className="inline-flex items-center gap-1 mt-2 text-xs text-primary">
+                            Cliquez pour consulter →
                           </span>
                         )}
                       </div>
