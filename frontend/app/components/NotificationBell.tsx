@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useState, ReactNode, useCallback 
 import { notificationsApi } from '@/lib/api/notifications';
 import { Notification } from '@/lib/api/notifications';
 import { useSocket } from '@/hooks/useSocket';
+import { getAccessToken } from '@/lib/helpers/storage';
 import toast from 'react-hot-toast';
 
 interface NotificationContextType {
@@ -17,6 +18,8 @@ interface NotificationContextType {
   deleteAllRead: () => Promise<void>;
   fetchNotifications: () => Promise<void>;
   refreshUnreadCount: () => Promise<void>;
+  loadMore: () => Promise<void>;
+  hasMore: boolean;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -27,9 +30,22 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const { socket } = useSocket();
 
+  // Vérifier l'authentification au démarrage
+  useEffect(() => {
+    const token = getAccessToken();
+    setIsAuthenticated(!!token);
+  }, []);
+
   const fetchNotifications = useCallback(async (pageNum: number = 1, append: boolean = false) => {
+    // Ne pas charger si non authentifié
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await notificationsApi.getMyNotifications(pageNum, 50);
       
@@ -44,54 +60,67 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       
       const unread = response.notifications.filter((n: Notification) => !n.isRead).length;
       setUnreadCount(unread);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-      toast.error('Impossible de charger les notifications');
+    } catch (error: any) {
+      // Ignorer les erreurs 401 silencieusement
+      if (error.response?.status !== 401) {
+        console.error('Error fetching notifications:', error);
+        toast.error('Impossible de charger les notifications');
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   const refreshUnreadCount = useCallback(async () => {
+    // Ne pas rafraîchir si non authentifié
+    if (!isAuthenticated) return;
+    
     try {
       const count = await notificationsApi.getUnreadCount();
       setUnreadCount(count);
-    } catch (error) {
-      console.error('Error fetching unread count:', error);
+    } catch (error: any) {
+      // Ignorer silencieusement les erreurs 401
+      if (error.response?.status !== 401) {
+        console.error('Error fetching unread count:', error);
+      }
     }
-  }, []);
+  }, [isAuthenticated]);
 
   const loadMore = useCallback(async () => {
-    if (!hasMore || loading) return;
+    if (!hasMore || loading || !isAuthenticated) return;
     await fetchNotifications(page + 1, true);
-  }, [hasMore, loading, page, fetchNotifications]);
+  }, [hasMore, loading, page, fetchNotifications, isAuthenticated]);
 
-  // Chargement initial
+  // Chargement initial - SEULEMENT si authentifié
   useEffect(() => {
-    fetchNotifications(1, false);
-  }, [fetchNotifications]);
+    if (isAuthenticated === true) {
+      fetchNotifications(1, false);
+    } else if (isAuthenticated === false) {
+      setLoading(false);
+    }
+  }, [isAuthenticated, fetchNotifications]);
 
-  // Rafraîchir le compteur périodiquement (optionnel)
+  // Rafraîchir le compteur périodiquement - SEULEMENT si authentifié
   useEffect(() => {
+    if (!isAuthenticated) return;
+    
     const interval = setInterval(() => {
       refreshUnreadCount();
     }, 30000); // Toutes les 30 secondes
     
     return () => clearInterval(interval);
-  }, [refreshUnreadCount]);
+  }, [isAuthenticated, refreshUnreadCount]);
 
-  // Écouter les nouvelles notifications via WebSocket
+  // Écouter les nouvelles notifications via WebSocket - SEULEMENT si authentifié
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || !isAuthenticated) return;
 
     const handleNewNotification = (notification: Notification) => {
       console.log('New notification received:', notification);
       
-      // Ajouter la notification en haut de la liste
       setNotifications(prev => [notification, ...prev]);
       setUnreadCount(prev => prev + 1);
       
-      // Afficher un toast pour la nouvelle notification
       toast.success(notification.title, {
         duration: 4000,
         icon: '🔔',
@@ -127,15 +156,16 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       socket.off('all_notifications_read', handleAllNotificationsRead);
       socket.off('notification_deleted', handleNotificationDeleted);
     };
-  }, [socket, refreshUnreadCount]);
+  }, [socket, isAuthenticated, refreshUnreadCount]);
 
   const markAsRead = useCallback(async (id: string) => {
+    if (!isAuthenticated) return;
+    
     try {
       await notificationsApi.markAsRead(id);
       setNotifications(prev => prev.map(n => (n._id === id ? { ...n, isRead: true } : n)));
       setUnreadCount(prev => Math.max(0, prev - 1));
       
-      // Notifier via WebSocket
       if (socket) {
         socket.emit('markAsRead', { notificationId: id });
       }
@@ -143,9 +173,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       console.error('Error marking as read:', error);
       toast.error('Erreur lors du marquage');
     }
-  }, [socket]);
+  }, [socket, isAuthenticated]);
 
   const markAllAsRead = useCallback(async () => {
+    if (!isAuthenticated) return;
+    
     try {
       await notificationsApi.markAllAsRead();
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
@@ -160,9 +192,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       console.error('Error marking all as read:', error);
       toast.error('Erreur lors du marquage');
     }
-  }, [socket]);
+  }, [socket, isAuthenticated]);
 
   const deleteNotification = useCallback(async (id: string) => {
+    if (!isAuthenticated) return;
+    
     try {
       const notification = notifications.find(n => n._id === id);
       await notificationsApi.deleteNotification(id);
@@ -181,9 +215,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       console.error('Error deleting notification:', error);
       toast.error('Erreur lors de la suppression');
     }
-  }, [notifications, socket]);
+  }, [notifications, socket, isAuthenticated]);
 
   const deleteAllRead = useCallback(async () => {
+    if (!isAuthenticated) return;
+    
     try {
       await notificationsApi.deleteAllReadNotifications();
       setNotifications(prev => prev.filter(n => !n.isRead));
@@ -197,7 +233,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       console.error('Error deleting read notifications:', error);
       toast.error('Erreur lors de la suppression');
     }
-  }, [socket]);
+  }, [socket, isAuthenticated]);
 
   const value = {
     notifications,

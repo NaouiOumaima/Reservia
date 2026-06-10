@@ -40,6 +40,7 @@ function CarteContent() {
   const [loading,          setLoading]          = useState(true);
   const [sidebarOpen,      setSidebarOpen]      = useState(true);
   const [mobileOpen,       setMobileOpen]       = useState(false);
+const serviceIdParam = searchParams.get('serviceId');
 
   // ── Geolocation ────────────────────────────────────────────────────────
   useEffect(() => {

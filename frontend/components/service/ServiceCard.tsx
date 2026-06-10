@@ -4,7 +4,8 @@
 import Image from 'next/image';
 import { useAuth } from '@/providers/AuthProvider';
 import FavoriteButton from '@/components/FavoriteButton';
-import { Service } from '@/types';
+import { StarIcon, MapPinIcon, ClockIcon } from '@/components/ui/Icons';
+import type { Service } from '@/types';
 import { CATEGORIES_MAP } from '@/lib/api/constants/categories.';
 
 interface ServiceCardProps {
@@ -14,112 +15,117 @@ interface ServiceCardProps {
   onClick?: (service: Service) => void;
 }
 
-export default function ServiceCard({ service, onBook, showFavorite = false, onClick }: ServiceCardProps) {
+export default function ServiceCard({
+  service,
+  onBook,
+  showFavorite = false,
+  onClick,
+}: ServiceCardProps) {
   const { user } = useAuth();
 
-  // Utiliser la catégorie depuis votre fichier de constantes
-  const getCategoryInfo = (category: string) => {
-    const categoryInfo = CATEGORIES_MAP.get(category);
-    return {
-      icon: categoryInfo?.icon || <span className="text-2xl">📍</span>,
-      label: categoryInfo?.frenchLabel || category,
-    };
-  };
+  const categoryInfo = CATEGORIES_MAP.get(service.category);
+  const categoryLabel = categoryInfo?.frenchLabel ?? service.category;
 
-  const categoryInfo = getCategoryInfo(service.category);
+  const handleClick = () => onClick?.(service);
 
-  const handleCardClick = () => {
-    if (onClick) {
-      onClick(service);
-    }
-  };
-
-  const cardContent = (
-    <div 
-      onClick={handleCardClick}
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden cursor-pointer group"
+  return (
+    <article
+      className="sp-card"
       role="button"
       tabIndex={0}
+      onClick={handleClick}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          handleCardClick();
+          handleClick();
         }
       }}
+      aria-label={`Voir le service : ${service.name}`}
     >
-      {/* Image */}
-      <div className="relative h-48 overflow-hidden">
-        {service.images && service.images[0] ? (
+      {/* ── Image ── */}
+      <div className="sp-card-img-wrap">
+        {service.images?.[0] ? (
           <Image
             src={service.images[0]}
             alt={service.name}
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            sizes="(max-width: 500px) 100vw, (max-width: 960px) 50vw, 33vw"
+            className="sp-card-img"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
-            <div className="text-white text-4xl">
-              {categoryInfo.icon}
-            </div>
+          <div className="sp-card-img-placeholder">
+            <span>{categoryInfo?.icon ?? '📍'}</span>
+          </div>
+        )}
+
+        {/* Badge gratuit */}
+        <span className="sp-card-free-badge">Gratuit</span>
+
+        {/* Favori */}
+        {showFavorite && user?.role === 'client' && (
+          <div className="sp-card-fav">
+            <FavoriteButton
+              serviceId={service._id}
+              size="sm"
+              onClick={(e) => e.stopPropagation()}
+            />
           </div>
         )}
       </div>
 
-      {/* Content */}
-      <div className="p-4">
-        <div className="flex items-start justify-between mb-2 gap-2">
-          <div className="min-w-0 flex-1">
-            <h3 className="font-semibold text-gray-900 dark:text-white text-lg line-clamp-1">
-              {service.name}
-            </h3>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {showFavorite && user?.role === 'client' && (
-              <FavoriteButton
-                serviceId={service._id}
-                size="sm"
-                className="relative"
-                onClick={(event) => event.stopPropagation()}
-              />
-            )}
-          </div>
-        </div>
+      {/* ── Corps ── */}
+      <div className="sp-card-body">
+        {/* Catégorie */}
+        <span className="sp-card-category-pill">{categoryLabel}</span>
 
-        <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">
-          {service.description}
-        </p>
+        {/* Titre */}
+        <h3 className="sp-card-title">{service.name}</h3>
 
-        <div className="flex items-center gap-2 mb-3">
-          <div className="flex items-center">
-            <span className="text-yellow-500">⭐</span>
-            <span className="ml-1 text-sm font-semibold text-gray-900 dark:text-white">
-              {(service.avgRating ?? 0).toFixed(1)}
+        {/* Description */}
+        <p className="sp-card-desc">{service.description}</p>
+
+        {/* Localisation */}
+        {(service.location?.city || service.location?.governorate) && (
+          <div className="sp-card-location">
+            <MapPinIcon className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>
+              {service.location.city}
+              {service.location.city && service.location.governorate ? ', ' : ''}
+              {service.location.governorate}
             </span>
           </div>
-          <span className="text-gray-300 dark:text-gray-600">•</span>
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            {service.reviewCount} avis
+        )}
+
+        {/* Meta : note · durée */}
+        <div className="sp-card-meta">
+          <span className="sp-card-rating">
+ <StarIcon className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500" />
+             {(service.avgRating ?? 0).toFixed(1)}
           </span>
-          <span className="text-gray-300 dark:text-gray-600">•</span>
-          <span className="text-sm text-gray-500 dark:text-gray-400">
+          <span className="sp-card-sep">·</span>
+          <span>{service.reviewCount ?? 0} avis</span>
+          <span className="sp-card-sep">·</span>
+          <span className="sp-card-duration">
+            <ClockIcon className="w-3.5 h-3.5" />
             {service.duration} min
           </span>
         </div>
 
+        {/* CTA (optionnel) */}
         {onBook && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onBook(service);
-            }}
-            className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-          >
-            Réserver
-          </button>
+          <div className="sp-card-footer">
+            <button
+              className="sp-card-book-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                onBook(service);
+              }}
+            >
+              Réserver gratuitement
+            </button>
+          </div>
         )}
       </div>
-    </div>
+    </article>
   );
-
-  return cardContent;
 }
