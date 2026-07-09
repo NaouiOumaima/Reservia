@@ -1,8 +1,8 @@
 // features/admin/hooks/useAdminReviews.ts
 
 import { useState, useEffect, useCallback } from 'react';
-import { reviewsApi } from '@/lib/api/client';
-import { Review } from '@/types';
+import { reviewsApi } from '@/lib/api/reviews/reviews.api';
+import { Review } from '@/lib/api/reviews/types';
 
 interface UseAdminReviewsReturn {
   reportedReviews: Review[];
@@ -24,11 +24,11 @@ export function useAdminReviews(): UseAdminReviewsReturn {
     setLoading(true);
     setError(null);
     try {
-      const response = await reviewsApi.getReported();
-      setReportedReviews(response.data || response);
-      
-      const countResponse = await reviewsApi.getReportedCount();
-      setReportedCount(countResponse.data?.count || 0);
+      const reviews = await reviewsApi.getReportedReviews();
+      setReportedReviews(reviews);
+
+      const count = await reviewsApi.getReportedCount();
+      setReportedCount(count);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erreur lors du chargement des avis');
     } finally {
@@ -55,7 +55,7 @@ export function useAdminReviews(): UseAdminReviewsReturn {
     setLoading(true);
     setError(null);
     try {
-      await reviewsApi.dismissReport(reviewId);
+      await reviewsApi.approveReview(reviewId);
       setReportedReviews(prev => prev.filter(r => r._id !== reviewId));
       setReportedCount(prev => prev - 1);
     } catch (err: any) {

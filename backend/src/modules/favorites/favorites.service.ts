@@ -11,9 +11,7 @@ import { User, UserDocument } from '../../database/schemas/user.schema';
 
 @Injectable()
 export class FavoritesService {
-  constructor(
-    @InjectModel(User.name) private userModel: Model<UserDocument>,
-  ) {}
+  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
   /**
    * Retourne la liste des services favoris populée.
@@ -24,8 +22,8 @@ export class FavoritesService {
         .findById(userId)
         .populate({
           path: 'favoriteServices',
-          match: { isActive: true },
-          select: 'name category basePrice avgRating reviewCount images location duration providerId',
+          select:
+            'name category avgRating reviewCount images location duration providerId status',
         })
         .lean()
         .exec();
@@ -36,7 +34,9 @@ export class FavoritesService {
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       console.error('Error in getFavorites:', error);
-      throw new InternalServerErrorException('Impossible de récupérer les favoris');
+      throw new InternalServerErrorException(
+        'Impossible de récupérer les favoris',
+      );
     }
   }
 
@@ -59,7 +59,7 @@ export class FavoritesService {
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       console.error('Error in addFavorite:', error);
-      throw new InternalServerErrorException('Impossible d\'ajouter le favori');
+      throw new InternalServerErrorException("Impossible d'ajouter le favori");
     }
   }
 
@@ -82,7 +82,9 @@ export class FavoritesService {
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       console.error('Error in removeFavorite:', error);
-      throw new InternalServerErrorException('Impossible de supprimer le favori');
+      throw new InternalServerErrorException(
+        'Impossible de supprimer le favori',
+      );
     }
   }
 

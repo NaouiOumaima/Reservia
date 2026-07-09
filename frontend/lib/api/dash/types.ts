@@ -4,7 +4,6 @@ export interface CategoryStats {
   reservationCount: number;
   completedReservations: number;
   averageRating: number;
-  totalRevenue: number;
 }
 
 export interface HomePageStats {
@@ -12,6 +11,7 @@ export interface HomePageStats {
   availableServices: number;
   governoratesCovered: number;
   averageSatisfaction: number;
+  totalReservations: number;
   satisfactionByService: CategoryStats[];
 }
 
@@ -21,12 +21,27 @@ export interface DashboardSummary {
   cancelledReservations: number;
   pendingReservations: number;
   confirmedReservations: number;
-  totalRevenue: number;
   avgRating: number;
   reviewCount: number;
   cancellationRate: number;
   completionRate: number;
   servicesCount: number;
+  todayReservationsCount?: number;
+}
+
+export interface ClientDashboardSummary {
+  upcomingReservations: any[];
+  upcomingCount: number;
+  pendingCount: number;
+  confirmedCount: number;
+  lastNotification: {
+    _id: string;
+    type: string;
+    title: string;
+    message: string;
+    isRead: boolean;
+    createdAt: string;
+  } | null;
 }
 
 export interface ServiceStats {
@@ -37,7 +52,6 @@ export interface ServiceStats {
   cancelledReservations: number;
   cancellationRate: number;
   avgRating: number;
-  revenue: number;
 }
 
 export interface HourlyHeatmapData {
@@ -49,5 +63,4 @@ export interface HourlyHeatmapData {
 export interface TrendData {
   date: string;
   reservations: number;
-  revenue: number;
 }

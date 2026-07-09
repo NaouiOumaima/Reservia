@@ -30,7 +30,11 @@ export class Reservation {
   @Prop({ required: true })
   duration!: number;
 
-  @Prop({ required: true, enum: ReservationStatus, default: ReservationStatus.PENDING })
+  @Prop({
+    required: true,
+    enum: ReservationStatus,
+    default: ReservationStatus.PENDING,
+  })
   status!: ReservationStatus;
 
   @Prop()

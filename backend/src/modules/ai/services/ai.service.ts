@@ -9,9 +9,19 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { ConfigService } from '@nestjs/config';
 import { Model, Types } from 'mongoose';
-import { Service, ServiceDocument } from '../../../database/schemas/service.schema';
-import { Reservation, ReservationDocument } from '../../../database/schemas/reservation.schema';
-import { Review, ReviewDocument } from '../../../database/schemas/review.schema';
+import {
+  Service,
+  ServiceDocument,
+  ServiceStatus,
+} from '../../../database/schemas/service.schema';
+import {
+  Reservation,
+  ReservationDocument,
+} from '../../../database/schemas/reservation.schema';
+import {
+  Review,
+  ReviewDocument,
+} from '../../../database/schemas/review.schema';
 import { EmailService } from '../../email/email.service';
 import { ChatbotRequestDto, ChatbotResponseDto } from '../dto/ai.dto';
 import { Language } from './constants/language.constants';
@@ -21,7 +31,11 @@ function getErrorMessage(e: unknown): string {
 }
 
 function normalize(text: string): string {
-  return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
 }
 
 interface ChatMessage {
@@ -38,12 +52,17 @@ interface SessionContext {
     step: 'choose_service' | 'choose_date' | 'choose_time' | 'confirm';
     serviceId?: string;
     serviceName?: string;
-    date?: string;   // format: YYYY-MM-DD
-    time?: string;   // format: HH:MM
+    date?: string; // format: YYYY-MM-DD
+    time?: string; // format: HH:MM
   };
   cancelFlow?: {
     step: 'choose_reservation';
-    reservations: Array<{ id: string; serviceName: string; date: string; status: string }>;
+    reservations: Array<{
+      id: string;
+      serviceName: string;
+      date: string;
+      status: string;
+    }>;
   };
   reviewFlow?: {
     step: 'choose_service' | 'choose_rating' | 'write_comment';
@@ -148,17 +167,24 @@ export class AiService {
   private readonly ollamaModel: string;
   private readonly sessions = new Map<string, SessionContext>();
   private readonly rateLimits = new Map<string, number[]>();
+  private readonly MAX_HISTORY_SENT = 12; // messages (6 tours) envoyés à Ollama
+  private popularServicesCache: { data: any[]; expiresAt: number } | null =
+    null;
+  private readonly POPULAR_SERVICES_TTL_MS = 30_000;
 
   constructor(
     @InjectModel(Service.name) private serviceModel: Model<ServiceDocument>,
-    @InjectModel(Reservation.name) private reservationModel: Model<ReservationDocument>,
+    @InjectModel(Reservation.name)
+    private reservationModel: Model<ReservationDocument>,
     @InjectModel(Review.name) private reviewModel: Model<ReviewDocument>,
     @InjectModel('User') private userModel: Model<any>,
     private configService: ConfigService,
     private emailService: EmailService,
   ) {
-    this.ollamaUrl = this.configService.get<string>('OLLAMA_URL') || 'http://localhost:11434';
-    this.ollamaModel = this.configService.get<string>('OLLAMA_MODEL') || 'llama3';
+    this.ollamaUrl =
+      this.configService.get<string>('OLLAMA_URL') || 'http://localhost:11434';
+    this.ollamaModel =
+      this.configService.get<string>('OLLAMA_MODEL') || 'llama3';
     this.logger.log(`[Ollama] ${this.ollamaUrl} | model=${this.ollamaModel}`);
     setInterval(() => this.cleanupSessions(), 30 * 60 * 1000);
   }
@@ -174,17 +200,28 @@ export class AiService {
       if (request.userId && !this.checkRateLimit(request.userId)) {
         return {
           reply: this.getRateLimitMsg(request.language as Language),
-          intent: 'rate_limited', entities: {}, sessionId,
+          intent: 'rate_limited',
+          entities: {},
+          sessionId,
         };
       }
 
-      const session = this.getOrCreateSession(sessionId, request.userId, request.language as Language);
+      const session = this.getOrCreateSession(
+        sessionId,
+        request.userId,
+        request.language as Language,
+      );
 
       // 1. Met à jour le flow avant l'extraction (pour que l'extraction ait le bon contexte)
       this.updateSessionFlow(session, request.query);
 
-      // 2. Extraction d'action structurée via Ollama
-      const actionSignal = await this.extractAction(request.query, session);
+      // 2. Extraction d'action (Ollama) et contexte DB (Mongo) sont indépendants
+      // l'un de l'autre — on les lance en parallèle plutôt qu'en séquence pour
+      // ne pas payer deux fois le temps d'attente.
+      const [actionSignal, dbContext] = await Promise.all([
+        this.extractAction(request.query, session),
+        this.buildDatabaseContext(request.query, request.userId, session),
+      ]);
 
       // 3. Met à jour le flow avec les infos extraites
       this.applyExtractedInfo(session, actionSignal.extractedInfo);
@@ -192,23 +229,37 @@ export class AiService {
       // 4. Exécute l'action DB si déclenchée
       let dbActionResult: string | null = null;
       if (actionSignal.action === 'create_booking' && request.userId) {
-        dbActionResult = await this.executeCreateBooking(session, request.userId);
+        dbActionResult = await this.executeCreateBooking(
+          session,
+          request.userId,
+        );
       } else if (actionSignal.action === 'cancel_booking' && request.userId) {
-        dbActionResult = await this.executeCancelBooking(session, actionSignal.extractedInfo, request.userId);
+        dbActionResult = await this.executeCancelBooking(
+          session,
+          actionSignal.extractedInfo,
+          request.userId,
+        );
       } else if (actionSignal.action === 'create_review' && request.userId) {
-        dbActionResult = await this.executeCreateReview(session, actionSignal.extractedInfo, request.userId);
+        dbActionResult = await this.executeCreateReview(
+          session,
+          actionSignal.extractedInfo,
+          request.userId,
+        );
       }
 
-      // 5. Construit le contexte DB dynamique
-      const dbContext = await this.buildDatabaseContext(request.query, request.userId, session);
+      // 5. Contexte DB déjà construit à l'étape 2
       const contextWithResult = dbActionResult
         ? `${dbContext}\n\n### Résultat action\n${dbActionResult}`
         : dbContext;
 
       // 6. Génère la réponse conversationnelle
+      // On n'envoie que les tours récents à Ollama (le contexte pertinent
+      // décroît vite au-delà) pour réduire la taille du prompt et le temps
+      // de génération, même si un historique plus long reste stocké en session.
+      const recentHistory = session.history.slice(-this.MAX_HISTORY_SENT);
       const messages: ChatMessage[] = [
         { role: 'system', content: CONVERSATION_SYSTEM(contextWithResult) },
-        ...session.history,
+        ...recentHistory,
         { role: 'user', content: request.query },
       ];
       const reply = await this.callOllama(messages);
@@ -218,24 +269,33 @@ export class AiService {
         { role: 'user', content: request.query },
         { role: 'assistant', content: reply },
       );
-      if (session.history.length > 60) session.history = session.history.slice(-60);
+      if (session.history.length > 60)
+        session.history = session.history.slice(-60);
       session.lastUpdated = new Date();
       this.sessions.set(sessionId, session);
 
       const intent = this.detectIntent(request.query);
-      this.logger.log(`[AI] session=${sessionId} intent=${intent} action=${actionSignal.action}`);
+      this.logger.log(
+        `[AI] session=${sessionId} intent=${intent} action=${actionSignal.action}`,
+      );
 
       return { reply, intent, entities: {}, sessionId };
-
     } catch (error) {
       this.logger.error(`[Chatbot] ${getErrorMessage(error)}`);
       if (getErrorMessage(error).includes('ECONNREFUSED')) {
         return {
           reply: `❌ Ollama n'est pas démarré. Lancez : \`ollama serve\``,
-          intent: 'error', entities: {}, sessionId,
+          intent: 'error',
+          entities: {},
+          sessionId,
         };
       }
-      return { reply: '😔 Une erreur est survenue. Veuillez réessayer.', intent: 'error', entities: {}, sessionId };
+      return {
+        reply: '😔 Une erreur est survenue. Veuillez réessayer.',
+        intent: 'error',
+        entities: {},
+        sessionId,
+      };
     }
   }
 
@@ -243,11 +303,17 @@ export class AiService {
   // EXTRACTION D'ACTION
   // ─────────────────────────────────────────────────────────────
 
-  private async extractAction(userMessage: string, session: SessionContext): Promise<any> {
+  private async extractAction(
+    userMessage: string,
+    session: SessionContext,
+  ): Promise<any> {
     const sessionSummary = JSON.stringify({
       bookingFlow: session.bookingFlow || null,
       cancelFlow: session.cancelFlow
-        ? { step: session.cancelFlow.step, count: session.cancelFlow.reservations?.length }
+        ? {
+            step: session.cancelFlow.step,
+            count: session.cancelFlow.reservations?.length,
+          }
         : null,
       reviewFlow: session.reviewFlow || null,
     });
@@ -256,9 +322,19 @@ export class AiService {
       const response = await fetch(`${this.ollamaUrl}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        // Cet appel n'a jamais eu de timeout auparavant : un Ollama qui traîne
+        // pouvait bloquer indéfiniment toute la requête chatbot. Cette étape
+        // ne fait qu'extraire une petite structure JSON, 20s est largement
+        // suffisant ; en cas de dépassement on retombe sur action "none".
+        signal: AbortSignal.timeout(20_000),
         body: JSON.stringify({
           model: this.ollamaModel,
-          messages: [{ role: 'user', content: ACTION_EXTRACTION_PROMPT(userMessage, sessionSummary) }],
+          messages: [
+            {
+              role: 'user',
+              content: ACTION_EXTRACTION_PROMPT(userMessage, sessionSummary),
+            },
+          ],
           stream: false,
           options: { temperature: 0.1 },
           format: 'json',
@@ -280,7 +356,10 @@ export class AiService {
   //                     duration, status, expiresAt (PLUS DE PRICE)
   // ─────────────────────────────────────────────────────────────
 
-  private async executeCreateBooking(session: SessionContext, userId: string): Promise<string> {
+  private async executeCreateBooking(
+    session: SessionContext,
+    userId: string,
+  ): Promise<string> {
     const flow = session.bookingFlow;
     if (!flow?.serviceId || !flow.date || !flow.time) {
       return '⚠️ Informations incomplètes — serviceId, date et heure sont requis.';
@@ -296,7 +375,8 @@ export class AiService {
       const service = await this.serviceModel
         .findById(flow.serviceId)
         .select('name duration')
-        .lean().exec();
+        .lean()
+        .exec();
       if (!service) return '❌ Service introuvable.';
 
       const durationMin: number = (service as any).duration || 60;
@@ -321,33 +401,39 @@ export class AiService {
         serviceId: new Types.ObjectId(flow.serviceId),
         startTime,
         endTime,
-        duration: durationMin,         // ✅ requis dans le schema
+        duration: durationMin, // ✅ requis dans le schema
         status: 'pending',
-        expiresAt,                     // ✅ requis dans le schema
+        expiresAt, // ✅ requis dans le schema
         // price SUPPRIMÉ - réservation gratuite
       });
 
-      // Email de confirmation
-      try {
-        const user = await this.userModel.findById(userId).select('email firstName').lean().exec() as any;
-        if (user?.email) {
-          await this.emailService.sendReservationConfirmation(
-            user.email,
-            (service as any).name,
-            flow.date,
-            flow.time,
-            user.firstName,
-          );
-        }
-      } catch (emailErr) {
-        this.logger.warn(`[Email] ${getErrorMessage(emailErr)}`);
-      }
+      // Email de confirmation — envoyé en arrière-plan : la réponse du chatbot
+      // ne doit pas attendre la latence SMTP (le résultat n'est de toute façon
+      // pas utilisé, seules les erreurs sont journalisées).
+      this.userModel
+        .findById(userId)
+        .select('email firstName')
+        .lean()
+        .exec()
+        .then((user: any) => {
+          if (user?.email) {
+            return this.emailService.sendReservationConfirmation(
+              user.email,
+              (service as any).name,
+              flow.date,
+              flow.time,
+              user.firstName,
+            );
+          }
+        })
+        .catch((emailErr) => {
+          this.logger.warn(`[Email] ${getErrorMessage(emailErr)}`);
+        });
 
       // Réinitialise le flow
       session.bookingFlow = undefined;
 
       return `✅ Réservation GRATUITE créée ! ID: ${reservation._id} | ${(service as any).name} | ${startTime.toLocaleString('fr-FR')} | Statut: en attente`;
-
     } catch (err) {
       this.logger.error(`[Booking] ${getErrorMessage(err)}`);
       return `❌ Erreur réservation: ${getErrorMessage(err)}`;
@@ -367,7 +453,7 @@ export class AiService {
     const cancelFlow = session.cancelFlow;
 
     if (!cancelFlow?.reservations?.length) {
-      return '⚠️ Aucune réservation active en mémoire. Relancez le flow d\'annulation.';
+      return "⚠️ Aucune réservation active en mémoire. Relancez le flow d'annulation.";
     }
 
     const target = cancelFlow.reservations[index];
@@ -376,28 +462,46 @@ export class AiService {
     }
 
     try {
-      const reservation = await this.reservationModel.findById(target.id).lean().exec() as any;
+      const reservation = (await this.reservationModel
+        .findById(target.id)
+        .lean()
+        .exec()) as any;
       if (!reservation) return '❌ Réservation introuvable en base.';
 
-      const hoursUntil = (new Date(reservation.startTime).getTime() - Date.now()) / 3_600_000;
+      const hoursUntil =
+        (new Date(reservation.startTime).getTime() - Date.now()) / 3_600_000;
       const isFreeCancel = hoursUntil >= 24;
 
       // Annulation — champs du schema Reservation
       await this.reservationModel.findByIdAndUpdate(target.id, {
         status: 'cancelled',
-        cancelledAt: new Date(),                              // ✅ dans le schema
+        cancelledAt: new Date(), // ✅ dans le schema
         cancellationReason: 'Annulé par le client via chatbot IA', // ✅ dans le schema
       });
 
-      // Email optionnel (méthode peut ne pas exister)
-      try {
-        const user = await this.userModel.findById(userId).select('email firstName').lean().exec() as any;
-        if (user?.email && typeof (this.emailService as any).sendReservationCancellation === 'function') {
-          await (this.emailService as any).sendReservationCancellation(
-            user.email, target.serviceName, target.date, user.firstName,
-          );
-        }
-      } catch { /* ignore */ }
+      // Email optionnel (méthode peut ne pas exister) — envoyé en arrière-plan
+      this.userModel
+        .findById(userId)
+        .select('email firstName')
+        .lean()
+        .exec()
+        .then((user: any) => {
+          if (
+            user?.email &&
+            typeof (this.emailService as any).sendReservationCancellation ===
+              'function'
+          ) {
+            return (this.emailService as any).sendReservationCancellation(
+              user.email,
+              target.serviceName,
+              target.date,
+              user.firstName,
+            );
+          }
+        })
+        .catch(() => {
+          /* ignore */
+        });
 
       session.cancelFlow = undefined;
 
@@ -406,7 +510,6 @@ export class AiService {
         : '⚠️ Annulation moins de 24h avant.';
 
       return `✅ "${target.serviceName}" annulé. ${refundMsg}`;
-
     } catch (err) {
       this.logger.error(`[Cancel] ${getErrorMessage(err)}`);
       return `❌ Erreur annulation: ${getErrorMessage(err)}`;
@@ -438,10 +541,11 @@ export class AiService {
 
     try {
       // Récupère les infos utilisateur (userName et userEmail sont requis dans Review)
-      const user = await this.userModel
+      const user = (await this.userModel
         .findById(userId)
         .select('firstName lastName email')
-        .lean().exec() as any;
+        .lean()
+        .exec()) as any;
 
       if (!user) return '❌ Utilisateur introuvable.';
 
@@ -459,10 +563,11 @@ export class AiService {
       const userEmail: string = user.email;
 
       // Récupère le nom du service
-      const service = await this.serviceModel
+      const service = (await this.serviceModel
         .findById(serviceId)
         .select('name providerId')
-        .lean().exec() as any;
+        .lean()
+        .exec()) as any;
 
       // Vérifie avis existant (index unique userId + serviceId)
       const existing = await this.reviewModel.findOne({
@@ -481,9 +586,9 @@ export class AiService {
         // Crée — tous les champs requis du schema Review
         await this.reviewModel.create({
           userId: new Types.ObjectId(userId),
-          userName,                                    // ✅ requis
-          userEmail,                                   // ✅ requis
-          reviewType: 'service',                       // ✅ requis, enum ['service','app']
+          userName, // ✅ requis
+          userEmail, // ✅ requis
+          reviewType: 'service', // ✅ requis, enum ['service','app']
           serviceId: new Types.ObjectId(serviceId),
           serviceName: service?.name || '',
           serviceProviderId: service?.providerId || null,
@@ -501,7 +606,6 @@ export class AiService {
 
       const stars = '⭐'.repeat(rating) + '☆'.repeat(5 - rating);
       return `✅ Avis enregistré ! ${stars} ${rating}/5 — Merci ${user.firstName} !`;
-
     } catch (err) {
       this.logger.error(`[Review] ${getErrorMessage(err)}`);
       return `❌ Erreur avis: ${getErrorMessage(err)}`;
@@ -550,13 +654,21 @@ export class AiService {
   private updateSessionFlow(session: SessionContext, query: string): void {
     const norm = normalize(query);
 
-    if (/reserver|book|hejez|nhejez|احجز|je veux reserver|i want to book/i.test(norm)) {
-      if (!session.bookingFlow) session.bookingFlow = { step: 'choose_service' };
+    if (
+      /reserver|book|hejez|nhejez|احجز|je veux reserver|i want to book/i.test(
+        norm,
+      )
+    ) {
+      if (!session.bookingFlow)
+        session.bookingFlow = { step: 'choose_service' };
     }
     if (/annul|cancel|batel|الغ|lheg/i.test(norm) && !session.cancelFlow) {
       session.cancelFlow = { step: 'choose_reservation', reservations: [] };
     }
-    if (/avis|review|note|noter|تقييم|ra2y|feedback/i.test(norm) && !session.reviewFlow) {
+    if (
+      /avis|review|note|noter|تقييم|ra2y|feedback/i.test(norm) &&
+      !session.reviewFlow
+    ) {
       session.reviewFlow = { step: 'choose_service' };
     }
   }
@@ -565,14 +677,40 @@ export class AiService {
     if (!extracted) return;
 
     if (session.bookingFlow) {
-      if (extracted.serviceId) session.bookingFlow.serviceId = extracted.serviceId;
+      if (extracted.serviceId)
+        session.bookingFlow.serviceId = extracted.serviceId;
       if (extracted.date) session.bookingFlow.date = extracted.date;
       if (extracted.time) session.bookingFlow.time = extracted.time;
     }
     if (session.reviewFlow) {
-      if (extracted.serviceId) session.reviewFlow.serviceId = extracted.serviceId;
+      if (extracted.serviceId)
+        session.reviewFlow.serviceId = extracted.serviceId;
       if (extracted.rating) session.reviewFlow.rating = extracted.rating;
     }
+  }
+
+  private async getPopularServicesCached(): Promise<any[]> {
+    const now = Date.now();
+    if (
+      this.popularServicesCache &&
+      this.popularServicesCache.expiresAt > now
+    ) {
+      return this.popularServicesCache.data;
+    }
+
+    const services = await this.serviceModel
+      .find({ status: ServiceStatus.ACTIVE })
+      .sort({ avgRating: -1, reviewCount: -1 })
+      .limit(10)
+      .select('name category location avgRating reviewCount duration')
+      .lean()
+      .exec();
+
+    this.popularServicesCache = {
+      data: services,
+      expiresAt: now + this.POPULAR_SERVICES_TTL_MS,
+    };
+    return services;
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -586,25 +724,27 @@ export class AiService {
   ): Promise<string> {
     const parts: string[] = [];
     const norm = normalize(query);
-    const isCancel = /annul|cancel|batel|الغ|lheg/i.test(norm) || !!session?.cancelFlow;
-    const isReview = /avis|review|note|noter|تقييم|ra2y/i.test(norm) || !!session?.reviewFlow;
+    const isCancel =
+      /annul|cancel|batel|الغ|lheg/i.test(norm) || !!session?.cancelFlow;
+    const isReview =
+      /avis|review|note|noter|تقييم|ra2y/i.test(norm) || !!session?.reviewFlow;
 
     // 1. Services disponibles (toujours chargés) - VERSION GRATUITE
+    // Cette liste change rarement d'un message à l'autre : on la met en cache
+    // quelques secondes pour éviter de la recharger à chaque tour de conversation.
     try {
-      const services = await this.serviceModel
-        .find({ isActive: true })
-        .sort({ avgRating: -1, reviewCount: -1 })
-        .limit(10)
-        .select('name category location avgRating reviewCount duration')
-        .lean().exec();
+      const services = await this.getPopularServicesCached();
 
       if (services.length > 0) {
-        const lines = services.map(s => {
+        const lines = services.map((s) => {
           const loc = s.location as any;
-          const addr = [loc?.address, loc?.city].filter(Boolean).join(', ') || 'Tunisie';
+          const addr =
+            [loc?.address, loc?.city].filter(Boolean).join(', ') || 'Tunisie';
           return `• **${s.name}** [ID:${s._id}] (${s.category}) — 📍 ${addr} — ⭐${(s.avgRating || 0).toFixed(1)}/5 · ${s.reviewCount || 0} avis · 🎁 GRATUIT · 🕐${s.duration}min`;
         });
-        parts.push('### Services disponibles (tous gratuits)\n' + lines.join('\n'));
+        parts.push(
+          '### Services disponibles (tous gratuits)\n' + lines.join('\n'),
+        );
       } else {
         parts.push('### Services\nAucun service actif pour le moment.');
       }
@@ -622,9 +762,11 @@ export class AiService {
           })
           .populate('serviceId', 'name')
           .sort({ startTime: 1 })
-          .limit(5).lean().exec();
+          .limit(5)
+          .lean()
+          .exec();
 
-        const formatted = reservations.map((r, i) => ({
+        const formatted = reservations.map((r) => ({
           id: (r._id as any).toString(),
           serviceName: (r.serviceId as any)?.name || '?',
           date: new Date((r as any).startTime).toLocaleString('fr-FR'),
@@ -632,13 +774,21 @@ export class AiService {
         }));
 
         if (session) {
-          session.cancelFlow = { step: 'choose_reservation', reservations: formatted };
+          session.cancelFlow = {
+            step: 'choose_reservation',
+            reservations: formatted,
+          };
         }
 
         if (formatted.length > 0) {
           parts.push(
             '### Réservations actives\n' +
-            formatted.map((r, i) => `${i + 1}. **${r.serviceName}** — ${r.date} (${r.status})`).join('\n'),
+              formatted
+                .map(
+                  (r, i) =>
+                    `${i + 1}. **${r.serviceName}** — ${r.date} (${r.status})`,
+                )
+                .join('\n'),
           );
         } else {
           parts.push('### Réservations actives\nAucune réservation active.');
@@ -654,16 +804,23 @@ export class AiService {
         const confirmed = await this.reservationModel
           .find({ clientId: new Types.ObjectId(userId), status: 'confirmed' })
           .populate('serviceId', 'name')
-          .limit(5).lean().exec();
+          .limit(5)
+          .lean()
+          .exec();
 
         if (confirmed.length > 0) {
           const lines = confirmed.map((r, i) => {
             const s = r.serviceId as any;
             return `${i + 1}. **${s?.name}** [ID:${s?._id}]`;
           });
-          parts.push('### Services utilisés (éligibles pour un avis)\n' + lines.join('\n'));
+          parts.push(
+            '### Services utilisés (éligibles pour un avis)\n' +
+              lines.join('\n'),
+          );
         } else {
-          parts.push('### Services utilisés\nAucun service confirmé — avis impossible.');
+          parts.push(
+            '### Services utilisés\nAucun service confirmé — avis impossible.',
+          );
         }
       } catch (err) {
         this.logger.warn(`[DB] Confirmed: ${getErrorMessage(err)}`);
@@ -673,16 +830,23 @@ export class AiService {
     // 4. Statut utilisateur - inchangé
     if (userId) {
       try {
-        const user = await this.userModel
+        const user = (await this.userModel
           .findById(userId)
           .select('firstName lastName email')
-          .lean().exec() as any;
+          .lean()
+          .exec()) as any;
         if (user) {
-          parts.push(`### Utilisateur connecté\n${user.firstName} ${user.lastName} — ${user.email}`);
+          parts.push(
+            `### Utilisateur connecté\n${user.firstName} ${user.lastName} — ${user.email}`,
+          );
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     } else {
-      parts.push('### Statut\nVisiteur non connecté — connexion requise pour réserver, annuler ou noter.');
+      parts.push(
+        '### Statut\nVisiteur non connecté — connexion requise pour réserver, annuler ou noter.',
+      );
     }
 
     return parts.join('\n\n');
@@ -706,11 +870,15 @@ export class AiService {
     });
 
     if (!response.ok) {
-      throw new Error(`Ollama HTTP ${response.status}: ${await response.text()}`);
+      throw new Error(
+        `Ollama HTTP ${response.status}: ${await response.text()}`,
+      );
     }
 
     const data: OllamaResponse = await response.json();
-    return data.message?.content?.trim() || "Je n'ai pas pu générer une réponse.";
+    return (
+      data.message?.content?.trim() || "Je n'ai pas pu générer une réponse."
+    );
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -720,19 +888,26 @@ export class AiService {
   async getRecommendations(userId: string, limit = 5): Promise<any[]> {
     try {
       const services = await this.serviceModel
-        .find({ isActive: true })
+        .find({ status: ServiceStatus.ACTIVE })
         .sort({ avgRating: -1, popularity: -1 })
-        .limit(limit).lean().exec();
+        .limit(limit)
+        .lean()
+        .exec();
 
-      return services.map(s => ({
+      return services.map((s) => ({
         ...s,
         personalized: {
           alreadyBooked: false,
           recommendationScore: Math.round((s.avgRating || 0) * 20),
-          matchReason: (s.avgRating || 0) >= 4.5 ? 'Très bien noté' : 'Populaire sur Reservia',
+          matchReason:
+            (s.avgRating || 0) >= 4.5
+              ? 'Très bien noté'
+              : 'Populaire sur Reservia',
         },
       }));
-    } catch { return []; }
+    } catch {
+      return [];
+    }
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -759,7 +934,10 @@ export class AiService {
   ): SessionContext {
     if (!this.sessions.has(sessionId)) {
       this.sessions.set(sessionId, {
-        history: [], userId, lang, lastUpdated: new Date(),
+        history: [],
+        userId,
+        lang,
+        lastUpdated: new Date(),
       });
     }
     return this.sessions.get(sessionId)!;
@@ -769,9 +947,15 @@ export class AiService {
     return `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   }
 
-  private checkRateLimit(userId: string, maxReq = 60, windowMs = 60_000): boolean {
+  private checkRateLimit(
+    userId: string,
+    maxReq = 60,
+    windowMs = 60_000,
+  ): boolean {
     const now = Date.now();
-    const reqs = (this.rateLimits.get(userId) || []).filter(t => now - t < windowMs);
+    const reqs = (this.rateLimits.get(userId) || []).filter(
+      (t) => now - t < windowMs,
+    );
     if (reqs.length >= maxReq) return false;
     this.rateLimits.set(userId, [...reqs, now]);
     return true;

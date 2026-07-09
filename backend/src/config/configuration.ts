@@ -26,7 +26,14 @@ export default () => ({
   },
 
   reservation: {
-    pendingTimeoutMinutes: parseInt(process.env.RESERVATION_PENDING_TIMEOUT || '10', 10),
+    pendingTimeoutMinutes: parseInt(
+      process.env.RESERVATION_PENDING_TIMEOUT || '60',
+      10,
+    ),
+    confirmedGraceMinutes: parseInt(
+      process.env.RESERVATION_CONFIRMED_GRACE || '60',
+      10,
+    ),
     reminderHours: parseInt(process.env.RESERVATION_REMINDER_HOURS || '2', 10),
   },
 

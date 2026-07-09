@@ -28,7 +28,6 @@ export interface ProviderProfile {
 
 export interface UserPreferences {
   favoriteCategories: string[];
-  maxPrice?: number;
   maxDistance?: number;
   preferredDays?: string[];
   preferredHours?: string;

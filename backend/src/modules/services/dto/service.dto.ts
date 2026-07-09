@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsArray, IsString, IsObject, Min, Max } from 'class-validator';
+import { IsNotEmpty, IsArray, IsString, IsObject } from 'class-validator';
 
 export class CreateServiceDto {
   @IsNotEmpty()
@@ -12,11 +12,6 @@ export class CreateServiceDto {
   @IsNotEmpty()
   @IsString()
   category: string;
-
-  @IsNotEmpty()
-  @IsNumber()
-  @Min(0)
-  basePrice: number;
 
   @IsArray()
   images?: string[];
@@ -46,7 +41,6 @@ export class CreateServiceDto {
   @IsObject()
   cancellationPolicy: {
     minHoursBefore: number;
-    refundPercentage: number;
   };
 }
 
@@ -56,9 +50,6 @@ export class UpdateServiceDto {
 
   @IsString()
   description?: string;
-
-  @IsNumber()
-  basePrice?: number;
 
   @IsArray()
   images?: string[];

@@ -1,4 +1,13 @@
-import { IsNotEmpty, IsNumber, IsString, IsOptional, Min, Max, IsIn } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+  IsOptional,
+  Min,
+  Max,
+  IsIn,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateReviewDto {
   @IsOptional()
@@ -22,6 +31,27 @@ export class CreateReviewDto {
   @IsOptional()
   @IsIn(['service', 'app'])
   type?: 'service' | 'app';
+
+  // Nom affiché pour un avis "app" laissé sans compte (visiteur)
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  guestName?: string;
+}
+
+export class UpdateReviewDto {
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(5)
+  rating?: number;
+
+  @IsOptional()
+  @IsString()
+  comment?: string;
+
+  @IsOptional()
+  images?: string[];
 }
 
 export class ReportReviewDto {

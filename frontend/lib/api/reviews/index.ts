@@ -1,2 +1,2 @@
-export type { CreateReviewData } from './reviews.api';
+export type { CreateReviewData, ProviderReviewStats } from './reviews.api';
 export { reviewsApi } from './reviews.api';

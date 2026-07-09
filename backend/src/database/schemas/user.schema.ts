@@ -69,7 +69,6 @@ export class User {
   @Prop({ type: Object })
   preferences?: {
     favoriteCategories?: string[];
-    maxPrice?: number;
     maxDistance?: number;
     preferredDays?: string[];
     preferredHours?: string;

@@ -14,16 +14,18 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // 🔒 HELMET - Protection des headers HTTP
-  app.use(helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
-        imgSrc: ["'self'", "data:", "https:"],
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrc: ["'self'"],
+          imgSrc: ["'self'", 'data:', 'https:'],
+        },
       },
-    },
-  }));
+    }),
+  );
 
   // Augmenter la limite de taille
   app.use(json({ limit: '10mb' }));
@@ -40,10 +42,10 @@ async function bootstrap() {
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
     allowedHeaders: [
-      'Content-Type', 
-      'Authorization', 
-      'Accept', 
-      'Origin', 
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'Origin',
       'X-Requested-With',
       'csrf-token',
       'x-csrf-token',
@@ -79,4 +81,4 @@ async function bootstrap() {
   console.log(`✅ Helmet security headers enabled`);
 }
 
-bootstrap();
+void bootstrap();

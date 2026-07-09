@@ -1,5 +1,13 @@
 // src/modules/ai/dto/ai.dto.ts
-import { IsString, IsOptional, IsObject, IsNumber, IsNotEmpty, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsObject,
+  IsNumber,
+  IsNotEmpty,
+  Min,
+  Max,
+} from 'class-validator';
 
 export class LocationDto {
   @IsNumber()

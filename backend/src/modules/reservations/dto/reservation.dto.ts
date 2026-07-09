@@ -1,6 +1,13 @@
 // src/modules/reservations/dto/create-reservation.dto.ts
 
-import { IsString, IsDateString, IsNumber, IsOptional, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsDateString,
+  IsNumber,
+  IsOptional,
+  Min,
+  Max,
+} from 'class-validator';
 
 export class CreateReservationDto {
   @IsString()

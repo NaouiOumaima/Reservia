@@ -27,7 +27,6 @@ export interface User {
 
 export interface UserPreferences {
   favoriteCategories: string[];
-  maxPrice?: number;
   maxDistance?: number;
   preferredDays?: string[];
   preferredHours?: string;
@@ -48,6 +47,8 @@ export interface Location {
 /* =========================
    SERVICE
 ========================= */
+export type ServiceStatus = 'pending_approval' | 'active' | 'disabled' | 'banned';
+
 export interface Service {
   _id: string;
   providerId: string;
@@ -55,9 +56,6 @@ export interface Service {
   name: string;
   category: string;
   description: string;
-  price: number;
-  basePrice: number;
-  discountPrice?: number;
   duration: number;
   images: string[];
   location: Location;
@@ -65,7 +63,7 @@ export interface Service {
   avgRating: number;
   reviewCount: number;
   smartScore: number;
-  isActive: boolean;
+  status: ServiceStatus;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -83,7 +81,6 @@ export interface Reservation {
   startTime: string;
   endTime: string;
   duration: number;
-  price: number;
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'expired';
   customerInfo?: {
     name: string;
@@ -134,10 +131,8 @@ export interface Notification {
 ========================= */
 export interface SearchFilters {
   category?: string;
-  minPrice?: number;
-  maxPrice?: number;
   minRating?: number;
-  sortBy?: 'smart' | 'price' | 'rating' | 'distance';
+  sortBy?: 'smart' | 'rating' | 'distance';
   location?: {
     lng: number;
     lat: number;
@@ -152,10 +147,8 @@ export interface DashboardStats {
   totalReservations: number;
   completedReservations: number;
   cancelledReservations: number;
-  revenue: number;
   averageRating: number;
   reservationTrend: TrendData[];
-  revenueTrend: TrendData[];
   popularSlots: PopularSlot[];
   recentReservations: Reservation[];
 }

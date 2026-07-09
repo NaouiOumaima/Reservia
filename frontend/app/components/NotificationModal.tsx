@@ -148,7 +148,7 @@ export default function NotificationModal({ notification, isOpen, onClose, onMar
               {notification.data?.validUntil && (
                 <div className="notif-modal-ad-expiry">
                   <CalendarIcon className="w-3.5 h-3.5" />
-                  <span>Valable jusqu'au <strong>{formatExpiry(notification.data.validUntil)}</strong></span>
+                  <span>Valable jusqu&apos;au <strong>{formatExpiry(notification.data.validUntil)}</strong></span>
                 </div>
               )}
 

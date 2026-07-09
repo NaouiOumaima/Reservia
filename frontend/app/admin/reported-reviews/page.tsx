@@ -145,7 +145,7 @@ export default function AdminReviewsPage() {
           </div>
           <div>
             <h1 className="admin-reviews-title">Gestion des avis</h1>
-            <p className="admin-reviews-subtitle">Modérez l'ensemble des avis de la plateforme</p>
+            <p className="admin-reviews-subtitle">Modérez l&apos;ensemble des avis de la plateforme</p>
           </div>
         </div>
 

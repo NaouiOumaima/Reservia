@@ -143,7 +143,7 @@ function VerifyEmailContent() {
               Renvoyer un email de vérification
             </button>
             <button onClick={() => router.push('/')} className="verify-email-btn-link">
-              ← Retour à l'accueil
+              ← Retour à l&apos;accueil
             </button>
           </>
         )}

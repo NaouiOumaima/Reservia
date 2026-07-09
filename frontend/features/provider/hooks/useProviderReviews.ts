@@ -1,8 +1,8 @@
 // features/provider/hooks/useProviderReviews.ts
 
 import { useState, useEffect, useCallback } from 'react';
-import { reviewsApi } from '@/lib/api/client';
-import { Review } from '@/types';
+import { reviewsApi, servicesApi } from '@/lib/api';
+import { Review } from '@/lib/api/reviews/types';
 
 interface UseProviderReviewsReturn {
   reviews: Review[];
@@ -39,9 +39,12 @@ export function useProviderReviews(): UseProviderReviewsReturn {
     setLoading(true);
     setError(null);
     try {
-      // In real app, get reviews for provider's services
-      const response = await reviewsApi.getByServiceId('');
-      const data = response.data || response;
+      // Get reviews for all of the provider's services
+      const services = await servicesApi.getByProvider();
+      const responses = await Promise.all(
+        services.map(service => reviewsApi.getByService(service._id))
+      );
+      const data = responses.flatMap(r => r.reviews);
       setReviews(data);
       
       // Calculate stats

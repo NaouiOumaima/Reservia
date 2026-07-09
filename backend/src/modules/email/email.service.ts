@@ -77,11 +77,15 @@ export class EmailService {
           <div class="content">
             <h2>Bonjour ${fullName},</h2>
             <p>Merci de vous être inscrit sur <strong>Reservia</strong> !</p>
-            ${isProvider ? `
+            ${
+              isProvider
+                ? `
               <p><strong>En tant que prestataire</strong>, vous pourrez créer et gérer vos services.</p>
-            ` : `
+            `
+                : `
               <p><strong>En tant que client</strong>, vous pourrez rechercher et réserver des services.</p>
-            `}
+            `
+            }
             <div style="text-align: center;">
               <a href="${verificationUrl}" class="button">✅ Confirmer mon email</a>
             </div>
@@ -141,9 +145,10 @@ export class EmailService {
           <div class="content">
             <h2>Félicitations ${firstName} !</h2>
             <p>Votre email a été confirmé avec succès.</p>
-            <p>${role === 'provider'
-              ? 'Votre compte prestataire est maintenant actif. Vous pouvez commencer à publier vos services.'
-              : 'Votre compte client est maintenant actif. Vous pouvez commencer à réserver des services.'
+            <p>${
+              role === 'provider'
+                ? 'Votre compte prestataire est maintenant actif. Vous pouvez commencer à publier vos services.'
+                : 'Votre compte client est maintenant actif. Vous pouvez commencer à réserver des services.'
             }</p>
             <div style="text-align: center;">
               <a href="${loginUrl}" class="button">🔐 Se connecter</a>
@@ -178,7 +183,9 @@ export class EmailService {
     firstName: string,
   ) {
     const fromEmail = this.configService.get<string>('smtp.from');
-    const loginUrl = this.configService.get<string>('smtp.frontendUrl') || 'http://localhost:3000';
+    const loginUrl =
+      this.configService.get<string>('smtp.frontendUrl') ||
+      'http://localhost:3000';
 
     const formattedDate = new Date(date).toLocaleDateString('fr-FR', {
       weekday: 'long',
@@ -222,17 +229,21 @@ export class EmailService {
                 <span class="detail-label">Date</span>
                 <span class="detail-value">${formattedDate}</span>
               </div>
-              ${time ? `
+              ${
+                time
+                  ? `
               <div class="detail-row">
                 <span class="detail-label">Heure</span>
                 <span class="detail-value">${time}</span>
               </div>
-              ` : ''}
+              `
+                  : ''
+              }
             </div>
             
             <p>Merci d'utiliser <strong>Reservia</strong> !</p>
             <p style="font-size: 12px; color: #6b7280;">
-              Pour modifier ou annuler votre réservation, connectez-vous à votre compte.
+              Pour modifier ou annuler votre réservation, <a href="${loginUrl}">connectez-vous à votre compte</a>.
             </p>
           </div>
           <div class="footer">

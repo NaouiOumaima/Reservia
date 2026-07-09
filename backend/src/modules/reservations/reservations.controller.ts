@@ -1,6 +1,15 @@
 // src/modules/reservations/reservations.controller.ts
 
-import { Controller, Post, Get, Put, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { ReservationsService } from './reservations.service';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -11,7 +20,10 @@ export class ReservationsController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  async create(@Request() req, @Body() createReservationDto: CreateReservationDto) {
+  async create(
+    @Request() req,
+    @Body() createReservationDto: CreateReservationDto,
+  ) {
     return this.reservationsService.create(req.user._id, createReservationDto);
   }
 
@@ -45,8 +57,15 @@ export class ReservationsController {
 
   @Get('provider')
   @UseGuards(JwtAuthGuard)
-  async getProviderReservations(@Request() req) {
-    return this.reservationsService.findByProvider(req.user._id);
+  async getProviderReservations(
+    @Request() req,
+    @Query('serviceId') serviceId?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.reservationsService.findByProvider(req.user._id, {
+      serviceId,
+      status,
+    });
   }
 
   @Get('availability/:serviceId')

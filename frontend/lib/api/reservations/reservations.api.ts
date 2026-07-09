@@ -1,12 +1,5 @@
 import { apiClient } from '../config';
-import { Reservation } from '@/types';
-
-export interface CreateReservationData {
-  serviceId: string;
-  startTime: string;
-  duration: number;
-  notes?: string;
-}
+import { Reservation, CreateReservationData } from './types';
 
 export const reservationsApi = {
   getMyReservations: async (): Promise<Reservation[]> => {

@@ -1,4 +1,9 @@
-import { IsNumber, IsString, IsOptional, IsObject, ValidateNested } from 'class-validator';
+import {
+  IsNumber,
+  IsString,
+  IsOptional,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 class LocationCoordinatesDto {

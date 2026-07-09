@@ -5,14 +5,19 @@ export type ReviewDocument = Review & Document;
 
 @Schema({ timestamps: true })
 export class Review {
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  userId: Types.ObjectId;
+  // Absent pour un avis "app" laissé par un visiteur non connecté
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  userId?: Types.ObjectId;
 
   @Prop({ required: true })
   userName: string;
 
-  @Prop({ required: true })
-  userEmail: string;
+  @Prop()
+  userEmail?: string;
+
+  // Avis laissé sans compte (uniquement possible pour reviewType 'app')
+  @Prop({ default: false })
+  isGuest: boolean;
 
   // Type d'avis: 'service' ou 'app'
   @Prop({ required: true, enum: ['service', 'app'], default: 'service' })
@@ -40,7 +45,10 @@ export class Review {
   @Prop({ default: false })
   isReported: boolean;
 
-  @Prop({ type: String, enum: ['spam', 'offensive', 'fake', 'inappropriate', 'other'] })
+  @Prop({
+    type: String,
+    enum: ['spam', 'offensive', 'fake', 'inappropriate', 'other'],
+  })
   reportReason: string;
 
   @Prop()
@@ -67,5 +75,8 @@ export const ReviewSchema = SchemaFactory.createForClass(Review);
 // Indexes
 ReviewSchema.index({ serviceId: 1, createdAt: -1 });
 ReviewSchema.index({ reviewType: 1, createdAt: -1 });
-ReviewSchema.index({ userId: 1, serviceId: 1 }, { unique: true, partialFilterExpression: { serviceId: { $exists: true } } });
+ReviewSchema.index(
+  { userId: 1, serviceId: 1 },
+  { unique: true, partialFilterExpression: { serviceId: { $exists: true } } },
+);
 ReviewSchema.index({ isReported: 1, reportedAt: -1 });

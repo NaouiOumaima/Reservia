@@ -1,23 +1,36 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Get, Query, UseGuards, Req, Res } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  Get,
+  Query,
+  UseGuards,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { Csrf } from 'ncsrf';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('register')
-  async register(@Body() body: {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-    role?: string;
-    phone?: string;
-    businessName?: string;
-  }) {
+  async register(
+    @Body()
+    body: {
+      email: string;
+      password: string;
+      firstName: string;
+      lastName: string;
+      role?: string;
+      phone?: string;
+      businessName?: string;
+    },
+  ) {
     return this.authService.register(body);
   }
 
@@ -57,7 +70,10 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async setPassword(@Req() req, @Body() body: { password: string }) {
-    return this.authService.setPasswordForGoogleUser(req.user._id, body.password);
+    return this.authService.setPasswordForGoogleUser(
+      req.user._id,
+      body.password,
+    );
   }
 
   @Get('google')
@@ -65,19 +81,17 @@ export class AuthController {
   async googleAuth() {
     // Passport redirige automatiquement vers Google
   }
- 
+
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   async googleAuthRedirect(@Req() req, @Res() res) {
     try {
-      console.log('📥 Google callback - req.user:', req.user);
- 
       if (!req.user) {
         console.error('❌ No user in request after Google auth');
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
         return res.redirect(`${frontendUrl}/register?error=google_no_user`);
       }
- 
+
       // ✅ Récupérer le rôle et businessName depuis req.user (défini par GoogleStrategy)
       const tokens = await this.authService.loginOrCreateWithGoogle({
         email: req.user.email,
@@ -91,15 +105,13 @@ export class AuthController {
       // ✅ Nettoyer les cookies
       res.clearCookie('oauth_role');
       res.clearCookie('oauth_businessName');
- 
-      console.log('✅ Google auth tokens generated for:', req.user.email);
- 
+
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       const redirectUrl =
         `${frontendUrl}/register/callback` +
         `?accessToken=${tokens.accessToken}` +
         `&refreshToken=${tokens.refreshToken}`;
- 
+
       return res.redirect(redirectUrl);
     } catch (error) {
       console.error('❌ Google callback error:', error);

@@ -1,5 +1,14 @@
 // src/modules/ai/controllers/ai.controller.ts
-import { Controller, Post, Body, Get, Param, UseGuards, Request, UploadedFile, UseInterceptors } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  UseGuards,
+  Request,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AiService } from '../services/ai.service';
 import { ChatbotRequestDto } from '../dto/ai.dto';
@@ -18,8 +27,8 @@ export class AiController {
       timestamp: new Date().toISOString(),
       endpoints: {
         chatbot: 'POST /api/ai/chatbot',
-        test: 'GET /api/ai/test'
-      }
+        test: 'GET /api/ai/test',
+      },
     };
   }
 
@@ -31,12 +40,15 @@ export class AiController {
 
   @Post('speech-to-text')
   @UseInterceptors(FileInterceptor('audio'))
-  async speechToText(@UploadedFile() file: any) {
+  async speechToText(@UploadedFile() _file: any) {
     return { text: 'Fonctionnalité à implémenter' };
   }
 
   @Post('text-to-speech')
-  async textToSpeech(@Body('text') text: string, @Body('lang') lang?: string) {
+  async textToSpeech(
+    @Body('text') _text: string,
+    @Body('lang') _lang?: string,
+  ) {
     return { audioUrl: 'Fonctionnalité à implémenter' };
   }
 

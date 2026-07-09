@@ -19,7 +19,6 @@ import {
   CheckIcon,
 } from '@/components/ui/Icons';
 
-// Dynamic import — map must not SSR
 const ServiceMap = dynamic(() => import('@/app/client/carte/ServiceMap'), {
   ssr: false,
   loading: () => (
@@ -30,8 +29,6 @@ const ServiceMap = dynamic(() => import('@/app/client/carte/ServiceMap'), {
   ),
 });
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 interface Loc {
   lat: number;
   lng: number;
@@ -41,14 +38,10 @@ interface Loc {
   postalCode: string;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const EMPTY_LOC: Loc = {
   lat: 36.8065, lng: 10.1815,
   address: '', city: '', governorate: '', postalCode: '',
 };
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function normalizeGov(name: string): string {
   if (!name) return '';
@@ -96,8 +89,6 @@ function serviceToLoc(s: any): Loc {
   };
 }
 
-// ─── Page content ─────────────────────────────────────────────────────────────
-
 function ProviderLocationContent() {
   const sp    = useSearchParams();
   const urlId = sp.get('serviceId');
@@ -114,7 +105,6 @@ function ProviderLocationContent() {
   } | null>(null);
   const [loc, setLoc] = useState<Loc>(EMPTY_LOC);
 
-  // ── Flash ──────────────────────────────────────────────────────────────
   const flash = useCallback(
     (type: 'success' | 'error' | 'warning', text: string) => {
       setNotice({ type, text });
@@ -123,7 +113,6 @@ function ProviderLocationContent() {
     [],
   );
 
-  // ── Load provider services ────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -144,7 +133,6 @@ function ProviderLocationContent() {
     })();
   }, [urlId, flash]);
 
-  // ── Reload a single service's location ────────────────────────────────
   const reloadLoc = useCallback(async (id: string) => {
     setLoading(true);
     try {
@@ -157,12 +145,10 @@ function ProviderLocationContent() {
     }
   }, []);
 
-  // When selected service changes, reload its loc and exit edit mode
   useEffect(() => {
     if (selId) { reloadLoc(selId); setEditing(false); }
   }, [selId, reloadLoc]);
 
-  // ── Reverse geocoding via Nominatim (free, OSM-based) ────────────────
   const reverseGeocode = useCallback(async (lat: number, lng: number) => {
     setLoc((prev) => ({ ...prev, lat, lng }));
     setGeocoding(true);
@@ -208,7 +194,6 @@ function ProviderLocationContent() {
     }
   }, []);
 
-  // ── Map click handler (only when editing) ─────────────────────────────
   const onMapClick = useCallback(
     (e: { lngLat: { lat: number; lng: number } }) => {
       if (editing) reverseGeocode(e.lngLat.lat, e.lngLat.lng);
@@ -216,7 +201,6 @@ function ProviderLocationContent() {
     [editing, reverseGeocode],
   );
 
-  // ── GPS button ────────────────────────────────────────────────────────
   const onGPS = useCallback(() => {
     if (!editing) return;
     if (!navigator.geolocation) {
@@ -229,11 +213,9 @@ function ProviderLocationContent() {
     );
   }, [editing, reverseGeocode, flash]);
 
-  // ── Form validation ───────────────────────────────────────────────────
   const formValid = () =>
     !!loc.address.trim() && !!loc.city.trim() && !!loc.governorate;
 
-  // ── Save ──────────────────────────────────────────────────────────────
   const save = async () => {
     if (!selId)      { flash('error', 'Sélectionnez un service');                  return; }
     if (!formValid()) { flash('error', 'Remplissez tous les champs obligatoires'); return; }
@@ -261,11 +243,9 @@ function ProviderLocationContent() {
 
   const cancel = () => { reloadLoc(selId); setEditing(false); };
 
-  // ─── Derived values ───────────────────────────────────────────────────
-
   if (loading && !services.length) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-surface">
+      <div className="flex justify-center items-center min-h-screen bg-background">
         <div className="spinner" />
       </div>
     );
@@ -274,7 +254,6 @@ function ProviderLocationContent() {
   const selSvc = services.find((s) => s._id === selId);
   const hasLoc = selSvc ? isValidService(selSvc) : false;
 
-  // Build a virtual service object so the map renders the pin at the current loc
   const virtualService = selSvc
     ? {
         ...selSvc,
@@ -289,13 +268,10 @@ function ProviderLocationContent() {
       }
     : null;
 
-  // ─── Render ────────────────────────────────────────────────────────────
-
   return (
-    <div className="min-h-screen bg-surface">
-      <div className="container-app py-8">
+    <div className="bg-background min-h-screen py-8">
+      <div className="container-app">
 
-        {/* ── Page header ── */}
         <div className="animate-fadeIn mb-8 flex flex-wrap gap-4 items-start justify-between">
           <div>
             <Link
@@ -326,7 +302,7 @@ function ProviderLocationContent() {
               </button>
             )}
             <button
-              className={`btn ${editing ? 'btn-outline' : 'btn-primary'}`}
+              className={`btn ${editing ? 'btn-ghost' : 'btn-primary'}`}
               onClick={() => setEditing((e) => !e)}
             >
               <PencilIcon className="w-4 h-4" />
@@ -335,7 +311,6 @@ function ProviderLocationContent() {
           </div>
         </div>
 
-        {/* ── Service selector ── */}
         {services.length > 0 && (
           <div className="card mb-6 animate-fadeInUp p-4">
             <label className="label">Service concerné</label>
@@ -348,14 +323,13 @@ function ProviderLocationContent() {
             >
               {services.map((s) => (
                 <option key={s._id} value={s._id}>
-                  {s.name} {isValidService(s) ? '📍' : '⚠️'}
+                  {s.name} {isValidService(s) ? '' : '(sans position)'}
                 </option>
               ))}
             </select>
           </div>
         )}
 
-        {/* ── Notice banner ── */}
         {notice && (
           <div
             className={[
@@ -371,7 +345,6 @@ function ProviderLocationContent() {
           </div>
         )}
 
-        {/* No location yet warning */}
         {!hasLoc && !editing && !notice && (
           <div className="alert alert-warning mb-6 animate-fadeIn">
             <AlertTriangleIcon className="w-5 h-5 flex-shrink-0" />
@@ -382,11 +355,9 @@ function ProviderLocationContent() {
           </div>
         )}
 
-        {/* ── Main panel ── */}
         {virtualService && (
           <div className="card p-0 overflow-hidden animate-scaleIn">
 
-            {/* Panel top bar */}
             <div className="flex items-start justify-between flex-wrap gap-3 px-6 py-4 border-b border-border bg-surface-raised">
               <div>
                 <p className="font-sans font-semibold text-foreground text-lg">
@@ -399,7 +370,7 @@ function ProviderLocationContent() {
                     : 'Aucune position définie'}
                   {geocoding && (
                     <span className="ml-2 text-xs animate-pulse-soft">
-                      ⏳ Géocodage inverse…
+                      Géocodage inverse…
                     </span>
                   )}
                 </p>
@@ -412,19 +383,17 @@ function ProviderLocationContent() {
               )}
             </div>
 
-            {/* Map */}
             <div style={{ height: '22rem' }} className="w-full">
               <ServiceMap
                 services={[virtualService]}
                 userLocation={[loc.lng, loc.lat]}
                 selectedService={null}
                 onMarkerClick={() => {}}
-                isProviderMode={editing}   // click-to-place only when editing
+                isProviderMode={editing}
                 onMapClick={onMapClick}
               />
             </div>
 
-            {/* Hint below map */}
             {editing && (
               <p className="text-muted text-xs px-6 py-2 bg-surface-raised border-b border-border flex items-center gap-1">
                 <MapPinIcon className="w-3 h-3" />
@@ -433,10 +402,8 @@ function ProviderLocationContent() {
               </p>
             )}
 
-            {/* Form fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
 
-              {/* Address */}
               <div className="md:col-span-2">
                 <label className="label">
                   Adresse {editing && <span className="text-error ml-1">*</span>}
@@ -451,7 +418,6 @@ function ProviderLocationContent() {
                 />
               </div>
 
-              {/* City */}
               <div>
                 <label className="label">
                   Ville {editing && <span className="text-error ml-1">*</span>}
@@ -466,7 +432,6 @@ function ProviderLocationContent() {
                 />
               </div>
 
-              {/* Postal code */}
               <div>
                 <label className="label">Code postal</label>
                 <input
@@ -479,7 +444,6 @@ function ProviderLocationContent() {
                 />
               </div>
 
-              {/* Governorate */}
               <div className="md:col-span-2">
                 <label className="label">
                   Gouvernorat {editing && <span className="text-error ml-1">*</span>}
@@ -502,7 +466,6 @@ function ProviderLocationContent() {
                 )}
               </div>
 
-              {/* Validation banner */}
               {editing && (
                 <div
                   className={[
@@ -519,7 +482,6 @@ function ProviderLocationContent() {
               )}
             </div>
 
-            {/* Footer actions */}
             {editing && (
               <div className="flex justify-end gap-3 px-6 py-4 border-t border-border bg-surface-raised animate-fadeIn">
                 <button className="btn btn-ghost" onClick={cancel}>
@@ -538,15 +500,14 @@ function ProviderLocationContent() {
           </div>
         )}
 
-        {/* Empty state: no services */}
         {!loading && services.length === 0 && (
-          <div className="card p-8 text-center animate-fadeIn">
-            <div className="text-4xl mb-4">📍</div>
+          <div className="card text-center py-12 animate-fadeIn">
+            <MapPinIcon className="w-10 h-10 mx-auto mb-4 text-muted" />
             <h2 className="font-display text-lg mb-2">Aucun service trouvé</h2>
             <p className="text-muted text-sm mb-4">
               Créez d&apos;abord un service pour pouvoir définir sa localisation.
             </p>
-            <Link href="/provider/services/new" className="btn btn-primary">
+            <Link href="/provider/services" className="btn btn-primary">
               Créer un service
             </Link>
           </div>
@@ -557,13 +518,11 @@ function ProviderLocationContent() {
   );
 }
 
-// ─── Suspense wrapper (useSearchParams needs it) ──────────────────────────────
-
 export default function ProviderLocationPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex justify-center items-center min-h-screen bg-surface">
+        <div className="flex justify-center items-center min-h-screen bg-background">
           <div className="spinner" />
         </div>
       }

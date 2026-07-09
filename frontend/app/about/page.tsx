@@ -31,7 +31,7 @@ const VALUES = [
   {
     icon: <ShieldIcon className="w-8 h-8" />,
     title: 'Transparence',
-    desc: 'Tarifs clairs, descriptions précises et prestations facilement comparables.',
+    desc: 'Services 100% gratuits, descriptions précises et prestations facilement comparables.',
   },
 ];
 
@@ -134,7 +134,7 @@ export default function AboutPage() {
                 <div className="relative bg-[rgb(var(--card))] rounded-2xl p-8 border border-[rgb(var(--border))]">
                   <div className="text-6xl mb-4 text-[rgb(var(--primary))]">💡</div>
                   <p className="text-[rgb(var(--foreground-muted))] italic">
-                    "L&apos;objectif est de rendre la résolution de services aussi simple que commander en ligne."
+                    &quot;L&apos;objectif est de rendre la résolution de services aussi simple que commander en ligne.&quot;
                   </p>
                   <p className="text-[rgb(var(--foreground))] font-semibold mt-4">— L&apos;équipe Reservia</p>
                 </div>

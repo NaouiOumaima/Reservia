@@ -5,9 +5,11 @@ import { servicesApi } from '@/lib/api/services';
 import {
   ServicesIcon, RestaurantIcon, HotelIcon, SpaIcon,
   DumbbellIcon, LipstickIcon, MapPinIcon, CalendarIcon,
-  AlertTriangleIcon, XMarkIcon, CheckIcon,
+  AlertTriangleIcon, XMarkIcon, CheckIcon, CheckCircleIcon,
+  XCircleIcon, ClockIcon, BanIcon, RefreshIcon, TrashIcon,
+  PencilIcon,
 } from '@/components/ui/Icons';
-import { CreateServiceData } from '@/lib/api/services/types';
+import { CreateServiceData, Service, ServiceStatus } from '@/lib/api/services/types';
 import Link from 'next/link';
 
 const CAT_ICON: Record<string, JSX.Element> = {
@@ -18,23 +20,30 @@ const CAT_ICON: Record<string, JSX.Element> = {
   salon:      <LipstickIcon   className="w-4 h-4" />,
 };
 
-const CAT_EMOJI: Record<string,string> = {
-  restaurant:'🍽️', hotel:'🏨', spa:'💆', gym:'💪', salon:'💇',
+const CAT_LABEL: Record<string, string> = {
+  restaurant: 'Restaurant', hotel: 'Hôtel', spa: 'Spa', gym: 'Sport', salon: 'Salon',
+};
+
+const STATUS_META: Record<ServiceStatus, { label: string; badge: string; icon: JSX.Element }> = {
+  active: { label: 'Actif', badge: 'badge-success', icon: <CheckCircleIcon className="w-3 h-3 mr-0.5" /> },
+  pending_approval: { label: 'En attente', badge: 'badge-warning', icon: <ClockIcon className="w-3 h-3 mr-0.5" /> },
+  disabled: { label: 'Désactivé', badge: 'badge-error', icon: <XCircleIcon className="w-3 h-3 mr-0.5" /> },
+  banned: { label: 'Banni', badge: 'badge-error', icon: <BanIcon className="w-3 h-3 mr-0.5" /> },
 };
 
 const EMPTY: CreateServiceData = {
-  name:'', category:'restaurant', description:'', basePrice:0, duration:60,
+  name:'', category:'restaurant', description:'', duration:60,
   location:{ coordinates:[10.1815,36.8065], address:'', city:'', governorate:'' },
 };
 
-const locOk   = (s:any) => s.location?.address?.trim() && s.location?.city?.trim() && s.location?.governorate?.trim();
-const availOk = (s:any) => s.availabilitySlots?.some((sl:any)=>sl.isAvailable);
+const locOk   = (s: Service) => !!(s.location?.address?.trim() && s.location?.city?.trim() && s.location?.governorate?.trim());
+const availOk = (s: Service) => !!s.availabilitySlots?.some((sl) => sl.isAvailable);
 
 export default function ProviderServicesPage() {
-  const [services, setServices] = useState<any[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editing,  setEditing]  = useState<any>(null);
+  const [editing,  setEditing]  = useState<Service | null>(null);
   const [form,     setForm]     = useState<CreateServiceData>(EMPTY);
   const [notice,   setNotice]   = useState<{type:'success'|'error';text:string}|null>(null);
   const [deleting, setDeleting] = useState<string|null>(null);
@@ -52,9 +61,9 @@ export default function ProviderServicesPage() {
   useEffect(()=>{ load(); },[]);
 
   const openCreate = () => { setEditing(null); setForm(EMPTY); setShowForm(true); };
-  const openEdit   = (s:any) => {
+  const openEdit   = (s: Service) => {
     setEditing(s);
-    setForm({ name:s.name, category:s.category, description:s.description, basePrice:s.basePrice, duration:s.duration, location:s.location||EMPTY.location });
+    setForm({ name:s.name, category:s.category, description:s.description, duration:s.duration, location:s.location||EMPTY.location });
     setShowForm(true);
   };
   const closeForm = () => { setShowForm(false); setEditing(null); };
@@ -68,9 +77,13 @@ export default function ProviderServicesPage() {
     } catch { flash('error',"Erreur lors de l'enregistrement"); }
   };
 
-  const toggle = async (s:any) => {
-    try { await servicesApi.toggleActive(s._id); flash('success',`Service ${s.isActive?'désactivé':'activé'}`); load(); }
-    catch { flash('error','Erreur statut'); }
+  const toggle = async (s: Service) => {
+    try {
+      await servicesApi.toggleActive(s._id);
+      flash('success', s.status === 'active' ? 'Service désactivé' : 'Service réactivé');
+      load();
+    }
+    catch { flash('error','Erreur lors du changement de statut'); }
   };
 
   const del = async (id:string) => {
@@ -117,7 +130,7 @@ export default function ProviderServicesPage() {
           <div className="card mb-8 p-6 animate-scaleIn">
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-display text-foreground" style={{fontSize:'1.25rem'}}>
-                {editing ? '✏️ Modifier le service' : '➕ Nouveau service'}
+                {editing ? 'Modifier le service' : 'Nouveau service'}
               </h2>
               <button onClick={closeForm} className="text-muted hover:text-error transition-colors p-1 rounded-app hover:bg-surface-raised">
                 <XMarkIcon className="w-5 h-5"/>
@@ -134,16 +147,10 @@ export default function ProviderServicesPage() {
               <div>
                 <label className="label">Catégorie *</label>
                 <select required className="input" value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>
-                  {Object.entries(CAT_EMOJI).map(([k,v])=>(
-                    <option key={k} value={k}>{v} {k.charAt(0).toUpperCase()+k.slice(1)}</option>
+                  {Object.entries(CAT_LABEL).map(([k,v])=>(
+                    <option key={k} value={k}>{v}</option>
                   ))}
                 </select>
-              </div>
-
-              <div>
-                <label className="label">Prix de base (DT) *</label>
-                <input type="number" min="0" required className="input" placeholder="0"
-                  value={form.basePrice} onChange={e=>setForm({...form,basePrice:+e.target.value})} />
               </div>
 
               <div>
@@ -185,6 +192,8 @@ export default function ProviderServicesPage() {
               const hasLoc   = locOk(svc);
               const hasAvail = availOk(svc);
               const complete = hasLoc && hasAvail;
+              const status = STATUS_META[svc.status];
+              const canToggle = svc.status === 'active' || svc.status === 'disabled';
 
               return (
                 <div
@@ -200,18 +209,20 @@ export default function ProviderServicesPage() {
                     {svc.images?.[0]
                       ? <img src={svc.images[0]} alt={svc.name} className="w-full h-full object-cover"/>
                       : (
-                        <div className="w-full h-full flex items-center justify-center text-4xl opacity-40">
-                          {CAT_EMOJI[svc.category]??'🛎️'}
+                        <div className="w-full h-full flex items-center justify-center opacity-40">
+                          {CAT_ICON[svc.category]
+                            ? <span className="scale-[3]">{CAT_ICON[svc.category]}</span>
+                            : <ServicesIcon className="w-10 h-10" />}
                         </div>
                       )
                     }
 
                     {/* Overlay badges */}
                     <div className="absolute top-2 left-2 flex gap-1.5">
-                      <span className={`badge ${svc.isActive?'badge-success':'badge-error'}`}>
-                        {svc.isActive?'Actif':'Inactif'}
+                      <span className={`badge ${status.badge}`}>
+                        {status.icon}{status.label}
                       </span>
-                      {!complete && (
+                      {!complete && svc.status === 'active' && (
                         <span className="badge badge-warning">
                           <AlertTriangleIcon className="w-3 h-3 mr-0.5"/>Incomplet
                         </span>
@@ -220,19 +231,23 @@ export default function ProviderServicesPage() {
 
                     {/* Quick actions */}
                     <div className="absolute top-2 right-2 flex gap-1.5">
-                      <button
-                        onClick={()=>toggle(svc)}
-                        title={svc.isActive?'Désactiver':'Activer'}
-                        className="w-7 h-7 rounded-pill bg-black/50 hover:bg-black/70 text-white text-xs flex items-center justify-center transition-colors"
-                      >
-                        {svc.isActive?'🔴':'🟢'}
-                      </button>
+                      {canToggle && (
+                        <button
+                          onClick={()=>toggle(svc)}
+                          title={svc.status === 'active' ? 'Désactiver' : 'Réactiver'}
+                          className="w-7 h-7 rounded-pill bg-black/50 hover:bg-black/70 text-white text-xs flex items-center justify-center transition-colors"
+                        >
+                          {svc.status === 'active'
+                            ? <XCircleIcon className="w-4 h-4" />
+                            : <RefreshIcon className="w-4 h-4" />}
+                        </button>
+                      )}
                       <button
                         onClick={()=>del(svc._id)}
                         title="Supprimer"
                         className="w-7 h-7 rounded-pill bg-black/50 hover:bg-error text-white text-xs flex items-center justify-center transition-colors"
                       >
-                        🗑️
+                        <TrashIcon className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -243,15 +258,22 @@ export default function ProviderServicesPage() {
                     <div className="flex items-center gap-1.5">
                       <span className="badge badge-primary">
                         {CAT_ICON[svc.category]??<ServicesIcon className="w-3 h-3"/>}
-                        <span className="ml-1 capitalize text-xs">{svc.category}</span>
+                        <span className="ml-1 text-xs">{CAT_LABEL[svc.category] || svc.category}</span>
                       </span>
                     </div>
 
                     <h3 className="font-sans font-semibold text-foreground text-base leading-tight">{svc.name}</h3>
                     <p className="text-muted text-sm truncate-2">{svc.description}</p>
 
+                    {svc.status === 'banned' && svc.banReason && (
+                      <p className="text-error text-xs">Motif du bannissement : {svc.banReason}</p>
+                    )}
+                    {svc.status === 'disabled' && svc.rejectionReason && (
+                      <p className="text-error text-xs">Motif du refus : {svc.rejectionReason}</p>
+                    )}
+
                     <div className="flex items-center justify-between text-sm mt-1">
-                      <span className="text-primary font-bold">{svc.basePrice} DT</span>
+                      <span className="badge badge-success">Gratuit</span>
                       <span className="text-muted">{svc.duration} min</span>
                     </div>
 
@@ -268,7 +290,7 @@ export default function ProviderServicesPage() {
                       <span className="flex-1 truncate">{hasLoc ? svc.location.city : 'Localisation non définie'}</span>
                       {hasLoc
                         ? <CheckIcon className="w-3.5 h-3.5 flex-shrink-0"/>
-                        : <span className="text-xs font-semibold flex-shrink-0">⚠️</span>}
+                        : <AlertTriangleIcon className="w-3.5 h-3.5 flex-shrink-0"/>}
                     </Link>
 
                     {/* Availability link */}
@@ -282,7 +304,7 @@ export default function ProviderServicesPage() {
                       <span className="flex-1">{hasAvail?'Disponibilités définies':'Disponibilités non définies'}</span>
                       {hasAvail
                         ? <CheckIcon className="w-3.5 h-3.5 flex-shrink-0"/>
-                        : <span className="text-xs font-semibold flex-shrink-0">⚠️</span>}
+                        : <AlertTriangleIcon className="w-3.5 h-3.5 flex-shrink-0"/>}
                     </Link>
 
                     {/* Edit info */}
@@ -290,7 +312,7 @@ export default function ProviderServicesPage() {
                       onClick={()=>openEdit(svc)}
                       className="btn btn-ghost btn-sm w-full mt-1"
                     >
-                      Modifier les informations
+                      <PencilIcon className="w-3.5 h-3.5" /> Modifier les informations
                     </button>
                   </div>
                 </div>

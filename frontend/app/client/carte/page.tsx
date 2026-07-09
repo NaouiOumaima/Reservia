@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/providers/AuthProvider';
+import { servicesApi } from '@/lib/api/services/services.api';
 import FavoriteButton from '@/components/FavoriteButton';
 import FilterBar from './FilterBar';
 import ServiceMap from './ServiceMap';
@@ -11,7 +12,6 @@ interface Service {
   _id: string;
   name: string;
   category: string;
-  basePrice: number;
   avgRating: number;
   reviewCount: number;
   location: {
@@ -61,10 +61,11 @@ const serviceIdParam = searchParams.get('serviceId');
       setLoading(true);
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
-        const res    = await fetch(
-          `${apiUrl}/services/nearby` +
-          `?lng=${userLocation[0]}&lat=${userLocation[1]}&distance=${filters.radius}`,
-        );
+       const res = await fetch(
+  `${apiUrl}/services/nearby` +
+  `?lng=${userLocation[0]}&lat=${userLocation[1]}&radius=${filters.radius}`,
+  { cache: 'no-store' }, // ← empêche le navigateur de réutiliser une réponse 304 périmée
+);
         const data = await res.json();
         const arr  = Array.isArray(data) ? data : [];
         setServices(arr);
@@ -86,6 +87,25 @@ const serviceIdParam = searchParams.get('serviceId');
         : [...services],
     );
   }, [filters.category, services]);
+
+  // ── Focus sur un service précis via ?serviceId= (ex: lien "Itinéraire"
+  // depuis "Mes réservations") — on le récupère et on centre la carte dessus
+  // même s'il n'est pas dans le rayon "à proximité" affiché.
+  useEffect(() => {
+    if (!serviceIdParam) return;
+    (async () => {
+      try {
+        const service = await servicesApi.getById(serviceIdParam);
+        setServices((prev) =>
+          prev.some((s) => s._id === service._id) ? prev : [...prev, service as unknown as Service],
+        );
+        setSelectedService(service as unknown as Service);
+      } catch (error) {
+        console.error('Service introuvable pour focus carte:', error);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceIdParam]);
 
   // ── Handlers ────────────────────────────────────────────────────────────
   const handleMarkerClick = (service: Service) => {
@@ -186,7 +206,7 @@ const serviceIdParam = searchParams.get('serviceId');
                     )}
                   </div>
                   <div className="cc-service-item__meta">
-                    <span className="cc-badge-price">{service.basePrice} TND</span>
+                    <span className="cc-badge-free">Gratuit</span>
                     <span className="cc-badge-rating">★ {service.avgRating}</span>
                   </div>
                 </div>

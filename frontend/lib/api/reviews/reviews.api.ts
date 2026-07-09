@@ -1,5 +1,5 @@
 import { apiClient } from '../config';
-import { Review, PaginatedReviewsResponse } from './types';
+import { Review, PaginatedReviewsResponse, UpdateReviewData } from './types';
 
 export interface CreateReviewData {
   serviceId?: string;
@@ -7,6 +7,7 @@ export interface CreateReviewData {
   comment: string;
   images?: string[];
   type?: 'service' | 'app';
+  guestName?: string;
 }
 
 export interface ReportReviewData {
@@ -18,6 +19,17 @@ export interface AppReviewStats {
   averageRating: number;
   totalReviews: number;
   ratingDistribution: { rating: number; count: number }[];
+}
+
+export interface ProviderReviewStats {
+  globalAverage: number;
+  totalReviews: number;
+  byService: Array<{
+    serviceId: string;
+    serviceName: string;
+    averageRating: number;
+    reviewCount: number;
+  }>;
 }
 
 export const reviewsApi = {
@@ -49,10 +61,39 @@ export const reviewsApi = {
     return response.data;
   },
 
+  // Récupérer les avis reçus par le provider connecté (toutes ses prestations)
+  getProviderReviews: async (
+    serviceId?: string,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{ reviews: Review[]; total: number }> => {
+    const response = await apiClient.get('/reviews/provider', {
+      params: { serviceId, page, limit },
+    });
+    return response.data;
+  },
+
+  // Statistiques des avis reçus par le provider, par service
+  getProviderReviewStats: async (): Promise<ProviderReviewStats> => {
+    const response = await apiClient.get('/reviews/provider/stats');
+    return response.data;
+  },
+
   // Créer un avis (service ou app)
   create: async (data: CreateReviewData): Promise<Review> => {
     const response = await apiClient.post('/reviews', data);
     return response.data;
+  },
+
+  // Modifier son propre avis
+  update: async (id: string, data: UpdateReviewData): Promise<Review> => {
+    const response = await apiClient.patch(`/reviews/${id}`, data);
+    return response.data;
+  },
+
+  // Supprimer son propre avis
+  deleteMine: async (id: string): Promise<void> => {
+    await apiClient.delete(`/reviews/${id}`);
   },
 
   // Signaler un avis

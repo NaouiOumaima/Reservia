@@ -1,8 +1,7 @@
 // features/provider/hooks/useProviderBookings.ts
 
 import { useState, useEffect, useCallback } from 'react';
-import { reservationsApi } from '@/lib/api/client';
-import { Reservation } from '@/types';
+import { Reservation, reservationsApi } from '@/lib/api/reservations';
 
 interface UseProviderBookingsReturn {
   reservations: Reservation[];
@@ -23,9 +22,8 @@ export function useProviderBookings(): UseProviderBookingsReturn {
     setLoading(true);
     setError(null);
     try {
-      const response = await reservationsApi.getProvider();
-      let data = response.data || response;
-      
+      let data = await reservationsApi.getProviderReservations();
+
       if (filter !== 'all') {
         data = data.filter((r: Reservation) => r.status === filter);
       }
@@ -58,7 +56,7 @@ export function useProviderBookings(): UseProviderBookingsReturn {
     setLoading(true);
     setError(null);
     try {
-      await reservationsApi.cancel(id, { reason });
+      await reservationsApi.cancel(id, reason);
       setReservations(prev => prev.map(r => 
         r._id === id ? { ...r, status: 'cancelled' as const } : r
       ));

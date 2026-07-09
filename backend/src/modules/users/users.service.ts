@@ -1,17 +1,18 @@
 // backend/src/modules/users/users.service.ts
 
-import { Injectable, InternalServerErrorException, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User, UserDocument } from '../../database/schemas/user.schema';
-import * as bcrypt from 'bcrypt';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(
-    @InjectModel(User.name) private userModel: Model<UserDocument>,
-  ) {}
+  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
   async findById(id: string): Promise<any | null> {
     try {
@@ -33,16 +34,24 @@ export class UsersService {
     }
   }
 
-  async updateProfile(userId: string, updateData: UpdateProfileDto): Promise<any | null> {
+  async updateProfile(
+    userId: string,
+    updateData: UpdateProfileDto,
+  ): Promise<any | null> {
     try {
       // ✅ Supprimer l'email si présent (protection supplémentaire)
-      const { email, role, password, ...safeData } = updateData as any;
-      
+      const {
+        email: _email,
+        role: _role,
+        password: _password,
+        ...safeData
+      } = updateData as any;
+
       const user = await this.userModel
         .findByIdAndUpdate(userId, safeData, { new: true, runValidators: true })
         .lean()
         .exec();
-      
+
       if (!user) return null;
       return this.sanitizeUser(user);
     } catch (error) {
@@ -56,22 +65,22 @@ export class UsersService {
     try {
       // Validation: vérifier que c'est bien une image Base64
       if (!imageBase64 || !imageBase64.startsWith('data:image/')) {
-        throw new BadRequestException('Format d\'image invalide');
+        throw new BadRequestException("Format d'image invalide");
       }
-      
+
       // Vérifier la taille (max 5MB en Base64 ≈ 3.7MB d'image réelle)
       const sizeInBytes = Buffer.byteLength(imageBase64, 'utf8');
       const maxSize = 5 * 1024 * 1024; // 5MB
-      
+
       if (sizeInBytes > maxSize) {
-        throw new BadRequestException('L\'image ne doit pas dépasser 5MB');
+        throw new BadRequestException("L'image ne doit pas dépasser 5MB");
       }
-      
+
       const user = await this.userModel
         .findByIdAndUpdate(userId, { profileImage: imageBase64 }, { new: true })
         .lean()
         .exec();
-      
+
       if (!user) return null;
       return this.sanitizeUser(user);
     } catch (error) {
@@ -82,13 +91,16 @@ export class UsersService {
   }
 
   // ✅ NOUVEAU : Mettre à jour l'image Google
-  async updateGooglePicture(userId: string, pictureUrl: string): Promise<any | null> {
+  async updateGooglePicture(
+    userId: string,
+    pictureUrl: string,
+  ): Promise<any | null> {
     try {
       const user = await this.userModel
         .findByIdAndUpdate(userId, { picture: pictureUrl }, { new: true })
         .lean()
         .exec();
-      
+
       if (!user) return null;
       return this.sanitizeUser(user);
     } catch (error) {
@@ -99,7 +111,9 @@ export class UsersService {
 
   async updatePassword(userId: string, hashedPassword: string): Promise<void> {
     try {
-      await this.userModel.findByIdAndUpdate(userId, { password: hashedPassword }).exec();
+      await this.userModel
+        .findByIdAndUpdate(userId, { password: hashedPassword })
+        .exec();
     } catch (error) {
       console.error('Error in updatePassword:', error);
       throw new InternalServerErrorException('Failed to update password');
@@ -115,16 +129,19 @@ export class UsersService {
     }
   }
 
-  async findAll(role?: string, excludeSuperAdmin: boolean = true): Promise<any[]> {
+  async findAll(
+    role?: string,
+    excludeSuperAdmin: boolean = true,
+  ): Promise<any[]> {
     try {
       const query: any = role ? { role } : {};
-      
+
       if (excludeSuperAdmin) {
         query.email = { $ne: 'admin@test.com' };
       }
-      
+
       const users = await this.userModel.find(query).lean().exec();
-      return users.map(user => this.sanitizeUser(user));
+      return users.map((user) => this.sanitizeUser(user));
     } catch (error) {
       console.error('Error in findAll:', error);
       throw new InternalServerErrorException('Failed to fetch users');
@@ -137,7 +154,7 @@ export class UsersService {
         .findByIdAndUpdate(userId, { role }, { new: true })
         .lean()
         .exec();
-      
+
       if (!user) return null;
       return this.sanitizeUser(user);
     } catch (error) {
@@ -152,7 +169,7 @@ export class UsersService {
         .findByIdAndUpdate(userId, { isBanned: true }, { new: true })
         .lean()
         .exec();
-      
+
       if (!user) return null;
       return this.sanitizeUser(user);
     } catch (error) {
@@ -167,7 +184,7 @@ export class UsersService {
         .findByIdAndUpdate(userId, { isBanned: false }, { new: true })
         .lean()
         .exec();
-      
+
       if (!user) return null;
       return this.sanitizeUser(user);
     } catch (error) {
@@ -176,13 +193,21 @@ export class UsersService {
     }
   }
 
-  async getStats(): Promise<{ total: number; clients: number; providers: number; admins: number }> {
+  async getStats(): Promise<{
+    total: number;
+    clients: number;
+    providers: number;
+    admins: number;
+  }> {
     try {
       const [total, clients, providers, admins] = await Promise.all([
         this.userModel.countDocuments(),
         this.userModel.countDocuments({ role: 'client' }),
         this.userModel.countDocuments({ role: 'provider' }),
-        this.userModel.countDocuments({ role: 'admin', email: { $ne: 'admin@test.com' } }),
+        this.userModel.countDocuments({
+          role: 'admin',
+          email: { $ne: 'admin@test.com' },
+        }),
       ]);
       return { total, clients, providers, admins };
     } catch (error) {
@@ -192,7 +217,13 @@ export class UsersService {
   }
 
   private sanitizeUser(user: any): any {
-    const { password, refreshToken, emailVerificationToken, resetPasswordToken, ...safeUser } = user;
+    const {
+      password: _password,
+      refreshToken: _refreshToken,
+      emailVerificationToken: _evt,
+      resetPasswordToken: _rpt,
+      ...safeUser
+    } = user;
     return safeUser;
   }
 }

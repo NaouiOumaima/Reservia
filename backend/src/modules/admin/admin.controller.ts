@@ -9,7 +9,9 @@ export class AdminController {
   constructor(private adminService: AdminService) {}
 
   @Get('stats')
-  async getStats(@Query('timeRange') timeRange: 'week' | 'month' | 'year' = 'month') {
+  async getStats(
+    @Query('timeRange') timeRange: 'week' | 'month' | 'year' = 'month',
+  ) {
     return this.adminService.getStats(timeRange);
   }
 }

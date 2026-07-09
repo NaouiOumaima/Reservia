@@ -30,13 +30,13 @@ export default function AdminServicesListPage() {
     }
   };
 
-  const toggleServiceStatus = async (serviceId: string, currentStatus: boolean) => {
+  const toggleServiceStatus = async (serviceId: string, isCurrentlyActive: boolean) => {
     try {
       await servicesApi.toggleActive(serviceId);
-      setServices(services.map(s => 
-        s._id === serviceId ? { ...s, isActive: !currentStatus } : s
+      setServices(services.map(s =>
+        s._id === serviceId ? { ...s, status: isCurrentlyActive ? 'disabled' : 'active' } : s
       ));
-      alert(`Service ${!currentStatus ? 'activé' : 'désactivé'}`);
+      alert(`Service ${isCurrentlyActive ? 'désactivé' : 'activé'}`);
     } catch (error: any) {
       alert('Erreur lors du changement de statut');
     }
@@ -80,16 +80,17 @@ export default function AdminServicesListPage() {
   };
 
   const filteredServices = services.filter(service => {
-    if (filter === 'active' && !service.isActive) return false;
-    if (filter === 'inactive' && service.isActive) return false;
+    const isActive = service.status === 'active';
+    if (filter === 'active' && !isActive) return false;
+    if (filter === 'inactive' && isActive) return false;
     if (selectedCategory !== 'all' && service.category !== selectedCategory) return false;
     return true;
   });
 
   const stats = {
     total: services.length,
-    active: services.filter(s => s.isActive).length,
-    inactive: services.filter(s => !s.isActive).length,
+    active: services.filter(s => s.status === 'active').length,
+    inactive: services.filter(s => s.status !== 'active').length,
   };
 
   if (loading) {
@@ -194,8 +195,8 @@ export default function AdminServicesListPage() {
               <div key={service._id} className="review-card-modern">
                 <div className="review-card-header">
                   <div className="review-card-status">
-                    <span className={`badge-modern ${service.isActive ? 'success' : 'error'}`}>
-                      {service.isActive ? '✓ Actif' : '✗ Inactif'}
+                    <span className={`badge-modern ${service.status === 'active' ? 'success' : 'error'}`}>
+                      {service.status === 'active' ? '✓ Actif' : '✗ Inactif'}
                     </span>
                     <span className={`badge-modern ${getCategoryColor(service.category).split(' ')[0]}`}>
                       {getCategoryFrenchLabel(service.category)}
@@ -216,9 +217,6 @@ export default function AdminServicesListPage() {
                     <span>📍</span> {service.location?.city}, {service.location?.governorate}
                   </div>
                   <div className="review-card-meta-item">
-                    <span>💰</span> {service.basePrice} DT
-                  </div>
-                  <div className="review-card-meta-item">
                     <span>⏱️</span> {service.duration} min
                   </div>
                   <div className="review-card-meta-item">
@@ -233,11 +231,11 @@ export default function AdminServicesListPage() {
 
                 <div className="review-card-actions">
                   <button
-                    onClick={() => toggleServiceStatus(service._id, service.isActive)}
-                    className={`action-btn ${service.isActive ? 'warning' : 'success'}`}
-                    style={service.isActive ? { background: 'rgba(251, 191, 36, 0.1)', color: '#d97706' } : {}}
+                    onClick={() => toggleServiceStatus(service._id, service.status === 'active')}
+                    className={`action-btn ${service.status === 'active' ? 'warning' : 'success'}`}
+                    style={service.status === 'active' ? { background: 'rgba(251, 191, 36, 0.1)', color: '#d97706' } : {}}
                   >
-                    {service.isActive ? 'Désactiver' : 'Activer'}
+                    {service.status === 'active' ? 'Désactiver' : 'Activer'}
                   </button>
                   
                   <button

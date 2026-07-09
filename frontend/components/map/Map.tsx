@@ -59,7 +59,7 @@ export default function Map({ services, center, onServiceClick }: MapProps) {
             <span class="text-yellow-500">⭐</span>
 <span class="text-sm font-semibold">${(service.rating ?? 0).toFixed(1)}</span>            <span class="text-gray-400">(${service.reviewCount} avis)</span>
           </div>
-          <p class="text-lg font-bold text-blue-600 mt-2">${service.price} DT</p>
+          <p class="text-lg font-bold text-green-600 mt-2">Gratuit</p>
         </div>
       `);
 

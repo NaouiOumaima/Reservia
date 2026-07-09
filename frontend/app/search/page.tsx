@@ -73,84 +73,79 @@ export default function SearchPage() {
   ──────────────────────────────────────────────── */
   if (!selectedGovernorate) {
     return (
-      <div className="sp-page">
-        <div className="sp-content">
+      <div className="container-app section">
 
-          {/* ── Catégories ── */}
-          <div className="sp-categories">
-            <div className="sp-categories-inner">
+        {/* ── Catégories ── */}
+        <div className="sp-cat-bar">
+          {/* Toutes */}
+          <button
+            onClick={() => setSelectedCategory('')}
+            className={`sp-cat-btn ${selectedCategory === '' ? 'sp-cat-btn--active' : ''}`}
+          >
+            <span className="sp-cat-btn-icon">
+              <GridIcon className="w-5 h-5" />
+            </span>
+            <span>Toutes catégories</span>
+          </button>
 
-              {/* Toutes */}
-              <button
-                onClick={() => setSelectedCategory('')}
-                className={`sp-cat-btn ${selectedCategory === '' ? 'sp-cat-btn--active' : ''}`}
+          {displayCategories.map((cat) => (
+            <button
+              key={cat.key}
+              onClick={() => setSelectedCategory(cat.key)}
+              className={`sp-cat-btn ${selectedCategory === cat.key ? 'sp-cat-btn--active' : ''}`}
+            >
+              <span
+                className="sp-cat-btn-icon"
+                style={{ color: selectedCategory === cat.key ? '#fff' : cat.color }}
               >
-                <span className="sp-cat-btn-icon">
-                  <GridIcon className="w-5 h-5" />
-                </span>
-                <span>Toutes catégories</span>
-              </button>
+                <CategoryIcon category={cat.key} className="w-5 h-5" />
+              </span>
+              <span>{cat.frenchLabel}</span>
+            </button>
+          ))}
+        </div>
 
-              {displayCategories.map((cat) => (
-                <button
-                  key={cat.key}
-                  onClick={() => setSelectedCategory(cat.key)}
-                  className={`sp-cat-btn ${selectedCategory === cat.key ? 'sp-cat-btn--active' : ''}`}
-                >
-                  <span
-                    className="sp-cat-btn-icon"
-                    style={{ color: selectedCategory === cat.key ? '#fff' : cat.color }}
-                  >
-                    <CategoryIcon category={cat.key} className="w-5 h-5" />
-                  </span>
-                  <span>{cat.frenchLabel}</span>
-                </button>
-              ))}
+        {/* ── Étapes ── */}
+        <div className="sp-steps">
+          <div className="sp-step-card">
+            <div className="sp-step-num">1</div>
+            <div className="sp-step-icon">
+              <LocationIcon className="w-5 h-5" />
             </div>
+            <div className="sp-step-body">
+              <h3 className="sp-step-title">Choisissez une région</h3>
+              <p className="sp-step-desc">Cliquez sur un gouvernorat sur la carte</p>
+            </div>
+            <span className="sp-step-arrow">→</span>
           </div>
 
-          {/* ── Étapes ── */}
-          <div className="sp-steps">
-            <div className="sp-step">
-              <div className="sp-step-num">1</div>
-              <div className="sp-step-icon">
-                <LocationIcon className="w-5 h-5" />
-              </div>
-              <div className="sp-step-body">
-                <h3 className="sp-step-title">Choisissez une région</h3>
-                <p className="sp-step-desc">Cliquez sur un gouvernorat sur la carte</p>
-              </div>
-              <span className="sp-step-arrow">→</span>
+          <div className="sp-step-card">
+            <div className="sp-step-num">2</div>
+            <div className="sp-step-icon">
+              <SearchIcon className="w-5 h-5" />
             </div>
-
-            <div className="sp-step">
-              <div className="sp-step-num">2</div>
-              <div className="sp-step-icon">
-                <SearchIcon className="w-5 h-5" />
-              </div>
-              <div className="sp-step-body">
-                <h3 className="sp-step-title">Filtrez par catégorie</h3>
-                <p className="sp-step-desc">Sélectionnez le type de service souhaité</p>
-              </div>
-              <span className="sp-step-arrow">→</span>
+            <div className="sp-step-body">
+              <h3 className="sp-step-title">Filtrez par catégorie</h3>
+              <p className="sp-step-desc">Sélectionnez le type de service souhaité</p>
             </div>
-
-            <div className="sp-step">
-              <div className="sp-step-num">3</div>
-              <div className="sp-step-icon">
-                <StarIcon className="w-5 h-5" />
-              </div>
-              <div className="sp-step-body">
-                <h3 className="sp-step-title">Réservez</h3>
-                <p className="sp-step-desc">Parcourez et réservez en quelques clics</p>
-              </div>
-            </div>
+            <span className="sp-step-arrow">→</span>
           </div>
 
-          {/* ── Carte Tunisie ── */}
-          <div className="sp-map-slot">
-            <TunisiaMap onGovernorateClick={setSelectedGovernorate} />
+          <div className="sp-step-card">
+            <div className="sp-step-num">3</div>
+            <div className="sp-step-icon">
+              <StarIcon className="w-5 h-5" />
+            </div>
+            <div className="sp-step-body">
+              <h3 className="sp-step-title">Réservez</h3>
+              <p className="sp-step-desc">Parcourez et réservez en quelques clics</p>
+            </div>
           </div>
+        </div>
+
+        {/* ── Carte Tunisie ── */}
+        <div className="sp-map-slot">
+          <TunisiaMap onGovernorateClick={setSelectedGovernorate} />
         </div>
       </div>
     );
@@ -161,7 +156,7 @@ export default function SearchPage() {
   ──────────────────────────────────────────────── */
   return (
     <>
-      <div className="sp-results-page">
+      <div className="container-app section">
 
         {/* Header */}
         <div className="sp-results-header">
@@ -180,26 +175,31 @@ export default function SearchPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(.65rem,1.8vw,1.1rem)' }}>
 
           {/* Filtres */}
-          <div className="sp-filters-bar">
-            <div className="sp-filters-grid">
-              <div className="sp-filter-group">
-                <label className="sp-filter-label">Note minimale</label>
-                <select
-                  className="sp-filter-select"
-                  value={filters.minRating}
-                  onChange={(e) => setFilters({ minRating: Number(e.target.value) })}
-                >
-                  <option value={0}>Toutes les notes</option>
-                  <option value={4.5}>4.5+ étoiles</option>
-                  <option value={4}>4+ étoiles</option>
-                  <option value={3.5}>3.5+ étoiles</option>
-                  <option value={3}>3+ étoiles</option>
-                </select>
+          <div className="filterbar">
+            <div className="filterbar__row">
+              <div className="filterbar__group filterbar__group--category">
+                <label className="filterbar__label">Note minimale</label>
+                <div className="filterbar__select-wrapper">
+                  <select
+                    className="filterbar__select"
+                    value={filters.minRating}
+                    onChange={(e) => setFilters({ minRating: Number(e.target.value) })}
+                  >
+                    <option value={0}>Toutes les notes</option>
+                    <option value={4.5}>4.5+ étoiles</option>
+                    <option value={4}>4+ étoiles</option>
+                    <option value={3.5}>3.5+ étoiles</option>
+                    <option value={3}>3+ étoiles</option>
+                  </select>
+                </div>
               </div>
 
               {(selectedCategory || filters.minRating > 0) && (
-                <div className="sp-filter-group" style={{ justifyContent: 'flex-end' }}>
-                  <button onClick={() => { setSelectedCategory(''); setFilters({ minRating: 0 }); }} className="sp-reset-btn">
+                <div className="filterbar__group filterbar__group--action">
+                  <button
+                    onClick={() => { setSelectedCategory(''); setFilters({ minRating: 0 }); }}
+                    className="filterbar__clear-btn"
+                  >
                     ✕ Réinitialiser
                   </button>
                 </div>
@@ -229,17 +229,17 @@ export default function SearchPage() {
 
           {/* Loading */}
           {loading && (
-            <div className="sp-state-box sp-loading">
-              <div className="sp-spinner" />
+            <div className="sp-state-box">
+              <div className="spinner" />
               <p className="sp-loading-text">Chargement des services…</p>
             </div>
           )}
 
           {/* Erreur */}
           {error && !loading && (
-            <div className="sp-state-box sp-error">
+            <div className="sp-state-box">
               <p className="sp-error-text">{error}</p>
-              <button onClick={handleBackToMap} className="sp-cta-btn">
+              <button onClick={handleBackToMap} className="btn btn-primary">
                 Retour à la carte
               </button>
             </div>
@@ -247,14 +247,14 @@ export default function SearchPage() {
 
           {/* Vide */}
           {!loading && !error && services.length === 0 && (
-            <div className="sp-state-box sp-empty">
+            <div className="sp-state-box">
               <span className="sp-empty-icon">🔍</span>
               <p className="sp-empty-title">Aucun service trouvé dans cette région</p>
               <p className="sp-empty-desc">
                 Essayez de modifier vos filtres ou choisissez une autre région
               </p>
-              <button onClick={handleBackToMap} className="sp-cta-btn">
-                Explorer d'autres régions
+              <button onClick={handleBackToMap} className="btn btn-primary">
+                Explorer d&apos;autres régions
               </button>
             </div>
           )}

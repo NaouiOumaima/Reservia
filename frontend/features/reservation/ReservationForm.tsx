@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { reservationsApi } from '@/lib/api/client';
+import { reservationsApi } from '@/lib/api';
 
 interface ReservationFormProps {
   serviceId: string;
@@ -26,10 +26,14 @@ export default function ReservationForm({ serviceId }: ReservationFormProps) {
     setLoading(true);
 
     try {
+      const start = new Date(formData.startTime);
+      const end = new Date(formData.endTime);
+      const duration = Math.round((end.getTime() - start.getTime()) / 60000);
+
       await reservationsApi.create({
         serviceId,
-        startTime: new Date(formData.startTime).toISOString(),
-        endTime: new Date(formData.endTime).toISOString(),
+        startTime: start.toISOString(),
+        duration,
         notes: formData.notes,
       });
       setMessage('Reservation created! You have 10 minutes to confirm.');

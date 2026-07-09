@@ -27,7 +27,6 @@ export interface Service {
   _id: string;
   name: string;
   category: string;
-  basePrice: number;
   avgRating: number;
   reviewCount: number;
   location: {
@@ -189,13 +188,14 @@ interface LrmControllerProps {
   to: LatLng;
   mode: Mode;
   color: string;
+  retryNonce: number;
   onRouteFound: (summary: RouteSummary, instructions: RouteInfo['instructions']) => void;
   onRoutingError: (msg: string) => void;
   onLoading: (b: boolean) => void;
 }
 
 function LrmController({
-  from, to, mode, color,
+  from, to, mode, color, retryNonce,
   onRouteFound, onRoutingError, onLoading,
 }: LrmControllerProps) {
   const map = useMap();
@@ -278,7 +278,7 @@ function LrmController({
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [from.lat, from.lng, to.lat, to.lng, mode.id]);
+  }, [from.lat, from.lng, to.lat, to.lng, mode.id, retryNonce]);
 
   return null;
 }
@@ -303,6 +303,7 @@ export default function LeafletMapComponent({
   const [error,      setError]      = useState<string | null>(null);
   const [stepsOpen,  setStepsOpen]  = useState(false);
   const [activeStep, setActiveStep] = useState(0);
+  const [retryNonce, setRetryNonce] = useState(0);
 
   // Holds the current routing target so LrmController knows what to route
   const [routingTarget, setRoutingTarget] = useState<{ service: Service; mode: Mode } | null>(null);
@@ -327,6 +328,7 @@ export default function LeafletMapComponent({
 
   const handleModeChange = useCallback((m: Mode) => {
     setMode(m);
+    setError(null);
     if (routingTarget) setRoutingTarget({ ...routingTarget, mode: m });
   }, [routingTarget]);
 
@@ -353,8 +355,15 @@ export default function LeafletMapComponent({
   }, [routingTarget]);
 
   const handleRoutingError = useCallback((msg: string) => {
+    // On garde le panneau et le sélecteur de mode affichés : l'utilisateur
+    // peut réessayer ou choisir un autre mode sans repartir de zéro.
     setError(msg);
-    setRoutingTarget(null);
+    setRouteInfo(null);
+  }, []);
+
+  const retryRoute = useCallback(() => {
+    setError(null);
+    setRetryNonce((n) => n + 1);
   }, []);
 
   // Pan to selected service
@@ -399,6 +408,7 @@ export default function LeafletMapComponent({
             }}
             mode={routingTarget.mode}
             color={routingTarget.mode.color}
+            retryNonce={retryNonce}
             onRouteFound={handleRouteFound}
             onRoutingError={handleRoutingError}
             onLoading={setLoading}
@@ -510,7 +520,9 @@ export default function LeafletMapComponent({
       )}
 
       {/* ═════════════════════ ROUTE PANEL (client only) ═════════════════ */}
-      {!isProviderMode && routeInfo && !loading && (
+      {/* Reste affiché même après une erreur de routage : l'utilisateur peut
+          changer de mode ou réessayer sans repartir du marqueur. */}
+      {!isProviderMode && routingTarget && !loading && (
         <div className="lmap-route-panel animate-slideInRight">
           <div className="lmap-panel-handle" />
 
@@ -518,9 +530,9 @@ export default function LeafletMapComponent({
           <div className="lmap-route-header">
             <div className="lmap-route-dest-dot" style={{ background: activeMode.color }} />
             <div className="flex-1 min-w-0">
-              <div className="lmap-route-dest-name">{routeInfo.service.name}</div>
+              <div className="lmap-route-dest-name">{routingTarget.service.name}</div>
               <div className="text-xs text-muted truncate">
-                {routeInfo.service.location.address}
+                {routingTarget.service.location.address}
               </div>
             </div>
             <button onClick={clearRoute} className="lmap-close-route-btn" aria-label="Fermer">
@@ -546,7 +558,22 @@ export default function LeafletMapComponent({
             ))}
           </div>
 
+          {/* Erreur pour le mode actuel : on garde le panneau ouvert et on
+              propose de réessayer ou de changer de mode. */}
+          {error && !routeInfo && (
+            <div className="lmap-route-retry">
+              <p className="text-sm text-error mb-2">
+                Itinéraire {activeMode.label.toLowerCase()} indisponible pour le moment.
+              </p>
+              <button onClick={retryRoute} className="btn btn-ghost btn-sm">
+                Réessayer
+              </button>
+            </div>
+          )}
+
           {/* Stats — totalDistance and totalTime come straight from OSRM via LRM */}
+          {routeInfo && (
+          <>
           <div className="lmap-stats-row">
             <div className="lmap-stat-cell">
               <MapPinIcon className="w-4 h-4 text-muted" />
@@ -611,6 +638,7 @@ export default function LeafletMapComponent({
               )}
             </div>
           )}
+          </>)}
 
           {/* Start navigation CTA */}
           <button

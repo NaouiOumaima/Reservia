@@ -19,18 +19,26 @@ export class AdminSeedService implements OnModuleInit {
 
   async seedAdmin() {
     try {
-      const adminEmail = this.configService.get<string>('ADMIN_EMAIL', 'admin@test.com');
-      const adminPassword = this.configService.get<string>('ADMIN_PASSWORD', '12345678');
+      const adminEmail = this.configService.get<string>(
+        'ADMIN_EMAIL',
+        'admin@test.com',
+      );
+      const adminPassword = this.configService.get<string>(
+        'ADMIN_PASSWORD',
+        '12345678',
+      );
 
       // Vérifier si l'admin existe déjà
-      const existingAdmin = await this.userModel.findOne({ email: adminEmail }).exec();
-      
+      const existingAdmin = await this.userModel
+        .findOne({ email: adminEmail })
+        .exec();
+
       if (!existingAdmin) {
         console.log('🔧 Creating default admin user...');
-        
+
         // Hasher le mot de passe
         const hashedPassword = await bcrypt.hash(adminPassword, 10);
-        
+
         // Créer l'admin
         const admin = new this.userModel({
           email: adminEmail,
@@ -44,7 +52,7 @@ export class AdminSeedService implements OnModuleInit {
           createdAt: new Date(),
           updatedAt: new Date(),
         });
-        
+
         await admin.save();
         console.log('✅ Default admin created successfully!');
         console.log(`📧 Email: ${adminEmail}`);

@@ -1,10 +1,21 @@
-import { Injectable, UnauthorizedException, ConflictException, BadRequestException, NotFoundException, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  BadRequestException,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
-import { User, UserDocument, UserRole } from '../../database/schemas/user.schema';
+import {
+  User,
+  UserDocument,
+  UserRole,
+} from '../../database/schemas/user.schema';
 import { EmailService } from '../email/email.service';
 import { ConfigService } from '@nestjs/config';
 
@@ -23,15 +34,21 @@ export class AuthService implements OnModuleInit {
 
   private async createDefaultAdmin() {
     try {
-      const adminEmail = this.configService.get<string>('ADMIN_EMAIL', 'admin@test.com');
-      const adminPassword = this.configService.get<string>('ADMIN_PASSWORD', '12345678');
+      const adminEmail = this.configService.get<string>(
+        'ADMIN_EMAIL',
+        'admin@test.com',
+      );
+      const adminPassword = this.configService.get<string>(
+        'ADMIN_PASSWORD',
+        '12345678',
+      );
 
       const existingAdmin = await this.userModel.findOne({ email: adminEmail });
-      
+
       if (!existingAdmin) {
         console.log('🔧 Creating default admin user...');
         const hashedPassword = await bcrypt.hash(adminPassword, 12);
-        
+
         const admin = new this.userModel({
           email: adminEmail,
           password: hashedPassword,
@@ -42,7 +59,7 @@ export class AuthService implements OnModuleInit {
           isActive: true,
           isEmailVerified: true,
         });
-        
+
         await admin.save();
         console.log('✅ Default admin created successfully!');
       }
@@ -70,7 +87,8 @@ export class AuthService implements OnModuleInit {
     const verificationExpires = new Date();
     verificationExpires.setHours(verificationExpires.getHours() + 24);
 
-    const userRole = data.role === 'provider' ? UserRole.PROVIDER : UserRole.CLIENT;
+    const userRole =
+      data.role === 'provider' ? UserRole.PROVIDER : UserRole.CLIENT;
 
     const userData: any = {
       email: data.email,
@@ -111,10 +129,10 @@ export class AuthService implements OnModuleInit {
         verificationToken,
         data.firstName,
         data.lastName,
-        userRole
+        userRole,
       );
     } catch (emailError) {
-      console.error('Email sending failed but user created');
+      console.error('Email sending failed but user created:', emailError);
     }
 
     return {
@@ -139,15 +157,21 @@ export class AuthService implements OnModuleInit {
     user.isEmailVerified = true;
     user.emailVerificationToken = null;
     user.emailVerificationExpires = null;
-    
+
     if (user.role === UserRole.PROVIDER) {
       user.providerStatus = 'active';
     }
 
     await user.save();
 
-    const tokens = this.generateTokens(user._id.toString(), user.email, user.role);
-    await this.userModel.findByIdAndUpdate(user._id, { refreshToken: tokens.refreshToken });
+    const tokens = this.generateTokens(
+      user._id.toString(),
+      user.email,
+      user.role,
+    );
+    await this.userModel.findByIdAndUpdate(user._id, {
+      refreshToken: tokens.refreshToken,
+    });
 
     return {
       success: true,
@@ -160,7 +184,7 @@ export class AuthService implements OnModuleInit {
 
   async login(email: string, password: string) {
     const user = await this.userModel.findOne({ email });
-    
+
     if (!user) {
       throw new UnauthorizedException('Email ou mot de passe incorrect');
     }
@@ -174,71 +198,85 @@ export class AuthService implements OnModuleInit {
       throw new UnauthorizedException('Votre compte a été désactivé');
     }
 
-    if (user.role === UserRole.CLIENT && !user.isEmailVerified) {
-      throw new UnauthorizedException('Veuillez confirmer votre email');
-    }
-
     user.lastLogin = new Date();
     await user.save();
 
-    const tokens = this.generateTokens(user._id.toString(), user.email, user.role);
-    await this.userModel.findByIdAndUpdate(user._id, { refreshToken: tokens.refreshToken });
+    const requiresVerification =
+      user.role === UserRole.CLIENT && !user.isEmailVerified;
+
+    if (requiresVerification) {
+      return {
+        user: this.sanitizeUser(user),
+        requiresVerification: true,
+        message: 'Veuillez confirmer votre email avant de continuer',
+      };
+    }
+
+    const tokens = this.generateTokens(
+      user._id.toString(),
+      user.email,
+      user.role,
+    );
+    await this.userModel.findByIdAndUpdate(user._id, {
+      refreshToken: tokens.refreshToken,
+    });
+
+    return {
+      user: this.sanitizeUser(user),
+      requiresVerification: false,
+      ...tokens,
+    };
+  }
+
+  async loginOrCreateWithGoogle(data: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    picture?: string;
+    role?: string;
+    businessName?: string;
+  }) {
+    // Chercher l'utilisateur existant
+    let user = await this.userModel.findOne({ email: data.email });
+    const role = data.role === 'provider' ? UserRole.PROVIDER : UserRole.CLIENT;
+
+    if (!user) {
+      // Créer un nouvel utilisateur sans mot de passe (auth Google)
+      user = new this.userModel({
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        password: '', // Pas de mot de passe pour les comptes Google
+        role: role,
+        businessName: data.businessName || undefined,
+        isActive: true,
+        isEmailVerified: true, // Google garantit l'email vérifié
+        googleId: data.email, // Marqueur compte Google
+        providerStatus: 'active',
+      });
+      await user.save();
+      console.log(`✅ New ${role} user created via Google:`, user._id);
+    } else {
+      // Mettre à jour la dernière connexion
+      user.lastLogin = new Date();
+      await user.save();
+    }
+
+    const tokens = this.generateTokens(
+      user._id.toString(),
+      user.email,
+      user.role,
+    );
+
+    await this.userModel.findByIdAndUpdate(user._id, {
+      refreshToken: tokens.refreshToken,
+    });
 
     return {
       user: this.sanitizeUser(user),
       ...tokens,
     };
   }
-
-  async loginOrCreateWithGoogle(data: {
-  email: string;
-  firstName: string;
-  lastName: string;
-  picture?: string;
-  role?: string;
-  businessName?: string;
-}) {
-  // Chercher l'utilisateur existant
-  let user = await this.userModel.findOne({ email: data.email });
-  const role = data.role === 'provider' ? UserRole.PROVIDER : UserRole.CLIENT;
- 
-  if (!user) {
-    // Créer un nouvel utilisateur sans mot de passe (auth Google)
-    user = new this.userModel({
-      email: data.email,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      password: '', // Pas de mot de passe pour les comptes Google
-      role: role,
-      businessName: data.businessName || undefined,
-      isActive: true,
-      isEmailVerified: true, // Google garantit l'email vérifié
-      googleId: data.email,  // Marqueur compte Google
-      providerStatus: 'active',
-    });
-    await user.save();
-    console.log(`✅ New ${role} user created via Google:`, user._id);
-  } else {
-    // Mettre à jour la dernière connexion
-    user.lastLogin = new Date();
-    await user.save();
-  }
- 
-  const tokens = this.generateTokens(
-    user._id.toString(),
-    user.email,
-    user.role,
-  );
- 
-  await this.userModel.findByIdAndUpdate(user._id, {
-    refreshToken: tokens.refreshToken,
-  });
- 
-  return {
-    user: this.sanitizeUser(user),
-    ...tokens,
-  };
-}
   async getCurrentUser(userId: string) {
     const user = await this.userModel.findById(userId);
     if (!user) {
@@ -256,8 +294,14 @@ export class AuthService implements OnModuleInit {
         throw new UnauthorizedException('Refresh token invalide');
       }
 
-      const tokens = this.generateTokens(user._id.toString(), user.email, user.role);
-      await this.userModel.findByIdAndUpdate(user._id, { refreshToken: tokens.refreshToken });
+      const tokens = this.generateTokens(
+        user._id.toString(),
+        user.email,
+        user.role,
+      );
+      await this.userModel.findByIdAndUpdate(user._id, {
+        refreshToken: tokens.refreshToken,
+      });
 
       return tokens;
     } catch {
@@ -309,7 +353,4 @@ export class AuthService implements OnModuleInit {
     delete userObject.emailVerificationExpires;
     return userObject;
   }
-
-
-  
 }

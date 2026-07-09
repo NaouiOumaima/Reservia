@@ -101,13 +101,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const login = async (credentials: LoginCredentials) => {
     try {
       const res = await loginApi(credentials);
-      const normalizedUser = normalizeUser(res.user); 
+      const normalizedUser = normalizeUser(res.user);
       setUser(normalizedUser);
       localStorage.setItem('user', JSON.stringify(normalizedUser));
-      localStorage.setItem('user', JSON.stringify(res.user));
-      localStorage.setItem('accessToken', res.accessToken);
-      localStorage.setItem('refreshToken', res.refreshToken);
-      setCookie('accessToken', res.accessToken, 7);
+      if (res.accessToken && res.refreshToken) {
+        localStorage.setItem('accessToken', res.accessToken);
+        localStorage.setItem('refreshToken', res.refreshToken);
+        setCookie('accessToken', res.accessToken, 7);
+      }
     } catch (error: any) {
       // ✅ Si erreur 401, nettoyer les tokens
       if (error?.response?.status === 401) {
@@ -123,12 +124,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const res = await registerApi(data);
       const normalizedUser = normalizeUser(res.user);
       setUser(normalizedUser);
-      if (res.accessToken) {
-        localStorage.setItem('user', JSON.stringify(res.user));
+      if (res.accessToken && res.refreshToken) {
+        localStorage.setItem('user', JSON.stringify(normalizedUser));
         localStorage.setItem('accessToken', res.accessToken);
         localStorage.setItem('refreshToken', res.refreshToken);
-        localStorage.setItem('user', JSON.stringify(normalizedUser));
-
         setCookie('accessToken', res.accessToken, 7);
       }
     } catch (error: any) {

@@ -1,4 +1,4 @@
-// frontend/lib/api/client.ts
+// frontend/lib/api/config.ts
 import axios from 'axios';
 import { getAccessToken } from '@/lib/helpers/storage';
 

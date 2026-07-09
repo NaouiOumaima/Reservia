@@ -1,15 +1,15 @@
 // features/provider/hooks/useProviderServices.ts
 
 import { useState, useEffect, useCallback } from 'react';
-import { servicesApi } from '@/lib/api/client';
-import { Service } from '@/types';
+import { servicesApi } from '@/lib/api';
+import { CreateServiceData, Service } from '@/lib/api/services/types';
 
 interface UseProviderServicesReturn {
   services: Service[];
   loading: boolean;
   error: string | null;
   fetchServices: () => Promise<void>;
-  createService: (data: Partial<Service>) => Promise<Service>;
+  createService: (data: CreateServiceData) => Promise<Service>;
   updateService: (id: string, data: Partial<Service>) => Promise<void>;
   deleteService: (id: string) => Promise<void>;
   toggleServiceActive: (id: string) => Promise<void>;
@@ -24,8 +24,8 @@ export function useProviderServices(): UseProviderServicesReturn {
     setLoading(true);
     setError(null);
     try {
-      const response = await servicesApi.getByProvider('');
-      setServices(response.data || response);
+      const services = await servicesApi.getByProvider();
+      setServices(services);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erreur lors du chargement des services');
     } finally {
@@ -33,12 +33,11 @@ export function useProviderServices(): UseProviderServicesReturn {
     }
   }, []);
 
-  const createService = useCallback(async (data: Partial<Service>): Promise<Service> => {
+  const createService = useCallback(async (data: CreateServiceData): Promise<Service> => {
     setLoading(true);
     setError(null);
     try {
-      const response = await servicesApi.create(data);
-      const newService = response.data;
+      const newService = await servicesApi.create(data);
       setServices(prev => [newService, ...prev]);
       return newService;
     } catch (err: any) {
@@ -53,8 +52,7 @@ export function useProviderServices(): UseProviderServicesReturn {
     setLoading(true);
     setError(null);
     try {
-      const response = await servicesApi.update(id, data);
-      const updatedService = response.data;
+      const updatedService = await servicesApi.update(id, data);
       setServices(prev => prev.map(s => s._id === id ? updatedService : s));
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erreur lors de la mise à jour du service');
@@ -80,8 +78,7 @@ export function useProviderServices(): UseProviderServicesReturn {
 
   const toggleServiceActive = useCallback(async (id: string) => {
     try {
-      const response = await servicesApi.toggleActive(id);
-      const updatedService = response.data;
+      const updatedService = await servicesApi.toggleActive(id);
       setServices(prev => prev.map(s => s._id === id ? updatedService : s));
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erreur lors du changement de statut');

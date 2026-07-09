@@ -33,7 +33,7 @@ export default function LoginPage() {
     try {
       await login({ email, password });
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Email ou mot de passe incorrect');
+      setError(err.response?.data?.message || err.message || 'Email ou mot de passe incorrect');
       setIsLoading(false);
     }
   };

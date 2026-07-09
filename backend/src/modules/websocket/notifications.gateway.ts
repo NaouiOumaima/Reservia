@@ -11,11 +11,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
-
-interface ConnectedClient {
-  userId: string;
-  socketId: string;
-}
+import { JwtService } from '@nestjs/jwt';
 
 @WebSocketGateway({
   cors: {
@@ -24,68 +20,91 @@ interface ConnectedClient {
   },
   namespace: '/notifications',
 })
-export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class NotificationsGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server!: Server;
 
   private readonly logger = new Logger(NotificationsGateway.name);
-  private connectedClients: Map<string, ConnectedClient[]> = new Map();
+
+  constructor(private readonly jwtService: JwtService) {}
 
   handleConnection(client: Socket) {
-    this.logger.log(`Client connecté: ${client.id}`);
+    const token = client.handshake.auth?.token as string | undefined;
+    if (!token) {
+      this.logger.log(`Client connecté sans token: ${client.id}`);
+      return;
+    }
+
+    try {
+      const payload = this.jwtService.verify(token);
+      const userId = payload.sub || payload._id || payload.id;
+      if (userId) {
+        client.data.userId = userId;
+        void client.join(`user:${userId}`);
+        this.logger.log(`User ${userId} connecté et rejoint sa room`);
+      }
+    } catch {
+      this.logger.warn(`Token socket invalide pour ${client.id}`);
+    }
   }
 
   handleDisconnect(client: Socket) {
     this.logger.log(`Client déconnecté: ${client.id}`);
-    this.removeClient(client.id);
   }
 
+  // Conservé en fallback pour compatibilité, le join se fait normalement
+  // automatiquement à la connexion via le token d'authentification.
   @SubscribeMessage('subscribe')
-  handleSubscribe(@ConnectedSocket() client: Socket, @MessageBody() data: { userId: string }) {
+  handleSubscribe(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { userId: string },
+  ) {
     if (!data?.userId) return;
 
-    this.addClient(data.userId, client.id);
-    client.join(`user:${data.userId}`);
-    this.logger.log(`User ${data.userId} subscribed to notifications`);
-
+    void client.join(`user:${data.userId}`);
     client.emit('subscribed', { success: true });
   }
 
   @SubscribeMessage('unsubscribe')
-  handleUnsubscribe(@ConnectedSocket() client: Socket, @MessageBody() data: { userId: string }) {
+  handleUnsubscribe(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { userId: string },
+  ) {
     if (!data?.userId) return;
 
-    this.removeClient(client.id);
-    client.leave(`user:${data.userId}`);
-    this.logger.log(`User ${data.userId} unsubscribed`);
-
+    void client.leave(`user:${data.userId}`);
     client.emit('unsubscribed', { success: true });
   }
 
   sendNotificationToUser(userId: string, notification: any) {
-    this.server.to(`user:${userId}`).emit('notification', notification);
-    this.logger.log(`Notification sent to user ${userId}`);
+    this.server.to(`user:${userId}`).emit('new_notification', notification);
+    this.logger.log(`Notification envoyée à ${userId}`);
   }
 
   sendNotificationToAll(notification: any) {
-    this.server.emit('notification', notification);
-    this.logger.log('Notification broadcast to all clients');
+    this.server.emit('new_notification', notification);
+    this.logger.log('Notification diffusée à tous les clients');
   }
 
-  private addClient(userId: string, socketId: string) {
-    const clients = this.connectedClients.get(userId) || [];
-    clients.push({ userId, socketId });
-    this.connectedClients.set(userId, clients);
+  emitNotificationRead(userId: string, notificationId: string) {
+    this.server.to(`user:${userId}`).emit('notification_read', {
+      notificationId,
+    });
   }
 
-  private removeClient(socketId: string) {
-    for (const [userId, clients] of this.connectedClients.entries()) {
-      const filtered = clients.filter(c => c.socketId !== socketId);
-      if (filtered.length === 0) {
-        this.connectedClients.delete(userId);
-      } else {
-        this.connectedClients.set(userId, filtered);
-      }
-    }
+  emitAllNotificationsRead(userId: string) {
+    this.server.to(`user:${userId}`).emit('all_notifications_read', {});
+  }
+
+  emitNotificationDeleted(userId: string, notificationId: string) {
+    this.server.to(`user:${userId}`).emit('notification_deleted', {
+      notificationId,
+    });
+  }
+
+  emitReservationUpdate(userId: string, reservation: any) {
+    this.server.to(`user:${userId}`).emit('reservation_updated', reservation);
   }
 }

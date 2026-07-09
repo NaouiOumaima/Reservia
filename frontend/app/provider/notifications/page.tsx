@@ -112,56 +112,59 @@ function AdvertisementCard({ ad, onDelete, onRefresh }: { ad: Advertisement; onD
   };
 
   return (
-    <div className="ad-card">
+    <div className="card p-0 overflow-hidden">
       <div className="flex flex-col md:flex-row">
         <div className="md:w-48 flex-shrink-0">
           {imageUrl && !imageError ? (
-            <img src={imageUrl} alt={ad.title} className="ad-card-image" onError={() => setImageError(true)} />
+            <img src={imageUrl} alt={ad.title} className="w-full h-32 object-cover" onError={() => setImageError(true)} />
           ) : (
-            <div className="ad-card-image-placeholder">
+            <div className="w-full h-32 flex flex-col items-center justify-center bg-surface-raised text-muted">
               <ImageIcon className="w-8 h-8" />
-              <span className="text-xs text-subtle">Pas d'image</span>
+              <span className="text-xs">Pas d&apos;image</span>
             </div>
           )}
         </div>
         
-        <div className="ad-card-content flex-1">
+        <div className="flex-1 p-4">
           <div className="flex items-start justify-between flex-wrap gap-2">
             <div>
-              <h3 className="ad-card-title">{ad.title}</h3>
-              <p className="ad-card-description">{ad.description}</p>
+              <h3 className="font-semibold text-foreground">{ad.title}</h3>
+              <p className="text-sm text-muted line-clamp-2">{ad.description}</p>
             </div>
             <span className={`badge ${isActive ? 'badge-success' : 'badge-secondary'}`}>
               {isActive ? 'Actif' : 'Inactif'}
             </span>
           </div>
           
-          <div className="ad-card-meta">
+          <div className="flex flex-wrap gap-4 text-xs text-muted mt-2">
             {ad.discountCode && (
-              <div className="ad-card-meta-item">
+              <span className="flex items-center gap-1">
                 <DiscountIcon className="w-3 h-3" />
-                <span>Code: {ad.discountCode}</span>
-                {ad.discountPercentage && <span>(-{ad.discountPercentage}%)</span>}
-              </div>
+                Code: {ad.discountCode} {ad.discountPercentage && `(-${ad.discountPercentage}%)`}
+              </span>
             )}
             {ad.validUntil && (
-              <div className="ad-card-meta-item">
+              <span className="flex items-center gap-1">
                 <CalendarIcon className="w-3 h-3" />
-                <span>Expire: {new Date(ad.validUntil).toLocaleDateString('fr-FR')}</span>
-              </div>
+                Expire: {new Date(ad.validUntil).toLocaleDateString('fr-FR')}
+              </span>
             )}
-            <div className="ad-card-meta-item">
+            <span className="flex items-center gap-1">
               <EyeIcon className="w-3 h-3" />
-              <span>{ad.viewsCount} vues</span>
-            </div>
-            <div className="ad-card-meta-item">
+              {ad.viewsCount} vues
+            </span>
+            <span className="flex items-center gap-1">
               <ClockIcon className="w-3 h-3" />
-              <span>Créée: {new Date(ad.createdAt).toLocaleDateString('fr-FR')}</span>
-            </div>
+              Créée: {new Date(ad.createdAt).toLocaleDateString('fr-FR')}
+            </span>
           </div>
           
-          <div className="ad-card-actions">
-            <button onClick={handleDelete} disabled={deleting} className="btn btn-sm bg-error/10 text-error hover:bg-error hover:text-white">
+          <div className="mt-3 flex justify-end">
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="btn btn-ghost btn-sm text-error hover:bg-error/10"
+            >
               {deleting ? <Loader2Icon className="w-4 h-4 animate-spin" /> : <TrashIcon className="w-4 h-4" />}
               Supprimer
             </button>
@@ -279,125 +282,120 @@ export default function ProviderNotificationsPage() {
     <>
       <Toaster position="top-right" />
 
-      <div className="provider-notifications-page">
-        <div className="notifications-container">
+      <div className="bg-background min-h-screen py-8">
+        <div className="container-app">
 
-          {/* Header */}
-          <div className="notifications-header">
+          <div className="mb-8">
             <button onClick={() => router.back()} className="btn btn-ghost btn-sm mb-4">
               <ChevronLeftIcon className="w-4 h-4" />
               Retour
             </button>
-            <h1>Gestion des annonces</h1>
-            <p className="notifications-subtitle">Créez et gérez vos annonces publicitaires</p>
+            <h1 className="text-2xl font-bold gradient-text">Gestion des annonces</h1>
+            <p className="text-muted mt-1">Créez et gérez vos annonces publicitaires</p>
           </div>
 
-          {/* Stats Row */}
-          <div className="stats-row animate-fadeInUp">
-            <div className="stat-card-mini">
-              <div className="stat-card-mini-value">{activeAds.length}</div>
-              <div className="stat-card-mini-label">Actives</div>
+          <div className="grid grid-cols-3 gap-4 mb-6 animate-fadeInUp">
+            <div className="card text-center py-3">
+              <div className="text-2xl font-bold text-primary">{activeAds.length}</div>
+              <div className="text-sm text-muted">Actives</div>
             </div>
-            <div className="stat-card-mini">
-              <div className="stat-card-mini-value">{archivedAds.length}</div>
-              <div className="stat-card-mini-label">Archivées</div>
+            <div className="card text-center py-3">
+              <div className="text-2xl font-bold text-foreground">{archivedAds.length}</div>
+              <div className="text-sm text-muted">Archivées</div>
             </div>
-            <div className="stat-card-mini">
-              <div className="stat-card-mini-value">{advertisements.length}</div>
-              <div className="stat-card-mini-label">Total</div>
+            <div className="card text-center py-3">
+              <div className="text-2xl font-bold text-foreground">{advertisements.length}</div>
+              <div className="text-sm text-muted">Total</div>
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="notifications-tabs">
+          <div className="flex flex-wrap gap-2 mb-6 border-b border-border pb-2">
             <button
               onClick={() => setActiveTab('create')}
-              className={`notifications-tab ${activeTab === 'create' ? 'active' : ''}`}
+              className={`btn ${activeTab === 'create' ? 'btn-primary' : 'btn-ghost'}`}
             >
               <MegaphoneIcon className="w-4 h-4" />
               Créer
             </button>
             <button
               onClick={() => setActiveTab('active')}
-              className={`notifications-tab ${activeTab === 'active' ? 'active' : ''}`}
+              className={`btn ${activeTab === 'active' ? 'btn-primary' : 'btn-ghost'}`}
             >
               <CheckCircleIcon className="w-4 h-4" />
               Actives
               {!initialLoading && (
-                <span className="notifications-tab-badge">{activeAds.length}</span>
+                <span className="badge badge-primary ml-1">{activeAds.length}</span>
               )}
             </button>
             <button
               onClick={() => setActiveTab('archived')}
-              className={`notifications-tab ${activeTab === 'archived' ? 'active' : ''}`}
+              className={`btn ${activeTab === 'archived' ? 'btn-primary' : 'btn-ghost'}`}
             >
               <ArchiveIcon className="w-4 h-4" />
               Archives
               {!initialLoading && (
-                <span className="notifications-tab-badge">{archivedAds.length}</span>
+                <span className="badge badge-primary ml-1">{archivedAds.length}</span>
               )}
             </button>
           </div>
 
-          {/* Loading State */}
           {initialLoading && (
-            <div className="loading-spinner">
+            <div className="flex flex-col items-center justify-center py-12 gap-4">
               <Loader2Icon className="w-8 h-8 animate-spin text-primary" />
               <p className="text-muted">Chargement de vos annonces...</p>
             </div>
           )}
 
-          {/* Onglet Création */}
           {!initialLoading && activeTab === 'create' && (
-            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-              {/* Image Upload */}
-              <div className="form-section">
-                <div className="form-section-title">
+            <form onSubmit={handleSubmit} className="space-y-6">
+
+              <div className="card">
+                <div className="flex items-center gap-2 mb-4">
                   <UploadIcon className="w-5 h-5 text-primary" />
-                  Image
-                  <span className="badge badge-primary ml-2">Obligatoire</span>
+                  <span className="font-semibold text-foreground">Image</span>
+                  <span className="badge badge-primary">Obligatoire</span>
                 </div>
-                <div className="image-upload-zone" onClick={() => document.getElementById('image-upload')?.click()}>
+                <div
+                  className="border-2 border-dashed border-border rounded-app p-6 text-center cursor-pointer hover:border-primary transition-colors"
+                  onClick={() => document.getElementById('image-upload')?.click()}
+                >
                   {imagePreview ? (
-                    <div className="image-preview">
-                      <img src={imagePreview} alt="Aperçu" className="image-preview-img" />
+                    <div className="relative inline-block">
+                      <img src={imagePreview} alt="Aperçu" className="max-w-xs max-h-48 rounded-app shadow-md" />
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); setImagePreview(null); }}
-                        className="image-preview-remove"
+                        className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-error text-white flex items-center justify-center border-2 border-surface"
                       >
                         <CloseIcon className="w-3 h-3" />
                       </button>
                     </div>
                   ) : (
                     <>
-                      <UploadIcon className="image-upload-icon" />
+                      <UploadIcon className="w-12 h-12 mx-auto text-muted mb-4" />
                       <p className="text-muted mb-2">Cliquez ou glissez une image</p>
                       <input id="image-upload" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageSelect} className="hidden" />
-                      <p className="text-subtle text-xs">PNG, JPG, WEBP — max 5MB</p>
+                      <p className="text-xs text-subtle">PNG, JPG, WEBP — max 5MB</p>
                     </>
                   )}
                 </div>
               </div>
 
-              {/* Title */}
-              <div className="form-section">
+              <div className="card">
                 <label className="label">Titre</label>
                 <input type="text" required value={formData.title} onChange={set('title')} className="input" placeholder="Ex: -20% sur tous nos services" />
               </div>
 
-              {/* Description */}
-              <div className="form-section">
+              <div className="card">
                 <label className="label">Description</label>
                 <textarea required rows={4} value={formData.description} onChange={set('description')} className="input resize-y" placeholder="Détails de votre offre..." />
               </div>
 
-              {/* Promo Offer */}
-              <div className="form-section">
-                <div className="form-section-title">
+              <div className="card">
+                <div className="flex items-center gap-2 mb-4">
                   <TagIcon className="w-5 h-5 text-primary" />
-                  Offre promotionnelle
-                  <span className="badge badge-primary ml-2">Optionnel</span>
+                  <span className="font-semibold text-foreground">Offre promotionnelle</span>
+                  <span className="badge badge-primary">Optionnel</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -417,40 +415,34 @@ export default function ProviderNotificationsPage() {
                 </div>
               </div>
 
-              {/* Expiration Date */}
-              <div className="form-section">
-                <div className="form-section-title">
+              <div className="card">
+                <div className="flex items-center gap-2 mb-4">
                   <CalendarIcon className="w-5 h-5 text-primary" />
-                  Date d'expiration
-                  <span className="badge badge-primary ml-2">Optionnel</span>
+                  <span className="font-semibold text-foreground">Date d&apos;expiration</span>
+                  <span className="badge badge-primary">Optionnel</span>
                 </div>
                 <input type="date" value={formData.validUntil} onChange={set('validUntil')} className="input" min={new Date().toISOString().split('T')[0]} />
-                <p className="text-subtle text-xs mt-2">Laissez vide pour une durée illimitée</p>
+                <p className="text-xs text-subtle mt-2">Laissez vide pour une durée illimitée</p>
               </div>
 
-              {/* Info Panel */}
-              <div className="info-panel">
-                <div className="info-panel-content">
-                  <CheckCircleIcon className="info-panel-icon w-5 h-5" />
-                  <div>
-                    <p className="info-panel-title">Envoyée à tous les clients actifs</p>
-                    <p className="info-panel-text">L'annonce sera envoyée uniquement aux clients avec un compte activé et non banni.</p>
-                  </div>
+              <div className="alert alert-success">
+                <CheckCircleIcon className="w-5 h-5 flex-shrink-0" />
+                <div>
+                  <p className="font-semibold">Envoyée à tous les clients actifs</p>
+                  <p className="text-sm text-muted">L&apos;annonce sera envoyée uniquement aux clients avec un compte activé et non banni.</p>
                 </div>
               </div>
 
-              {/* Submit Button */}
               <button type="submit" disabled={loading || !imagePreview} className="btn btn-primary btn-lg w-full">
                 {loading ? (
                   <><Loader2Icon className="w-5 h-5 animate-spin" /> Création...</>
                 ) : (
-                  <><MegaphoneIcon className="w-5 h-5" /> Publier l'annonce</>
+                  <><MegaphoneIcon className="w-5 h-5" /> Publier l&apos;annonce</>
                 )}
               </button>
             </form>
           )}
 
-          {/* Onglet Annonces Actives */}
           {!initialLoading && activeTab === 'active' && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
@@ -462,17 +454,17 @@ export default function ProviderNotificationsPage() {
               </div>
 
               {loadingAds ? (
-                <div className="loading-spinner">
+                <div className="flex flex-col items-center py-12 gap-4">
                   <Loader2Icon className="w-8 h-8 animate-spin text-primary" />
                   <p className="text-muted">Chargement...</p>
                 </div>
               ) : activeAds.length === 0 ? (
-                <div className="empty-state">
-                  <div className="empty-state-icon">
+                <div className="card text-center py-12">
+                  <div className="avatar avatar-xl bg-primary-soft text-primary mx-auto mb-4">
                     <MegaphoneIcon className="w-8 h-8" />
                   </div>
-                  <h3 className="empty-state-title">Aucune annonce active</h3>
-                  <p className="empty-state-text">Créez votre première annonce dans l'onglet "Créer"</p>
+                  <h3 className="text-lg font-semibold text-foreground">Aucune annonce active</h3>
+                  <p className="text-muted">Créez votre première annonce dans l&apos;onglet &quot;Créer&quot;</p>
                 </div>
               ) : (
                 activeAds.map((ad) => (
@@ -482,7 +474,6 @@ export default function ProviderNotificationsPage() {
             </div>
           )}
 
-          {/* Onglet Archives */}
           {!initialLoading && activeTab === 'archived' && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
@@ -494,17 +485,17 @@ export default function ProviderNotificationsPage() {
               </div>
 
               {loadingAds ? (
-                <div className="loading-spinner">
+                <div className="flex flex-col items-center py-12 gap-4">
                   <Loader2Icon className="w-8 h-8 animate-spin text-primary" />
                   <p className="text-muted">Chargement...</p>
                 </div>
               ) : archivedAds.length === 0 ? (
-                <div className="empty-state">
-                  <div className="empty-state-icon">
+                <div className="card text-center py-12">
+                  <div className="avatar avatar-xl bg-primary-soft text-primary mx-auto mb-4">
                     <ArchiveIcon className="w-8 h-8" />
                   </div>
-                  <h3 className="empty-state-title">Aucune annonce archivée</h3>
-                  <p className="empty-state-text">Les annonces expirées apparaîtront ici</p>
+                  <h3 className="text-lg font-semibold text-foreground">Aucune annonce archivée</h3>
+                  <p className="text-muted">Les annonces expirées apparaîtront ici</p>
                 </div>
               ) : (
                 archivedAds.map((ad) => (
@@ -513,6 +504,7 @@ export default function ProviderNotificationsPage() {
               )}
             </div>
           )}
+
         </div>
       </div>
     </>

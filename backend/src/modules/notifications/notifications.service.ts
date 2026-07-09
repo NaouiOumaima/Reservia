@@ -1,8 +1,15 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Notification, NotificationDocument, NotificationType } from '../../database/schemas/notification.schema';
-import { Advertisement, AdvertisementDocument } from '../../database/schemas/advertisement.schema';
+import {
+  Notification,
+  NotificationDocument,
+  NotificationType,
+} from '../../database/schemas/notification.schema';
+import {
+  Advertisement,
+  AdvertisementDocument,
+} from '../../database/schemas/advertisement.schema';
 import { NotificationsGateway } from '../websocket/notifications.gateway';
 
 @Injectable()
@@ -10,8 +17,10 @@ export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
   constructor(
-    @InjectModel(Notification.name) private notificationModel: Model<NotificationDocument>,
-    @InjectModel(Advertisement.name) private advertisementModel: Model<AdvertisementDocument>,
+    @InjectModel(Notification.name)
+    private notificationModel: Model<NotificationDocument>,
+    @InjectModel(Advertisement.name)
+    private advertisementModel: Model<AdvertisementDocument>,
     private notificationsGateway: NotificationsGateway,
   ) {}
 
@@ -28,7 +37,9 @@ export class NotificationsService {
       type,
       title,
       message,
-      reservationId: reservationId ? new Types.ObjectId(reservationId) : undefined,
+      reservationId: reservationId
+        ? new Types.ObjectId(reservationId)
+        : undefined,
       data,
       isRead: false,
       channels: ['in_app'],
@@ -58,7 +69,7 @@ export class NotificationsService {
       discountCode?: string;
       discountPercentage?: number;
       validUntil?: string;
-    }
+    },
   ) {
     const notification = new this.notificationModel({
       userId: new Types.ObjectId(userId),
@@ -109,9 +120,9 @@ export class NotificationsService {
       discountCode?: string;
       discountPercentage?: number;
       validUntil?: string;
-    }
+    },
   ): Promise<number> {
-    const notifications = userIds.map(userId => ({
+    const notifications = userIds.map((userId) => ({
       userId: new Types.ObjectId(userId),
       type: NotificationType.ADVERTISEMENT,
       title: `📢 ${data.title}`,
@@ -133,7 +144,7 @@ export class NotificationsService {
 
     const result = await this.notificationModel.insertMany(notifications);
 
-    userIds.forEach(userId => {
+    userIds.forEach((userId) => {
       this.notificationsGateway.sendNotificationToUser(userId, {
         id: result[0]._id.toString(),
         type: NotificationType.ADVERTISEMENT,
@@ -165,7 +176,11 @@ export class NotificationsService {
     );
   }
 
-  async sendReservationReminder(userId: string, reservation: any, hoursBefore: number = 2) {
+  async sendReservationReminder(
+    userId: string,
+    reservation: any,
+    hoursBefore: number = 2,
+  ) {
     const serviceName = reservation.service?.name || 'Service';
     const startTime = new Date(reservation.startTime).toLocaleString('fr-FR');
 
@@ -205,7 +220,11 @@ export class NotificationsService {
     );
   }
 
-  async findByUserId(userId: string, unreadOnly: boolean = false, limit: number = 50) {
+  async findByUserId(
+    userId: string,
+    unreadOnly: boolean = false,
+    limit: number = 50,
+  ) {
     const query: any = { userId: new Types.ObjectId(userId) };
     if (unreadOnly) query.isRead = false;
 
@@ -220,7 +239,7 @@ export class NotificationsService {
     userId: string,
     page: number = 1,
     limit: number = 20,
-    unreadOnly: boolean = false
+    unreadOnly: boolean = false,
   ) {
     const skip = (page - 1) * limit;
     const query: any = { userId: new Types.ObjectId(userId) };
@@ -246,18 +265,24 @@ export class NotificationsService {
   }
 
   async markAsRead(notificationId: string, userId: string) {
-    return this.notificationModel.findOneAndUpdate(
+    const notification = await this.notificationModel.findOneAndUpdate(
       { _id: notificationId, userId: new Types.ObjectId(userId) },
       { isRead: true },
       { new: true },
     );
+    if (notification) {
+      this.notificationsGateway.emitNotificationRead(userId, notificationId);
+    }
+    return notification;
   }
 
   async markAllAsRead(userId: string) {
-    return this.notificationModel.updateMany(
+    const result = await this.notificationModel.updateMany(
       { userId: new Types.ObjectId(userId), isRead: false },
       { isRead: true },
     );
+    this.notificationsGateway.emitAllNotificationsRead(userId);
+    return result;
   }
 
   async getUnreadCount(userId: string) {
@@ -277,6 +302,7 @@ export class NotificationsService {
       throw new NotFoundException('Notification non trouvée');
     }
 
+    this.notificationsGateway.emitNotificationDeleted(userId, notificationId);
     return result;
   }
 

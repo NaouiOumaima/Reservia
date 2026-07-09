@@ -5,7 +5,10 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { User, UserSchema } from '../../database/schemas/user.schema';
 import { Service, ServiceSchema } from '../../database/schemas/service.schema';
-import { Reservation, ReservationSchema } from '../../database/schemas/reservation.schema';
+import {
+  Reservation,
+  ReservationSchema,
+} from '../../database/schemas/reservation.schema';
 import { Review, ReviewSchema } from '../../database/schemas/review.schema';
 
 @Module({

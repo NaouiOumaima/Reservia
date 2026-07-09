@@ -32,16 +32,21 @@ export const servicesApi = {
   },
 
   getNearby: async (lng: number, lat: number, radius?: number): Promise<Service[]> => {
-    const params = new URLSearchParams({
-      lng: String(lng),
-      lat: String(lat),
-    });
+  const params = new URLSearchParams({
+    lng: String(lng),
+    lat: String(lat),
+  });
 
-    if (radius) params.append('radius', String(radius));
+  if (radius) params.append('radius', String(radius));
 
-    const response = await apiClient.get(`/services/nearby?${params}`);
-    return response.data;
-  },
+  const response = await apiClient.get(`/services/nearby?${params}`, {
+    headers: {
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache',
+    },
+  });
+  return response.data;
+},
 
   create: async (data: CreateServiceData): Promise<Service> => {
     const response = await apiClient.post('/services', data);

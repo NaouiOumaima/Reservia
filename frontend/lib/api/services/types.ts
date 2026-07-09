@@ -16,6 +16,12 @@ export interface AvailabilitySlot {
   isAvailable: boolean;
 }
 
+export type ServiceStatus =
+  | 'pending_approval'
+  | 'active'
+  | 'disabled'
+  | 'banned';
+
 export interface Service {
   _id: string;
   providerId: string;
@@ -30,11 +36,11 @@ export interface Service {
   reviewCount: number;
   rating?: number;
   smartScore: number;
-  isActive: boolean;
-  isPendingApproval?: boolean;
+  status: ServiceStatus;
   rejectionReason?: string;
- createdAt: string;
-updatedAt: string;
+  banReason?: string;
+  createdAt: string;
+  updatedAt: string;
   availabilitySlots?: AvailabilitySlot[];
 }
 

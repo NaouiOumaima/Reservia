@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation';
 import { CATEGORIES } from '@/lib/api/constants/categories.';
 import { useEffect, useState } from 'react';
 import { dashboardApi, HomePageStats } from '@/lib/api/dash/index';
+import { reviewsApi } from '@/lib/api';
+import type { Review } from '@/lib/api/reviews/types';
+import StarRatingInput from '@/components/ui/StarRatingInput';
 import {
   SearchIcon, MapIcon, AiIcon, BookingIcon, ReviewIcon,
   NotificationIcon, UsersIcon, ServicesIcon, LocationIcon,
@@ -18,7 +21,6 @@ type CategoryStat = {
   reservationCount: number;
   completedReservations: number;
   averageRating: number;
-  totalRevenue: number;
 };
 
 const CATEGORY_ICONS: Record<string, JSX.Element> = Object.fromEntries(
@@ -36,15 +38,9 @@ const FEATURES = [
 
 const STEPS = [
   { n: '1', title: 'Recherchez', desc: "Décrivez votre besoin ou laissez-vous guider par l'IA" },
-  { n: '2', title: 'Comparez', desc: 'Notes, avis, prix et disponibilités' },
+  { n: '2', title: 'Comparez', desc: 'Notes, avis et disponibilités' },
   { n: '3', title: 'Réservez', desc: 'Choisissez votre créneau en 30 secondes' },
   { n: '4', title: 'Profitez', desc: 'Découvrez et partagez votre expérience' },
-];
-
-const TESTIMONIALS = [
-  { name: 'Marie D.', initials: 'MD', comment: "Plateforme géniale, j'ai trouvé un coiffeur en 5 minutes !", rating: 5 },
-  { name: 'Thomas L.', initials: 'TL', comment: 'Réservation simple et rapide, je recommande vivement !', rating: 5 },
-  { name: 'Sophie M.', initials: 'SM', comment: 'Les meilleurs services locaux sont sur Reservia. Très pratique !', rating: 5 },
 ];
 
 export default function HomePage() {
@@ -53,6 +49,15 @@ export default function HomePage() {
   const [stats, setStats] = useState<HomePageStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [appReviews, setAppReviews] = useState<Review[]>([]);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [guestName, setGuestName] = useState('');
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadStats = async () => {
@@ -70,6 +75,45 @@ export default function HomePage() {
     };
     loadStats();
   }, []);
+
+  useEffect(() => {
+    reviewsApi
+      .getAppReviews(1, 6)
+      .then((res) => setAppReviews(res.reviews))
+      .catch((err) => console.error('Erreur chargement avis:', err));
+  }, []);
+
+  const submitAppReview = async () => {
+    if (reviewRating < 1 || !reviewComment.trim()) {
+      setReviewError('Merci de choisir une note et de rédiger un commentaire.');
+      return;
+    }
+    if (!guestName.trim()) {
+      setReviewError('Merci d\'indiquer votre nom.');
+      return;
+    }
+    setSubmittingReview(true);
+    setReviewError(null);
+    try {
+      await reviewsApi.create({
+        rating: reviewRating,
+        comment: reviewComment.trim(),
+        type: 'app',
+        guestName: guestName.trim(),
+      });
+      setReviewSubmitted(true);
+      setShowReviewForm(false);
+      setReviewRating(0);
+      setReviewComment('');
+      setGuestName('');
+      const res = await reviewsApi.getAppReviews(1, 6);
+      setAppReviews(res.reviews);
+    } catch (err: any) {
+      setReviewError(err?.response?.data?.message || "Erreur lors de l'envoi.");
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -91,10 +135,6 @@ export default function HomePage() {
     if (num === undefined || num === null) return '0';
     if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
     return num.toString();
-  };
-
-  const formatCurrency = (amount: number | undefined | null): string => {
-    return new Intl.NumberFormat('fr-TN', { style: 'currency', currency: 'TND' }).format(amount ?? 0);
   };
 
   const categoriesStats: CategoryStat[] = (stats as any)?.satisfactionByService ?? [];
@@ -228,12 +268,6 @@ export default function HomePage() {
                         </div>
                       </div>
                     </div>
-                    {(category.totalRevenue ?? 0) > 0 && (
-                      <div className="mt-4 pt-3 border-t border-[rgba(var(--border),0.3)]">
-                        <p className="text-xs text-[rgb(var(--foreground-subtle))]">Chiffre d'affaires</p>
-                        <p className="text-sm font-bold text-[rgb(var(--accent))]">{formatCurrency(category.totalRevenue)}</p>
-                      </div>
-                    )}
                   </div>
                 </Link>
               ))}
@@ -290,33 +324,86 @@ export default function HomePage() {
             <h2 className="font-display text-[rgb(var(--foreground))]">Ce que disent nos clients</h2>
             <p className="text-[rgb(var(--foreground-muted))] mt-3">Ils nous font confiance</p>
           </div>
-          <div className="grid md:grid-cols-3 gap-6 stagger-children">
-            {[
-              { name: 'Marie D.', initials: 'MD', comment: "Plateforme géniale, j'ai trouvé un coiffeur en 5 minutes !", rating: 5 },
-              { name: 'Thomas L.', initials: 'TL', comment: 'Réservation simple et rapide, je recommande vivement !', rating: 5 },
-              { name: 'Sophie M.', initials: 'SM', comment: 'Les meilleurs services locaux sont sur Reservia. Très pratique !', rating: 5 },
-            ].map((testimonial, index) => (
-              <div 
-                key={testimonial.name} 
-                className="card testimonial-card animate-fadeInUp" 
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="testimonial-avatar">
-                    <span>{testimonial.initials}</span>
-                  </div>
-                  <div>
-                    <h4 className="testimonial-name">{testimonial.name}</h4>
-                    <div className="testimonial-stars">
-                      {[...Array(testimonial.rating)].map((_, i) => (
-                        <StarIcon key={i} className="testimonial-star" />
-                      ))}
+
+          {appReviews.length > 0 ? (
+            <div className="grid md:grid-cols-3 gap-6 stagger-children mb-10">
+              {appReviews.map((review, index) => (
+                <div
+                  key={review._id}
+                  className="card testimonial-card animate-fadeInUp"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="testimonial-avatar">
+                      <span>{review.userName.slice(0, 2).toUpperCase()}</span>
+                    </div>
+                    <div>
+                      <h4 className="testimonial-name">{review.userName}</h4>
+                      <div className="testimonial-stars">
+                        {[...Array(review.rating)].map((_, i) => (
+                          <StarIcon key={i} className="testimonial-star" />
+                        ))}
+                      </div>
                     </div>
                   </div>
+                  <p className="testimonial-comment">&quot;{review.comment}&quot;</p>
                 </div>
-                <p className="testimonial-comment">"{testimonial.comment}"</p>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-[rgb(var(--foreground-muted))] mb-10">
+              Soyez le premier à partager votre avis !
+            </p>
+          )}
+
+          <div className="max-w-lg mx-auto text-center">
+            {reviewSubmitted ? (
+              <p className="text-success font-medium">Merci pour votre avis !</p>
+            ) : !showReviewForm ? (
+              <button onClick={() => setShowReviewForm(true)} className="btn btn-ghost">
+                Laisser un avis sur l&apos;application
+              </button>
+            ) : (
+              <div className="card text-left">
+                {reviewError && (
+                  <div className="alert alert-error mb-3">
+                    <span>{reviewError}</span>
+                  </div>
+                )}
+                <label className="label">Votre nom</label>
+                <input
+                  type="text"
+                  className="input mb-3"
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  placeholder="Votre nom"
+                />
+                <label className="label">Votre note</label>
+                <div className="mb-3">
+                  <StarRatingInput value={reviewRating} onChange={setReviewRating} size="w-6 h-6" />
+                </div>
+                <label className="label">Votre avis</label>
+                <textarea
+                  className="input mb-3"
+                  rows={3}
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  placeholder="Partagez votre expérience…"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={submitAppReview}
+                    disabled={submittingReview}
+                    className="btn btn-primary"
+                  >
+                    {submittingReview ? 'Envoi…' : 'Publier'}
+                  </button>
+                  <button onClick={() => setShowReviewForm(false)} className="btn btn-ghost">
+                    Annuler
+                  </button>
+                </div>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </section>
@@ -329,7 +416,7 @@ export default function HomePage() {
             <div aria-hidden className="cta-blur-bottom" />
             <div className="cta-content">
               <h2 className="cta-title">Prêt à réserver votre prochain service ?</h2>
-              <p className="cta-description">Rejoignez des milliers d'utilisateurs qui font confiance à Reservia</p>
+              <p className="cta-description">Rejoignez des milliers d&apos;utilisateurs qui font confiance à Reservia</p>
               <Link href="/register" className="cta-button">
                 Créer un compte gratuitement
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">

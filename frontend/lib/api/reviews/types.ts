@@ -3,9 +3,10 @@
 // Note: Review type is defined here, separate from Service type
 export interface Review {
   _id: string;
-  userId: string | { _id: string; firstName: string; lastName: string; email: string };
+  userId?: string | { _id: string; firstName: string; lastName: string; email: string };
   userName: string;
   userEmail?: string;
+  isGuest?: boolean;
   serviceId?: string | { _id: string; name: string };
   serviceName?: string;
   serviceProviderId?: string;

@@ -73,7 +73,7 @@ export default function ServiceDetailsModal({
           {/* Titre + statut */}
           <div className="sp-modal-title-row">
             <h2 className="sp-modal-title">{service.name}</h2>
-            {service.isActive && (
+            {service.status === 'active' && (
               <span className="sp-modal-active-badge">
                 <CheckCircleIcon className="w-3.5 h-3.5" />
                 Actif

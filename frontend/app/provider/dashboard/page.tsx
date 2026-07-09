@@ -3,26 +3,66 @@
 
 import { useAuth } from '@/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { dashboardApi } from '@/lib/api/dash';
+import { DashboardSummary } from '@/lib/api/dash/types';
+import { reservationsApi, Reservation } from '@/lib/api/reservations';
+import { useSocket } from '@/hooks/useSocket';
+import { RESERVATION_STATUS_LABELS, RESERVATION_STATUS_BADGES } from '@/lib/helpers/reservationStatus';
 import {
   ServicesIcon,
   BookingIcon,
   LocationIcon,
   ClockIcon,
   ReviewIcon,
-  TrendingUpIcon,
+  AlertTriangleIcon,
 } from '@/components/ui/Icons';
 
 export default function ProviderDashboard() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const { socket } = useSocket();
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [bookings, setBookings] = useState<Reservation[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [dashboardRes, reservations] = await Promise.all([
+        dashboardApi.getProviderDashboard('day'),
+        reservationsApi.getProviderReservations(),
+      ]);
+      setSummary(dashboardRes.summary);
+      setBookings(reservations.slice(0, 5));
+    } catch (error) {
+      console.error('Erreur chargement dashboard provider:', error);
+    } finally {
+      setLoadingData(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!isLoading && (!user || user.role !== 'provider')) {
       router.push('/');
     }
   }, [user, isLoading, router]);
+
+  useEffect(() => {
+    if (user?.role === 'provider') {
+      fetchData();
+    }
+  }, [user, fetchData]);
+
+  // Mise à jour temps réel des réservations sans rechargement de page
+  useEffect(() => {
+    if (!socket) return;
+    const handleUpdate = () => fetchData();
+    socket.on('reservation_updated', handleUpdate);
+    return () => {
+      socket.off('reservation_updated', handleUpdate);
+    };
+  }, [socket, fetchData]);
 
   if (isLoading) {
     return (
@@ -36,19 +76,32 @@ export default function ProviderDashboard() {
     return null;
   }
 
-  // Données fictives
   const stats = [
-    { label: 'Services actifs', value: '12', icon: <ServicesIcon className="w-6 h-6" />, change: '+2' },
-    { label: 'Réservations ce mois', value: '48', icon: <BookingIcon className="w-6 h-6" />, change: '+15%' },
-    { label: 'Note moyenne', value: '4.8', icon: <ReviewIcon className="w-6 h-6" />, change: '+0.3' },
-    { label: 'Taux d\'occupation', value: '85%', icon: <TrendingUpIcon className="w-6 h-6" />, change: '+12%' },
+    {
+      label: 'Réservations aujourd\'hui',
+      value: summary?.todayReservationsCount ?? 0,
+      icon: <BookingIcon className="w-6 h-6" />,
+    },
+    {
+      label: 'Alertes en attente',
+      value: summary?.pendingReservations ?? 0,
+      icon: <AlertTriangleIcon className="w-6 h-6" />,
+    },
+    {
+      label: 'Note moyenne',
+      value: summary?.avgRating ? summary.avgRating.toFixed(1) : '—',
+      icon: <ReviewIcon className="w-6 h-6" />,
+    },
+    {
+      label: 'Services',
+      value: summary?.servicesCount ?? 0,
+      icon: <ServicesIcon className="w-6 h-6" />,
+    },
   ];
 
-  const recentBookings = [
-    { id: 1, client: 'Marie D.', service: 'Coupe femme', date: '2024-05-15', time: '14:00', status: 'confirmé' },
-    { id: 2, client: 'Thomas L.', service: 'Massage', date: '2024-05-15', time: '16:30', status: 'en attente' },
-    { id: 3, client: 'Sophie M.', service: 'Manucure', date: '2024-05-16', time: '10:00', status: 'confirmé' },
-  ];
+  const formatDate = (date: string | Date) => new Date(date).toLocaleDateString('fr-FR');
+  const formatTime = (date: string | Date) =>
+    new Date(date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
   return (
     <div className="min-h-screen bg-[rgb(var(--background))]">
@@ -59,7 +112,7 @@ export default function ProviderDashboard() {
             Tableau de bord
           </h1>
           <p className="text-[rgb(var(--foreground-muted))]">
-            Bienvenue {user.firstName} ! Voici un aperçu de votre activité.
+            Bienvenue {user.firstName} ! Voici un aperçu de votre activité du jour.
           </p>
         </div>
 
@@ -71,11 +124,10 @@ export default function ProviderDashboard() {
                 <div className="w-12 h-12 rounded-full bg-[rgba(var(--primary),0.1)] flex items-center justify-center text-[rgb(var(--primary))]">
                   {stat.icon}
                 </div>
-                <span className="text-sm font-semibold text-green-600 bg-green-100 px-2 py-1 rounded">
-                  {stat.change}
-                </span>
               </div>
-              <p className="text-2xl font-display text-[rgb(var(--foreground))] mb-1">{stat.value}</p>
+              <p className="text-2xl font-display text-[rgb(var(--foreground))] mb-1">
+                {loadingData ? '…' : stat.value}
+              </p>
               <p className="text-sm text-[rgb(var(--foreground-muted))]">{stat.label}</p>
             </div>
           ))}
@@ -122,36 +174,42 @@ export default function ProviderDashboard() {
               Voir toutes
             </Link>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[rgb(var(--border))]">
-                  <th className="text-left py-3 px-4 text-[rgb(var(--foreground-muted))] font-semibold">Client</th>
-                  <th className="text-left py-3 px-4 text-[rgb(var(--foreground-muted))] font-semibold">Service</th>
-                  <th className="text-left py-3 px-4 text-[rgb(var(--foreground-muted))] font-semibold">Date</th>
-                  <th className="text-left py-3 px-4 text-[rgb(var(--foreground-muted))] font-semibold">Heure</th>
-                  <th className="text-left py-3 px-4 text-[rgb(var(--foreground-muted))] font-semibold">Statut</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentBookings.map((booking) => (
-                  <tr key={booking.id} className="border-b border-[rgb(var(--border))] hover:bg-[rgba(var(--primary),0.05)] transition-colors">
-                    <td className="py-3 px-4 text-[rgb(var(--foreground))]">{booking.client}</td>
-                    <td className="py-3 px-4 text-[rgb(var(--foreground))]">{booking.service}</td>
-                    <td className="py-3 px-4 text-[rgb(var(--foreground-muted))]">{booking.date}</td>
-                    <td className="py-3 px-4 text-[rgb(var(--foreground-muted))]">{booking.time}</td>
-                    <td className="py-3 px-4">
-                      <span className={`badge ${
-                        booking.status === 'confirmé' ? 'badge-success' : 'badge-warning'
-                      }`}>
-                        {booking.status}
-                      </span>
-                    </td>
+          {loadingData ? (
+            <div className="flex justify-center py-8"><div className="spinner" /></div>
+          ) : bookings.length === 0 ? (
+            <p className="text-center text-[rgb(var(--foreground-muted))] py-8">
+              Aucune réservation pour le moment
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-[rgb(var(--border))]">
+                    <th className="text-left py-3 px-4 text-[rgb(var(--foreground-muted))] font-semibold">Client</th>
+                    <th className="text-left py-3 px-4 text-[rgb(var(--foreground-muted))] font-semibold">Service</th>
+                    <th className="text-left py-3 px-4 text-[rgb(var(--foreground-muted))] font-semibold">Date</th>
+                    <th className="text-left py-3 px-4 text-[rgb(var(--foreground-muted))] font-semibold">Heure</th>
+                    <th className="text-left py-3 px-4 text-[rgb(var(--foreground-muted))] font-semibold">Statut</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {bookings.map((booking) => (
+                    <tr key={booking._id} className="border-b border-[rgb(var(--border))] hover:bg-[rgba(var(--primary),0.05)] transition-colors">
+                      <td className="py-3 px-4 text-[rgb(var(--foreground))]">{booking.customerInfo?.name || '—'}</td>
+                      <td className="py-3 px-4 text-[rgb(var(--foreground))]">{booking.serviceName}</td>
+                      <td className="py-3 px-4 text-[rgb(var(--foreground-muted))]">{formatDate(booking.startTime)}</td>
+                      <td className="py-3 px-4 text-[rgb(var(--foreground-muted))]">{formatTime(booking.startTime)}</td>
+                      <td className="py-3 px-4">
+                        <span className={`badge ${RESERVATION_STATUS_BADGES[booking.status] || 'badge'}`}>
+                          {RESERVATION_STATUS_LABELS[booking.status] || booking.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>

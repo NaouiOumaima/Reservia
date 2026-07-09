@@ -2,10 +2,11 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
-export type ServiceDocument = Service & Document & {
-  createdAt: Date;
-  updatedAt: Date;
-};
+export type ServiceDocument = Service &
+  Document & {
+    createdAt: Date;
+    updatedAt: Date;
+  };
 
 export enum ServiceCategory {
   RESTAURANT = 'restaurant',
@@ -17,6 +18,13 @@ export enum ServiceCategory {
   MEDICAL = 'medical',
   EDUCATION = 'education',
   OTHER = 'other',
+}
+
+export enum ServiceStatus {
+  PENDING_APPROVAL = 'pending_approval',
+  ACTIVE = 'active',
+  DISABLED = 'disabled',
+  BANNED = 'banned',
 }
 
 @Schema({ timestamps: true })
@@ -72,12 +80,17 @@ export class Service {
     postalCode?: string;
   };
 
-  @Prop({ type: [{ 
-    day: String, 
-    startTime: String, 
-    endTime: String, 
-    isAvailable: Boolean 
-  }], default: [] })
+  @Prop({
+    type: [
+      {
+        day: String,
+        startTime: String,
+        endTime: String,
+        isAvailable: Boolean,
+      },
+    ],
+    default: [],
+  })
   availabilitySlots?: Array<{
     day: string;
     startTime: string;
@@ -97,14 +110,18 @@ export class Service {
   @Prop({ default: 0 })
   smartScore!: number;
 
-  @Prop({ default: true })
-  isActive!: boolean;
-
-  @Prop({ default: true })
-  isPendingApproval!: boolean;
+  @Prop({
+    required: true,
+    enum: ServiceStatus,
+    default: ServiceStatus.PENDING_APPROVAL,
+  })
+  status!: ServiceStatus;
 
   @Prop()
   rejectionReason?: string;
+
+  @Prop()
+  banReason?: string;
 
   @Prop({ type: Object })
   cancellationPolicy?: {
@@ -122,4 +139,4 @@ ServiceSchema.index({ name: 'text', description: 'text' });
 ServiceSchema.index({ category: 1 });
 ServiceSchema.index({ smartScore: -1 });
 ServiceSchema.index({ providerId: 1 });
-ServiceSchema.index({ isActive: 1, isPendingApproval: 1 });
+ServiceSchema.index({ status: 1 });

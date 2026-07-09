@@ -30,7 +30,10 @@ export interface IMessage {
 
 export interface IIntentStrategy {
   matches(text: string): boolean;
-  execute(text: string, context: IConversationContext): Promise<ChatbotResponseDto>;
+  execute(
+    text: string,
+    context: IConversationContext,
+  ): Promise<ChatbotResponseDto>;
 }
 
 import { ChatbotResponseDto } from '../dto/ai.dto';

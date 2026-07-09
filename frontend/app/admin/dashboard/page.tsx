@@ -481,7 +481,7 @@ export default function AdminDashboard() {
 
           <div className="admin-section-card">
             <div className="admin-section-header">
-              <h3 className="admin-section-title">Pic d'activité hebdomadaire</h3>
+              <h3 className="admin-section-title">Pic d&apos;activité hebdomadaire</h3>
               <span className="admin-section-badge">Radar</span>
             </div>
             <div className="admin-chart-md">
@@ -504,7 +504,7 @@ export default function AdminDashboard() {
 
           <div className="admin-section-card">
             <div className="admin-section-header">
-              <h3 className="admin-section-title">Indicateurs d'engagement</h3>
+              <h3 className="admin-section-title">Indicateurs d&apos;engagement</h3>
               <span className="admin-section-badge">Radar</span>
             </div>
             <div className="admin-chart-md">

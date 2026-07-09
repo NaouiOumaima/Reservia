@@ -59,7 +59,6 @@ export default function ProviderAvailabilityPage() {
     setTimeout(() => setNotice(null), 3500);
   };
 
-  // ── load services ──────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -72,7 +71,6 @@ export default function ProviderAvailabilityPage() {
     })();
   }, [urlId]);
 
-  // ── load slots when selection changes ─────────────────────────
   useEffect(() => { if (selectedId) loadSlots(selectedId); }, [selectedId]);
 
   const loadSlots = async (id: string) => {
@@ -132,9 +130,8 @@ export default function ProviderAvailabilityPage() {
 
   const handleCancel = () => { setSlots(JSON.parse(JSON.stringify(originalSlots))); setIsEditing(false); };
 
-  // ── loading screen ─────────────────────────────────────────────
   if (loading && !services.length) return (
-    <div className="flex justify-center items-center min-h-screen bg-surface">
+    <div className="flex justify-center items-center min-h-screen bg-background">
       <div className="spinner" />
     </div>
   );
@@ -142,10 +139,9 @@ export default function ProviderAvailabilityPage() {
   const selectedSvc = services.find(s => s._id === selectedId);
 
   return (
-    <div className="min-h-screen bg-surface">
-      <div className="container-app py-8">
+    <div className="bg-background min-h-screen py-8">
+      <div className="container-app">
 
-        {/* ── Page header ── */}
         <div className="animate-fadeIn mb-8 flex flex-wrap gap-4 items-start justify-between">
           <div>
             <Link
@@ -179,7 +175,6 @@ export default function ProviderAvailabilityPage() {
           </div>
         </div>
 
-        {/* ── Notice banner ── */}
         {notice && (
           <div className={`alert animate-slideInRight mb-6 ${notice.type === 'success' ? 'alert-success' : 'alert-error'}`}>
             {notice.type === 'success'
@@ -189,7 +184,6 @@ export default function ProviderAvailabilityPage() {
           </div>
         )}
 
-        {/* ── Service selector ── */}
         {services.length > 0 && (
           <div className="card mb-6 animate-fadeInUp p-4">
             <label className="label">Service concerné</label>
@@ -209,7 +203,6 @@ export default function ProviderAvailabilityPage() {
           </div>
         )}
 
-        {/* ── No availability warning ── */}
         {!hasValidAvail(selectedSvc) && !isEditing && (
           <div className="alert alert-warning mb-6 animate-fadeIn">
             <AlertTriangleIcon className="w-5 h-5 flex-shrink-0" />
@@ -217,7 +210,6 @@ export default function ProviderAvailabilityPage() {
           </div>
         )}
 
-        {/* ── Quick templates ── */}
         {isEditing && (
           <div className="card mb-6 p-5 animate-scaleIn">
             <p className="font-display text-foreground flex items-center gap-2 mb-3">
@@ -237,7 +229,6 @@ export default function ProviderAvailabilityPage() {
           </div>
         )}
 
-        {/* ── Days grid ── */}
         <div className="card p-0 overflow-hidden animate-fadeInUp stagger-children">
           {DAYS.map((day, di) => {
             const daySlots  = slots.filter(sl => sl.day === day);
@@ -249,7 +240,6 @@ export default function ProviderAvailabilityPage() {
                 className="border-b border-border last:border-b-0 animate-fadeInUp"
                 style={{ animationDelay: `${di * 40}ms` }}
               >
-                {/* Day row header */}
                 <div className="flex items-center justify-between px-6 py-4 bg-surface-raised">
                   <div className="flex items-center gap-3">
                     <span
@@ -286,7 +276,6 @@ export default function ProviderAvailabilityPage() {
                   )}
                 </div>
 
-                {/* Slot rows */}
                 <div className="px-6 py-3 flex flex-col gap-2">
                   {daySlots.length === 0 && isEditing && (
                     <p className="text-muted text-sm italic py-2">
@@ -303,7 +292,6 @@ export default function ProviderAvailabilityPage() {
                         key={idx}
                         className={`flex items-center gap-3 flex-wrap rounded-app px-3 py-2 transition-colors-smooth ${slot.isAvailable ? 'bg-primary-soft' : 'bg-surface-raised'}`}
                       >
-                        {/* Start time */}
                         <select
                           value={slot.startTime}
                           onChange={e => setTime(gi,'startTime',e.target.value)}
@@ -316,7 +304,6 @@ export default function ProviderAvailabilityPage() {
 
                         <span className="text-muted font-sans">→</span>
 
-                        {/* End time */}
                         <select
                           value={slot.endTime}
                           onChange={e => setTime(gi,'endTime',e.target.value)}
@@ -359,7 +346,6 @@ export default function ProviderAvailabilityPage() {
             );
           })}
 
-          {/* ── Footer actions ── */}
           {isEditing && (
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-border bg-surface-raised animate-fadeIn">
               <button onClick={handleCancel} className="btn btn-ghost">
@@ -377,7 +363,6 @@ export default function ProviderAvailabilityPage() {
           )}
         </div>
 
-        {/* ── Read-only hint ── */}
         {!isEditing && (
           <p className="mt-6 text-center text-sm text-muted animate-fadeIn">
             💡 Cliquez sur <strong className="text-primary">Modifier</strong> pour définir vos disponibilités

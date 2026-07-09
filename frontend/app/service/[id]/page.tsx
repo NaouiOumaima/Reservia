@@ -199,7 +199,7 @@ export default function ServiceDetailPage() {
           <div className="sdp-heading-main">
             <div className="sdp-title-row">
               <h1 className="sdp-title">{service.name}</h1>
-              {service.isActive && (
+              {service.status === 'active' && (
                 <span className="sdp-active-badge">
                   <CheckCircleIcon className="w-3.5 h-3.5" />
                   Actif
@@ -438,7 +438,7 @@ export default function ServiceDetailPage() {
                   className="sdp-sidebar-map-btn"
                 >
                   <MapPinIcon className="w-4 h-4" />
-                  Voir l'emplacement sur la carte
+                  Voir l&apos;emplacement sur la carte
                 </button>
               )}
             </div>

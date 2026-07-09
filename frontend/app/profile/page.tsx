@@ -2,9 +2,13 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/providers/AuthProvider';
 import { usersApi } from '@/lib/api/users';
+import { reviewsApi } from '@/lib/api';
+import type { Review } from '@/lib/api/reviews/types';
 import { UpdateProfileData, ChangePasswordData, User } from '@/lib/api/users/types';
+import StarRatingInput from '@/components/ui/StarRatingInput';
 
 import {
   UserIcon,
@@ -20,9 +24,10 @@ import {
   BriefcaseIcon,
   PhoneIcon,
   Loader2Icon,
+  StarIcon,
 } from '@/components/ui/Icons';
 
-type TabType = 'profile' | 'password';
+type TabType = 'profile' | 'password' | 'reviews';
 
 const getFullImageUrl = (path: string | undefined | null): string | null => {
   if (!path) return null;
@@ -63,7 +68,89 @@ export default function ProfilePage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // My reviews state
+  const [myReviews, setMyReviews] = useState<Review[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
+  const [editRating, setEditRating] = useState(0);
+  const [editComment, setEditComment] = useState('');
+  const [savingReview, setSavingReview] = useState(false);
+
   const userRole = authUser?.role || 'client';
+
+  const loadMyReviews = useCallback(async () => {
+    try {
+      setReviewsLoading(true);
+      const data = await reviewsApi.getMyReviews();
+      setMyReviews(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Load my reviews error:', err);
+    } finally {
+      setReviewsLoading(false);
+    }
+  }, []);
+
+  const startEditReview = (review: Review) => {
+    setEditingReviewId(review._id);
+    setEditRating(review.rating);
+    setEditComment(review.comment);
+  };
+
+  const cancelEditReview = () => {
+    setEditingReviewId(null);
+    setEditRating(0);
+    setEditComment('');
+  };
+
+  const saveEditReview = async (id: string) => {
+    setSavingReview(true);
+    try {
+      const updated = await reviewsApi.update(id, {
+        rating: editRating,
+        comment: editComment.trim(),
+      });
+      setMyReviews((prev) => prev.map((r) => (r._id === id ? updated : r)));
+      cancelEditReview();
+    } catch (err) {
+      console.error('Update review error:', err);
+    } finally {
+      setSavingReview(false);
+    }
+  };
+
+  const removeReview = async (id: string) => {
+    if (!confirm('Supprimer cet avis ? Cette action est irréversible.')) return;
+    try {
+      await reviewsApi.deleteMine(id);
+      setMyReviews((prev) => prev.filter((r) => r._id !== id));
+    } catch (err) {
+      console.error('Delete review error:', err);
+    }
+  };
+
+  const [showNewAppReview, setShowNewAppReview] = useState(false);
+  const [newAppRating, setNewAppRating] = useState(0);
+  const [newAppComment, setNewAppComment] = useState('');
+
+  const submitAppReview = async () => {
+    if (newAppRating < 1 || !newAppComment.trim()) return;
+    setSavingReview(true);
+    try {
+      const created = await reviewsApi.create({
+        rating: newAppRating,
+        comment: newAppComment.trim(),
+        type: 'app',
+      });
+      setMyReviews((prev) => [created, ...prev]);
+      setShowNewAppReview(false);
+      setNewAppRating(0);
+      setNewAppComment('');
+    } catch (err) {
+      console.error('Create app review error:', err);
+    } finally {
+      setSavingReview(false);
+    }
+  };
 
   const loadProfile = useCallback(async () => {
     try {
@@ -88,6 +175,12 @@ export default function ProfilePage() {
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
+
+  useEffect(() => {
+    if (activeTab === 'reviews') {
+      loadMyReviews();
+    }
+  }, [activeTab, loadMyReviews]);
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -336,6 +429,13 @@ export default function ProfilePage() {
             <LockIcon className="w-4 h-4" />
             Sécurité
           </button>
+          <button
+            onClick={() => setActiveTab('reviews')}
+            className={`profile-tab ${activeTab === 'reviews' ? 'active' : ''}`}
+          >
+            <StarIcon className="w-4 h-4" />
+            Mes avis
+          </button>
         </div>
 
         {/* Profile Tab */}
@@ -406,7 +506,7 @@ export default function ProfilePage() {
                       className="form-input"
                     />
                     <p className="text-subtle text-xs mt-1">
-                      ⚠️ L'adresse email ne peut pas être modifiée
+                      ⚠️ L&apos;adresse email ne peut pas être modifiée
                     </p>
                   </div>
 
@@ -574,6 +674,151 @@ export default function ProfilePage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Reviews Tab */}
+        {activeTab === 'reviews' && (
+          <div className="profile-content">
+            <div className="profile-card">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="profile-card-title m-0">Mes avis</h2>
+                {!showNewAppReview && (
+                  <button
+                    onClick={() => setShowNewAppReview(true)}
+                    className="btn btn-primary btn-sm"
+                  >
+                    + Avis sur l&apos;application
+                  </button>
+                )}
+              </div>
+
+              {authUser?.role === 'client' && (
+                <Link href="/client/reviews" className="text-sm text-primary hover:underline mb-4 inline-block">
+                  Gérer mes avis sur les services réservés →
+                </Link>
+              )}
+
+              {showNewAppReview && (
+                <div className="sp-review-item mb-4">
+                  <label className="label">Note</label>
+                  <StarRatingInput
+                    value={newAppRating}
+                    onChange={setNewAppRating}
+                    size="w-6 h-6"
+                  />
+                  <label className="label mt-3">Commentaire</label>
+                  <textarea
+                    className="input"
+                    rows={3}
+                    value={newAppComment}
+                    onChange={(e) => setNewAppComment(e.target.value)}
+                    placeholder="Que pensez-vous de l'application ?"
+                  />
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      onClick={submitAppReview}
+                      disabled={savingReview}
+                      className="btn btn-primary btn-sm"
+                    >
+                      Publier
+                    </button>
+                    <button
+                      onClick={() => setShowNewAppReview(false)}
+                      className="btn btn-ghost btn-sm"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {reviewsLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="spinner" />
+                </div>
+              ) : myReviews.length === 0 ? (
+                <p className="text-muted">
+                  Vous n&apos;avez encore publié aucun avis.
+                </p>
+              ) : (
+                <div className="sp-review-list">
+                  {myReviews.map((review) => (
+                    <div key={review._id} className="sp-review-item">
+                      {editingReviewId === review._id ? (
+                        <div className="flex flex-col gap-3">
+                          <StarRatingInput
+                            value={editRating}
+                            onChange={setEditRating}
+                            size="w-6 h-6"
+                          />
+                          <textarea
+                            className="input"
+                            rows={3}
+                            value={editComment}
+                            onChange={(e) => setEditComment(e.target.value)}
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => saveEditReview(review._id)}
+                              disabled={savingReview}
+                              className="btn btn-primary btn-sm"
+                            >
+                              Enregistrer
+                            </button>
+                            <button
+                              onClick={cancelEditReview}
+                              className="btn btn-ghost btn-sm"
+                            >
+                              Annuler
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="sp-review-top">
+                            <div className="sp-review-stars">
+                              {[...Array(5)].map((_, i) => (
+                                <StarIcon
+                                  key={i}
+                                  className={`w-4 h-4 ${
+                                    i < review.rating
+                                      ? 'fill-yellow-500 text-yellow-500'
+                                      : 'text-yellow-500/30'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span className="badge badge-primary">
+                              {review.reviewType === 'service'
+                                ? review.serviceName || 'Service'
+                                : 'Application'}
+                            </span>
+                          </div>
+                          <p className="sp-review-comment">{review.comment}</p>
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              onClick={() => startEditReview(review)}
+                              className="btn btn-ghost btn-sm"
+                            >
+                              <PencilIcon className="w-3.5 h-3.5" />
+                              Modifier
+                            </button>
+                            <button
+                              onClick={() => removeReview(review._id)}
+                              className="btn btn-ghost btn-sm text-error"
+                            >
+                              <XMarkIcon className="w-3.5 h-3.5" />
+                              Supprimer
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

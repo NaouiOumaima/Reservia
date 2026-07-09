@@ -21,6 +21,7 @@ import { ServiceCategory } from '../../database/schemas/service.schema';
 import { UpdateServiceDto } from './dto/update-service.dto';
 import { UpsertLocationDto } from './dto/upsert-location.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 
 @Controller('services')
 export class ServicesController {
@@ -67,13 +68,19 @@ export class ServicesController {
   }
 
   @Get(':id')
-  async findById(@Param('id') id: string) {
-    return this.servicesService.findById(id);
+  @UseGuards(OptionalJwtAuthGuard)
+  async findById(@Param('id') id: string, @Request() req) {
+    const requesterId = req.user?._id || req.user?.id;
+    const isAdmin = req.user?.role === 'admin';
+    return this.servicesService.findById(id, requesterId, isAdmin);
   }
 
   @Put('location/upsert')
   @UseGuards(JwtAuthGuard)
-  async upsertLocation(@Request() req, @Body() upsertLocationDto: UpsertLocationDto) {
+  async upsertLocation(
+    @Request() req,
+    @Body() upsertLocationDto: UpsertLocationDto,
+  ) {
     return this.servicesService.upsertLocation(req.user._id, upsertLocationDto);
   }
 
@@ -95,8 +102,8 @@ export class ServicesController {
 
   @Patch(':id/toggle-active')
   @UseGuards(JwtAuthGuard)
-  async toggleActive(@Param('id') id: string, @Request() req) {
-    return this.servicesService.toggleActive(id, req.user._id);
+  async toggleStatus(@Param('id') id: string, @Request() req) {
+    return this.servicesService.toggleStatus(id, req.user._id);
   }
 
   // ==================== ADMIN ====================
@@ -152,5 +159,30 @@ export class ServicesController {
       throw new BadRequestException('La raison du rejet est requise');
     }
     return this.servicesService.rejectService(id, reason);
+  }
+
+  @Patch('admin/:id/ban')
+  @UseGuards(JwtAuthGuard)
+  async banService(
+    @Param('id') id: string,
+    @Body('reason') reason: string,
+    @Request() req,
+  ) {
+    if (req.user.role !== 'admin') {
+      throw new ForbiddenException('Accès réservé aux administrateurs');
+    }
+    if (!reason || reason.trim() === '') {
+      throw new BadRequestException('La raison du bannissement est requise');
+    }
+    return this.servicesService.banService(id, reason);
+  }
+
+  @Patch('admin/:id/unban')
+  @UseGuards(JwtAuthGuard)
+  async unbanService(@Param('id') id: string, @Request() req) {
+    if (req.user.role !== 'admin') {
+      throw new ForbiddenException('Accès réservé aux administrateurs');
+    }
+    return this.servicesService.unbanService(id);
   }
 }

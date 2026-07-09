@@ -15,7 +15,6 @@ export default function SearchBar({ onSearch, onFilterChange, onNearMe }: Search
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('');
   const [sortBy, setSortBy] = useState<SearchFilters['sortBy']>('smart');
-  const [priceRange, setPriceRange] = useState<{ min?: number; max?: number }>({});
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
 
@@ -31,11 +30,6 @@ export default function SearchBar({ onSearch, onFilterChange, onNearMe }: Search
   const handleCategoryChange = (value: string) => {
     setCategory(value);
     onFilterChange({ category: value });
-  };
-
-  const handlePriceChange = (min?: number, max?: number) => {
-    setPriceRange({ min, max });
-    onFilterChange({ minPrice: min, maxPrice: max });
   };
 
   const handleRatingChange = (rating?: number) => {
@@ -146,28 +140,9 @@ export default function SearchBar({ onSearch, onFilterChange, onNearMe }: Search
           className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="smart">🤖 Tri intelligent</option>
-          <option value="price">💰 Prix croissant</option>
-          <option value="price_desc">💰 Prix décroissant</option>
           <option value="rating">⭐ Meilleures notes</option>
           <option value="distance">📍 Distance</option>
         </select>
-
-        <div className="flex gap-2">
-          <input
-            type="number"
-            placeholder="Prix min"
-            value={priceRange.min || ''}
-            onChange={(e) => handlePriceChange(e.target.value ? Number(e.target.value) : undefined, priceRange.max)}
-            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <input
-            type="number"
-            placeholder="Prix max"
-            value={priceRange.max || ''}
-            onChange={(e) => handlePriceChange(priceRange.min, e.target.value ? Number(e.target.value) : undefined)}
-            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
 
         <select
           onChange={(e) => handleRatingChange(e.target.value ? Number(e.target.value) : undefined)}

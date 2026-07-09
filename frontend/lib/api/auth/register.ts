@@ -16,13 +16,18 @@ export interface RegisterData {
 
 export const register = async (data: RegisterData): Promise<LoginResponse> => {
   try {
-    // ✅ Ajouter /api/ devant la route
-    const response = await apiClient.post<LoginResponse>('/api/auth/register', data);
+    const response = await apiClient.post<LoginResponse>('/auth/register', data);
     const { accessToken, refreshToken, user } = response.data;
 
-    setAccessToken(accessToken);
-    setRefreshToken(refreshToken);
-    setUser(user);
+    // L'inscription nécessite généralement une vérification d'email : le backend
+    // ne renvoie alors ni tokens ni user tant que le compte n'est pas confirmé.
+    if (accessToken && refreshToken) {
+      setAccessToken(accessToken);
+      setRefreshToken(refreshToken);
+    }
+    if (user) {
+      setUser(user);
+    }
 
     return response.data;
   } catch (error: any) {

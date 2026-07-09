@@ -144,7 +144,7 @@ export default function RegisterPage() {
             {/* Nom établissement (provider uniquement) */}
             {formData.role === 'provider' && (
               <div>
-                <label htmlFor="businessName" className="label">Nom de l'établissement</label>
+                <label htmlFor="businessName" className="label">Nom de l&apos;établissement</label>
                 <input
                   id="businessName" name="businessName" type="text" required
                   value={formData.businessName} onChange={handleChange} className="input"

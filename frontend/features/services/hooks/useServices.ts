@@ -1,7 +1,8 @@
 // features/services/hooks/useServices.ts
 import { useState, useCallback } from 'react';
 import { servicesApi } from '@/lib/api';
-import { Service, SearchFilters } from '@/types';
+import { Service } from '@/lib/api/services/types';
+import { SearchFilters } from '@/types';
 
 export const useServices = () => {
   const [services, setServices] = useState<Service[]>([]);

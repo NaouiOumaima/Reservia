@@ -28,7 +28,9 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     // ✅ Récupérer le rôle et businessName depuis les cookies
     const cookies = this.parseCookies(req.headers.cookie || '');
     const role = cookies.oauth_role || 'client';
-    const businessName = cookies.oauth_businessName ? decodeURIComponent(cookies.oauth_businessName) : null;
+    const businessName = cookies.oauth_businessName
+      ? decodeURIComponent(cookies.oauth_businessName)
+      : null;
 
     console.log('🔍 Google Strategy - Parsed cookies:', { role, businessName });
 

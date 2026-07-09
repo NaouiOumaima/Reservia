@@ -1,8 +1,8 @@
 // features/admin/hooks/useAdminServices.ts
 
 import { useState, useEffect, useCallback } from 'react';
-import { servicesApi } from '@/lib/api/client';
-import { Service } from '@/types';
+import { servicesApi } from '@/lib/api';
+import { Service } from '@/lib/api/services/types';
 
 interface UseAdminServicesReturn {
   pendingServices: Service[];
@@ -24,11 +24,11 @@ export function useAdminServices(): UseAdminServicesReturn {
     setLoading(true);
     setError(null);
     try {
-      const response = await servicesApi.getPending();
-      setPendingServices(response.data || response);
-      
-      const countResponse = await servicesApi.getPendingCount();
-      setPendingCount(countResponse.data?.count || 0);
+      const services = await servicesApi.getPendingServices();
+      setPendingServices(services);
+
+      const count = await servicesApi.getPendingCount();
+      setPendingCount(count);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erreur lors du chargement des services');
     } finally {

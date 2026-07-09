@@ -1,7 +1,7 @@
 // features/provider/hooks/useProviderLocation.ts
 
 import { useState, useCallback } from 'react';
-import { servicesApi } from '@/lib/api/client';
+import { servicesApi } from '@/lib/api';
 import { Location } from '@/types';
 
 interface UseProviderLocationReturn {
@@ -22,8 +22,7 @@ export function useProviderLocation(): UseProviderLocationReturn {
     setError(null);
     try {
       // Get provider's location from their first service
-      const response = await servicesApi.getByProvider('');
-      const services = response.data || response;
+      const services = await servicesApi.getByProvider();
       if (services.length > 0) {
         setLocation(services[0].location);
       }
@@ -39,9 +38,8 @@ export function useProviderLocation(): UseProviderLocationReturn {
     setError(null);
     try {
       // Update location for all provider services
-      const response = await servicesApi.getByProvider('');
-      const services = response.data || response;
-      
+      const services = await servicesApi.getByProvider();
+
       for (const service of services) {
         await servicesApi.update(service._id, { location: { ...service.location, ...data } });
       }

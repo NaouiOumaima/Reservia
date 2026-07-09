@@ -65,13 +65,6 @@ export default function Chatbot() {
     }
   }, [user]);
 
-  // Charger les recommandations si utilisateur connecté
-  useEffect(() => {
-    if (userId && isOpen && canAccessChatbot()) {
-      loadRecommendations();
-    }
-  }, [userId, isOpen]);
-
   // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -95,8 +88,8 @@ export default function Chatbot() {
         const recMessage: Message = {
           id: Date.now().toString(),
           role: 'assistant',
-          content: `Recommandations pour vous :\n\n${recs.map(r => 
-            `- ${r.name} - ${r.basePrice} DT (${r.personalized.matchReason})`
+          content: `Recommandations pour vous :\n\n${recs.map(r =>
+            `- ${r.name} (${r.personalized.matchReason})`
           ).join('\n')}\n\nSouhaitez-vous plus d'informations sur l'un de ces services ?`,
           timestamp: new Date(),
           intent: 'recommendation'
@@ -198,7 +191,7 @@ export default function Chatbot() {
 const typingIndicator: Message = {
   id: (Date.now() + 1).toString(),
   role: 'assistant',
-  content: '⏳ Llama3 réfléchit... (première réponse ~30-60s, les suivantes seront rapides)',
+  content: '⏳ Llama3 réfléchit...',
   timestamp: new Date(),
   isTyping: true
 };
@@ -244,10 +237,6 @@ const typingIndicator: Message = {
         setMessages(prev => [...prev, suggestionsMessage]);
       }
 
-      if (response.intent === 'search' && userId) {
-        setTimeout(() => loadRecommendations(), 2000);
-      }
-
     } catch (error: any) {
   setMessages(prev => prev.filter(m => !m.isTyping));
   
@@ -257,7 +246,7 @@ const typingIndicator: Message = {
     content: error.message === 'Trop de requêtes. Veuillez patienter.' 
       ? 'Trop de requêtes ! Veuillez patienter quelques secondes avant de continuer.'
       : error.message === 'timeout'
-      ? '⏳ Ollama met du temps à répondre.\n\nVérifiez que Ollama tourne bien, puis réessayez. La première réponse prend ~60s.'
+      ? '⏳ Ollama met du temps à répondre.\n\nVérifiez que Ollama tourne bien, puis réessayez.'
       : 'Désolé, une erreur est survenue. Veuillez réessayer.',
     timestamp: new Date(),
     intent: 'error'
@@ -337,10 +326,16 @@ const typingIndicator: Message = {
                 <h3 className="chatbot-title">Assistant IA Reservia</h3>
                 <p className="chatbot-subtitle">Toujours là pour vous aider</p>
               </div>
-              {recommendations.length > 0 && (
-                <div className="chatbot-badge">
-                  {recommendations.length} recommandations
-                </div>
+              {userId && canAccessChatbot() && (
+                <button
+                  onClick={loadRecommendations}
+                  className="chatbot-badge"
+                  title="Voir des recommandations personnalisées"
+                >
+                  {recommendations.length > 0
+                    ? `${recommendations.length} recommandations`
+                    : '💡 Recommandations'}
+                </button>
               )}
               {/* Bouton de fermeture */}
               <button

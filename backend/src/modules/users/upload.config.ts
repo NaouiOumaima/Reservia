@@ -15,13 +15,20 @@ export const avatarUploadConfig = {
   fileFilter: (req, file, callback) => {
     const allowedTypes = /jpeg|jpg|png|webp/;
     // ✅ Correction : utiliser .test() correctement
-    const isValidExt = allowedTypes.test(extname(file.originalname).toLowerCase());
+    const isValidExt = allowedTypes.test(
+      extname(file.originalname).toLowerCase(),
+    );
     const isValidMime = allowedTypes.test(file.mimetype.toLowerCase());
 
     if (isValidExt && isValidMime) {
       return callback(null, true);
     } else {
-      callback(new BadRequestException('Seules les images sont autorisées (jpeg, jpg, png, webp)') as any, false);
+      callback(
+        new BadRequestException(
+          'Seules les images sont autorisées (jpeg, jpg, png, webp)',
+        ) as any,
+        false,
+      );
     }
   },
   limits: {

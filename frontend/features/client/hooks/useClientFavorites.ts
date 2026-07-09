@@ -1,7 +1,7 @@
 // features/client/hooks/useClientFavorites.ts
 
 import { useState, useEffect, useCallback } from 'react';
-import { servicesApi } from '@/lib/api/client';
+import { favoritesApi } from '@/lib/api/users/favorites.api';
 import { Service } from '@/types';
 
 interface UseClientFavoritesReturn {
@@ -22,16 +22,8 @@ export function useClientFavorites(): UseClientFavoritesReturn {
     setLoading(true);
     setError(null);
     try {
-      // Get favorites from localStorage (in real app, use API)
-      const stored = localStorage.getItem('favorites');
-      const favoriteIds = stored ? JSON.parse(stored) : [];
-      
-      // Fetch service details
-      const services = await Promise.all(
-        favoriteIds.map((id: string) => servicesApi.getById(id).catch(() => null))
-      );
-      
-      setFavorites(services.filter(Boolean));
+      const services = await favoritesApi.getFavorites();
+      setFavorites(services);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erreur lors du chargement des favoris');
     } finally {
@@ -40,26 +32,12 @@ export function useClientFavorites(): UseClientFavoritesReturn {
   }, []);
 
   const addFavorite = useCallback(async (serviceId: string) => {
-    const stored = localStorage.getItem('favorites');
-    const favoriteIds: string[] = stored ? JSON.parse(stored) : [];
-    
-    if (!favoriteIds.includes(serviceId)) {
-      favoriteIds.push(serviceId);
-      localStorage.setItem('favorites', JSON.stringify(favoriteIds));
-      
-      // Fetch and add the service
-      const service = await servicesApi.getById(serviceId);
-      setFavorites(prev => [...prev, service.data]);
-    }
-  }, []);
+    await favoritesApi.add(serviceId);
+    await fetchFavorites();
+  }, [fetchFavorites]);
 
   const removeFavorite = useCallback(async (serviceId: string) => {
-    const stored = localStorage.getItem('favorites');
-    const favoriteIds: string[] = stored ? JSON.parse(stored) : [];
-    
-    const newFavorites = favoriteIds.filter((id: string) => id !== serviceId);
-    localStorage.setItem('favorites', JSON.stringify(newFavorites));
-    
+    await favoritesApi.remove(serviceId);
     setFavorites(prev => prev.filter(s => s._id !== serviceId));
   }, []);
 

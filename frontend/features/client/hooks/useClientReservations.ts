@@ -1,8 +1,7 @@
 // features/client/hooks/useClientReservations.ts
 
 import { useState, useEffect, useCallback } from 'react';
-import { reservationsApi } from '@/lib/api/client';
-import { Reservation } from '@/types';
+import { Reservation, reservationsApi } from '@/lib/api/reservations';
 
 interface UseClientReservationsReturn {
   reservations: Reservation[];
@@ -21,15 +20,14 @@ export function useClientReservations(): UseClientReservationsReturn {
     setLoading(true);
     setError(null);
     try {
-      const response = await reservationsApi.getMy();
-      let data = response.data || response;
-      
+      let data = await reservationsApi.getMyReservations();
+
       // Apply filter
       const now = new Date();
       if (filter === 'upcoming') {
-        data = data.filter((r: Reservation) => new Date(r.date!) > now && r.status !== 'cancelled');
+        data = data.filter((r: Reservation) => new Date(r.startTime) > now && r.status !== 'cancelled');
       } else if (filter === 'past') {
-        data = data.filter((r: Reservation) => new Date(r.date!) <= now || r.status === 'cancelled');
+        data = data.filter((r: Reservation) => new Date(r.startTime) <= now || r.status === 'cancelled');
       }
       
       setReservations(data);
@@ -44,7 +42,7 @@ export function useClientReservations(): UseClientReservationsReturn {
     setLoading(true);
     setError(null);
     try {
-      await reservationsApi.cancel(id, { reason });
+      await reservationsApi.cancel(id, reason);
       setReservations(prev => prev.filter(r => r._id !== id));
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erreur lors de l\'annulation');

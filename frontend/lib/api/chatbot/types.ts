@@ -67,7 +67,6 @@ export interface Recommendation {
   _id: string;
   name: string;
   category: string;
-  basePrice: number;
   avgRating: number;
   reviewCount: number;
   location: {

@@ -2,10 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const topojson = require("topojson-client") as {
-  feature: (topology: any, object: any) => { type: string; features: any[] };
-};
+import * as topojson from "topojson-client";
 
 function getRawName(props: any): string {
   return (
@@ -50,7 +47,7 @@ export default function TunisiaMap({ onGovernorateClick, selectedGovernorate }: 
       })
       .then((topo: any) => {
         const objectKey = Object.keys(topo.objects)[0];
-        const geojson = topojson.feature(topo, topo.objects[objectKey]);
+        const geojson: any = topojson.feature(topo, topo.objects[objectKey]);
         const features: any[] = geojson.features;
 
         const projection = d3.geoMercator().fitSize([W, H], geojson as any);

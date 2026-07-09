@@ -29,7 +29,11 @@ export class AdminStatsResponse {
     usersByMonth: { month: string; clients: number; providers: number }[];
     reservationsByMonth: { month: string; count: number }[];
     servicesByMonth: { month: string; count: number }[];
-    categoriesByUsage: { category: string; count: number; percentage: number }[];
+    categoriesByUsage: {
+      category: string;
+      count: number;
+      percentage: number;
+    }[];
     topCategories: { category: string; bookings: number }[];
     reservationsByStatus: { status: string; count: number; color: string }[];
   };
@@ -44,8 +48,18 @@ export class AdminStatsResponse {
     }[];
   };
   trending: {
-    topProviders: { id: string; name: string; bookings: number; rating: number }[];
-    topServices: { id: string; name: string; category: string; bookings: number }[];
+    topProviders: {
+      id: string;
+      name: string;
+      bookings: number;
+      rating: number;
+    }[];
+    topServices: {
+      id: string;
+      name: string;
+      category: string;
+      bookings: number;
+    }[];
   };
   engagement: {
     clientRetentionRate: number;

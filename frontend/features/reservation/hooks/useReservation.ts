@@ -1,17 +1,7 @@
 // features/reservation/hooks/useReservation.ts
 
 import { useState, useCallback } from 'react';
-import { reservationsApi } from '@/lib/api/client';
-import { Reservation } from '@/types';
-
-// Type pour la création d'une réservation (champs obligatoires)
-interface CreateReservationData {
-  serviceId: string;
-  date: Date;
-  startTime: string;
-  duration: number;
-  specialRequests?: string;
-}
+import { CreateReservationData, Reservation, reservationsApi } from '@/lib/api/reservations';
 
 interface UseReservationReturn {
   loading: boolean;
@@ -31,8 +21,7 @@ export const useReservation = (): UseReservationReturn => {
     setLoading(true);
     setError(null);
     try {
-      const response = await reservationsApi.create(data);
-      return response.data;
+      return await reservationsApi.create(data);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erreur lors de la création de la réservation');
       return null;
@@ -45,8 +34,7 @@ export const useReservation = (): UseReservationReturn => {
     setLoading(true);
     setError(null);
     try {
-      const response = await reservationsApi.getMy();
-      return response.data;
+      return await reservationsApi.getMyReservations();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erreur lors du chargement des réservations');
       return [];
@@ -59,8 +47,7 @@ export const useReservation = (): UseReservationReturn => {
     setLoading(true);
     setError(null);
     try {
-      const response = await reservationsApi.getProvider();
-      return response.data;
+      return await reservationsApi.getProviderReservations();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erreur lors du chargement des réservations');
       return [];
@@ -86,7 +73,7 @@ export const useReservation = (): UseReservationReturn => {
     setLoading(true);
     setError(null);
     try {
-      await reservationsApi.cancel(id, { reason });
+      await reservationsApi.cancel(id, reason);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erreur lors de l\'annulation');
       throw err;

@@ -5,6 +5,12 @@ export interface Reservation {
   clientId: string;
   serviceId: string;
   serviceName?: string;
+  serviceLocation?: {
+    coordinates: [number, number];
+    address: string;
+    city: string;
+    governorate: string;
+  };
   providerName?: string;
   startTime: string;
   endTime: string;

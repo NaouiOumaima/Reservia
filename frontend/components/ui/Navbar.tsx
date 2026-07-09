@@ -285,7 +285,7 @@ export default function Navbar({ user: propUser }: NavbarProps) {
                 <div className="navbar-desktop-actions">
                   <ThemeToggle />
                   <Link href="/login" className="btn btn-ghost btn-sm">Se connecter</Link>
-                  <Link href="/register" className="btn btn-primary btn-sm">S'inscrire</Link>
+                  <Link href="/register" className="btn btn-primary btn-sm">S&apos;inscrire</Link>
                 </div>
                 <div className="navbar-mobile-actions">
                   <ThemeToggle />
@@ -316,7 +316,7 @@ export default function Navbar({ user: propUser }: NavbarProps) {
                 Se connecter
               </Link>
               <Link href="/register" onClick={() => setIsOpen(false)} className="navbar-mobile-link navbar-mobile-link-primary">
-                S'inscrire
+                S&apos;inscrire
               </Link>
             </div>
           </div>

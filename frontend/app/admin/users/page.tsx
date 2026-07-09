@@ -148,12 +148,6 @@ function UserDetailModal({
                     <span>{user.preferences.favoriteCategories.join(', ')}</span>
                   </li>
                 ) : null}
-                {user.preferences.maxPrice != null && (
-                  <li>
-                    <span>Prix max :</span>
-                    <span>{user.preferences.maxPrice} TND</span>
-                  </li>
-                )}
                 {user.preferences.maxDistance != null && (
                   <li>
                     <span>Distance max :</span>

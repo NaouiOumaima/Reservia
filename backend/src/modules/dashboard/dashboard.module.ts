@@ -4,10 +4,17 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DashboardService } from './dashboard.service';
 import { DashboardController } from './dashboard.controller';
-import { Reservation, ReservationSchema } from '../../database/schemas/reservation.schema';
+import {
+  Reservation,
+  ReservationSchema,
+} from '../../database/schemas/reservation.schema';
 import { Service, ServiceSchema } from '../../database/schemas/service.schema';
 import { Review, ReviewSchema } from '../../database/schemas/review.schema';
 import { User, UserSchema } from '../../database/schemas/user.schema';
+import {
+  Notification,
+  NotificationSchema,
+} from '../../database/schemas/notification.schema';
 
 @Module({
   imports: [
@@ -16,6 +23,7 @@ import { User, UserSchema } from '../../database/schemas/user.schema';
       { name: Service.name, schema: ServiceSchema },
       { name: Review.name, schema: ReviewSchema },
       { name: User.name, schema: UserSchema },
+      { name: Notification.name, schema: NotificationSchema },
     ]),
   ],
   controllers: [DashboardController],

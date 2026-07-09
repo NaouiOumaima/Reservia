@@ -1,13 +1,15 @@
-import { Controller, Get, Req, Res, HttpStatus } from '@nestjs/common';
-import { Request, Response } from 'express';
+import { Controller, Get, Res, HttpStatus } from '@nestjs/common';
+import { Response } from 'express';
+import { randomBytes } from 'crypto';
 
 @Controller('csrf')
 export class CsrfController {
   @Get('token')
-  getToken(@Req() req: Request, @Res() res: Response) {
-    // Récupérer le token CSRF (ajouté par le middleware ncsrf)
-    const token = (req as any).csrfToken();
-    
+  getToken(@Res() res: Response) {
+    // ℹ️ Le middleware ncsrf a été retiré de main.ts (voir bootstrap()) ;
+    // ce token n'est donc plus validé côté serveur, seulement délivré au frontend.
+    const token = randomBytes(32).toString('hex');
+
     // Définir un cookie pour le frontend
     res.cookie('XSRF-TOKEN', token, {
       httpOnly: false,
@@ -15,7 +17,7 @@ export class CsrfController {
       secure: process.env.NODE_ENV === 'production',
       maxAge: 24 * 60 * 60 * 1000, // 24 heures
     });
-    
+
     // Retourner le token en JSON
     res.status(HttpStatus.OK).json({
       success: true,

@@ -1,7 +1,7 @@
 // features/provider/hooks/useProviderAvailability.ts
 
 import { useState, useEffect, useCallback } from 'react';
-import { reservationsApi } from '@/lib/api/client';
+import { reservationsApi } from '@/lib/api';
 
 interface TimeSlot {
   day: string;

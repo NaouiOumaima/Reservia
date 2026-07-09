@@ -3,11 +3,11 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { ServicesModule } from './modules/services/services.module';
-// import { ReservationsModule } from './modules/reservations/reservations.module';
-// import { ReviewsModule } from './modules/reviews/reviews.module';
+import { ReservationsModule } from './modules/reservations/reservations.module';
 // import { SearchModule } from './modules/search/search.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 // import { DashboardModule } from './modules/dashboard/dashboard.module';
@@ -25,15 +25,18 @@ import { CsrfModule } from './csrf/csrf.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
+    ScheduleModule.forRoot(),
     MongooseModule.forRootAsync({
       useFactory: (configService: ConfigService) => ({
-        uri: configService.get<string>('mongodb.uri') || 'mongodb://localhost:27017/Reservation',
+        uri:
+          configService.get<string>('mongodb.uri') ||
+          'mongodb://localhost:27017/Reservation',
       }),
       inject: [ConfigService],
     }),
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('jwt.secret') || 'superSecretKey123!',
+        secret: configService.get<string>('jwt.secret'),
         signOptions: { expiresIn: '7d' },
       }),
       inject: [ConfigService],
@@ -42,6 +45,7 @@ import { CsrfModule } from './csrf/csrf.module';
     AuthModule,
     UsersModule,
     ServicesModule,
+    ReservationsModule,
     AiModule,
     AdminModule,
     DashboardModule,
@@ -49,7 +53,7 @@ import { CsrfModule } from './csrf/csrf.module';
     NotificationsModule,
     WebsocketModule,
     UploadModule,
-    AdvertisementsModule, 
+    AdvertisementsModule,
     FavoritesModule,
     CsrfModule,
   ],

@@ -16,8 +16,10 @@ export interface LoginCredentials {
 
 export interface LoginResponse {
   user: User;
-  accessToken: string;
-  refreshToken: string;
+  accessToken?: string;
+  refreshToken?: string;
+  requiresVerification?: boolean;
+  message?: string;
 }
 
 export const login = async (
@@ -28,7 +30,22 @@ export const login = async (
     credentials
   );
 
-  const { user, accessToken, refreshToken } = response.data;
+  const { user, accessToken, refreshToken, requiresVerification, message } = response.data;
+
+  if (requiresVerification) {
+    const error = new Error(message || 'Veuillez confirmer votre email avant de continuer') as Error & {
+      response?: { data?: { message?: string }; status?: number };
+    };
+    error.response = {
+      data: { message: message || 'Veuillez confirmer votre email avant de continuer' },
+      status: 403,
+    };
+    throw error;
+  }
+
+  if (!accessToken || !refreshToken) {
+    throw new Error('Réponse de connexion invalide');
+  }
 
   setAccessToken(accessToken);
   setRefreshToken(refreshToken);

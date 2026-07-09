@@ -1,7 +1,7 @@
 // features/client/hooks/useClientProfile.ts
 
 import { useState, useEffect, useCallback } from 'react';
-import { authApi } from '@/lib/api/client';
+import { usersApi } from '@/lib/api';
 import { User, UserPreferences } from '@/types';
 
 interface UseClientProfileReturn {
@@ -22,8 +22,7 @@ export function useClientProfile(): UseClientProfileReturn {
     setLoading(true);
     setError(null);
     try {
-      const response = await authApi.getMe();
-      const userData = response.data;
+      const userData = await usersApi.getProfile();
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
     } catch (err: any) {
@@ -42,8 +41,7 @@ export function useClientProfile(): UseClientProfileReturn {
     setLoading(true);
     setError(null);
     try {
-      const response = await authApi.updateProfile(data);
-      const updatedUser = response.data;
+      const updatedUser = await usersApi.updateProfile(data);
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
     } catch (err: any) {
@@ -58,8 +56,12 @@ export function useClientProfile(): UseClientProfileReturn {
     setLoading(true);
     setError(null);
     try {
-      const updatedUser = { ...user, preferences: { ...user?.preferences, ...preferences } };
-      await authApi.updateProfile({ preferences: updatedUser.preferences });
+      const mergedPreferences: UserPreferences = {
+        favoriteCategories: user?.preferences?.favoriteCategories ?? [],
+        ...user?.preferences,
+        ...preferences,
+      };
+      const updatedUser = await usersApi.updatePreferences(mergedPreferences);
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
     } catch (err: any) {

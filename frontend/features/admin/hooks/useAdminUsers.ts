@@ -1,7 +1,7 @@
 // features/admin/hooks/useAdminUsers.ts
 
 import { useState, useEffect, useCallback } from 'react';
-import { usersApi } from '@/lib/api/client';
+import { usersApi } from '@/lib/api/users/users.api';
 import { User } from '@/types';
 
 interface UseAdminUsersReturn {
@@ -25,12 +25,12 @@ export function useAdminUsers(): UseAdminUsersReturn {
     setLoading(true);
     setError(null);
     try {
-      const response = await usersApi.getAll(role);
-      setUsers(response.data || response);
-      
+      const fetchedUsers = await usersApi.getAllUsers(role);
+      setUsers(fetchedUsers);
+
       // Get stats
-      const statsResponse = await usersApi.getStats();
-      setStats(statsResponse.data || statsResponse);
+      const fetchedStats = await usersApi.getUserStats();
+      setStats(fetchedStats);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erreur lors du chargement des utilisateurs');
     } finally {
@@ -42,7 +42,7 @@ export function useAdminUsers(): UseAdminUsersReturn {
     setLoading(true);
     setError(null);
     try {
-      await usersApi.updateRole(userId, role);
+      await usersApi.updateUserRole(userId, role);
       setUsers(prev => prev.map(u => u._id === userId ? { ...u, role: role as any } : u));
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erreur lors du changement de rôle');

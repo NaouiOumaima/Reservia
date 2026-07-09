@@ -42,15 +42,15 @@ export default function ClientFavoritesPage() {
 
   if (loading) {
     return (
-      <div className="provider-loading">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="spinner" />
       </div>
     );
   }
 
   return (
-    <div className="provider-page">
-      <div className="provider-container">
+    <div className="bg-background min-h-screen py-8">
+      <div className="container-app">
 
         {/* ── Header ── */}
         <div className="fav-page-header">
@@ -72,13 +72,13 @@ export default function ClientFavoritesPage() {
 
         {/* ── Empty state ── */}
         {favorites.length === 0 ? (
-          <div className="fav-empty-state card animate-fadeInUp">
+          <div className="card fav-empty-state animate-fadeInUp">
             <div className="fav-empty-icon-wrap">
               <HeartIconFilled className="w-10 h-10" filled={false} />
             </div>
-            <h3 className="fav-empty-title">Aucun favori pour l'instant</h3>
+            <h3 className="fav-empty-title">Aucun favori pour l&apos;instant</h3>
             <p className="fav-empty-text text-muted">
-              Explorez les services et cliquez sur ♥ pour les sauvegarder ici.
+              Explorez les services et cliquez sur le cœur pour les sauvegarder ici.
             </p>
             <Link href="/search" className="btn btn-primary">
               <SearchIcon className="w-4 h-4" />
@@ -89,17 +89,17 @@ export default function ClientFavoritesPage() {
           /* ── Grid ── */
           <div className="fav-grid stagger-children">
             {favorites.map(service => {
-              const price = service.basePrice ?? service.price ?? 0;
-              const discount = service.discountPrice;
               const rating = service.avgRating ?? service.rating ?? 0;
               const isRemoving = removing.has(service._id);
               const categoryIcon = getCategoryIcon(service.category);
+              const isActive = service.status === 'active';
 
               return (
                 <Link
                   key={service._id}
-                  href={`/service/${service._id}`}
-                  className={`fav-card card animate-fadeInUp ${isRemoving ? 'fav-card-removing' : ''}`}
+                  href={isActive ? `/service/${service._id}` : '#'}
+                  onClick={(e) => { if (!isActive) e.preventDefault(); }}
+                  className={`card fav-card animate-fadeInUp ${isRemoving ? 'fav-card-removing' : ''} ${!isActive ? 'opacity-60' : ''}`}
                 >
                   {/* Image */}
                   <div className="fav-card-img-wrap">
@@ -111,10 +111,10 @@ export default function ClientFavoritesPage() {
                         className="fav-card-img"
                       />
                     ) : (
-                      <div className="fav-card-img-placeholder bg-primary-soft">
+                      <div className="fav-card-img-placeholder bg-primary-soft text-primary">
                         {categoryIcon
-                          ? <span className="text-primary">{categoryIcon}</span>
-                          : <MapPinIcon className="w-10 h-10 text-primary" />}
+                          ? <span className="text-4xl">{categoryIcon}</span>
+                          : <MapPinIcon className="w-10 h-10" />}
                       </div>
                     )}
 
@@ -122,7 +122,7 @@ export default function ClientFavoritesPage() {
                     <button
                       onClick={(e) => handleRemove(e, service._id)}
                       disabled={isRemoving}
-                      className="fav-heart-btn"
+                      className={`fav-heart-btn fav-heart-btn-active ${isRemoving ? 'fav-heart-btn-loading' : ''}`}
                       aria-label="Retirer des favoris"
                     >
                       {isRemoving
@@ -130,24 +130,23 @@ export default function ClientFavoritesPage() {
                         : <HeartIconFilled className="w-4 h-4" filled={true} />
                       }
                     </button>
-
-                    {discount && price > 0 && (
-                      <span className="badge badge-error fav-discount-badge">
-                        -{Math.round((1 - discount / price) * 100)}%
-                      </span>
-                    )}
                   </div>
 
                   {/* Body */}
                   <div className="fav-card-body">
-                    <span className="badge badge-primary fav-category-badge">
-                      {service.category}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap fav-category-badge">
+                      <span className="badge badge-primary">
+                        {service.category}
+                      </span>
+                      <span className={`fav-status-badge ${isActive ? 'fav-status-badge--active' : 'fav-status-badge--expired'}`}>
+                        {isActive ? 'Actif' : 'Indisponible'}
+                      </span>
+                    </div>
                     <h3 className="fav-card-name truncate-2">{service.name}</h3>
 
                     {service.location?.city && (
-                      <p className="fav-card-location text-subtle">
-                        <MapPinIcon className="w-3 h-3" />
+                      <p className="fav-card-location text-muted">
+                        <MapPinIcon className="w-3 h-3 flex-shrink-0" />
                         {service.location.city}
                         {service.location.governorate ? `, ${service.location.governorate}` : ''}
                       </p>
@@ -155,7 +154,7 @@ export default function ClientFavoritesPage() {
 
                     <div className="fav-card-meta text-muted">
                       {rating > 0 && (
-                        <span className="fav-card-rating">
+                        <span className="fav-card-rating font-bold text-foreground">
                           <StarIcon className="w-3 h-3 text-warning" />
                           {rating.toFixed(1)}
                         </span>
@@ -175,17 +174,10 @@ export default function ClientFavoritesPage() {
                     </div>
 
                     <div className="fav-card-footer">
-                      <div className="fav-card-price-block">
-                        {discount ? (
-                          <>
-                            <span className="fav-card-price text-primary">{discount} DT</span>
-                            <span className="fav-card-price-old text-subtle">{price} DT</span>
-                          </>
-                        ) : (
-                          <span className="fav-card-price text-primary">{price} DT</span>
-                        )}
-                      </div>
-                      <span className="fav-card-book text-primary">Réserver →</span>
+                      <span className="badge badge-success">Gratuit</span>
+                      <span className={`fav-card-book ${isActive ? 'text-primary' : 'text-muted'}`}>
+                        {isActive ? 'Réserver →' : 'Indisponible'}
+                      </span>
                     </div>
                   </div>
                 </Link>

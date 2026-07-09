@@ -1,6 +1,13 @@
 // src/modules/dashboard/dashboard.controller.ts
-import { Controller, Get, Param, Query, UseGuards, Request } from '@nestjs/common';
-import { DashboardService, ServiceStats, HourlyHeatmapData, TrendData, HomePageStats } from './dashboard.service';
+import { Controller, Get, Query, UseGuards, Request } from '@nestjs/common';
+import {
+  DashboardService,
+  ServiceStats,
+  HourlyHeatmapData,
+  TrendData,
+  HomePageStats,
+  ClientDashboardSummary,
+} from './dashboard.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('dashboard')
@@ -21,10 +28,19 @@ export class DashboardController {
     }
   }
 
+  @Get('client')
+  @UseGuards(JwtAuthGuard)
+  async getClientDashboard(@Request() req): Promise<ClientDashboardSummary> {
+    return this.dashboardService.getClientDashboard(req.user._id);
+  }
+
   // Endpoints protégés pour les providers
   @Get('provider')
   @UseGuards(JwtAuthGuard)
-  async getProviderDashboard(@Request() req, @Query('period') period: 'day' | 'week' | 'month' = 'month') {
+  async getProviderDashboard(
+    @Request() req,
+    @Query('period') period: 'day' | 'week' | 'month' = 'month',
+  ) {
     return this.dashboardService.getProviderDashboard(req.user._id, period);
   }
 
